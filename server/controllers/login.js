@@ -1,6 +1,6 @@
 // server/controllers/login.js
 import pool from '../config/db.js';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 export const login = async (req, res) => {
   try {
