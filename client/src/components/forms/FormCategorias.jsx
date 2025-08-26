@@ -31,7 +31,6 @@ const FormCategorias = ({ onClose, onSubmit, categoriaParaEditar = null, isEditi
     e.preventDefault();
     
     if (!formData.nome.trim()) {
-      alert('Nome é obrigatório!');
       return;
     }
 
@@ -39,7 +38,6 @@ const FormCategorias = ({ onClose, onSubmit, categoriaParaEditar = null, isEditi
       // Pegar o estabelecimento ID do localStorage
       const estabelecimento = JSON.parse(localStorage.getItem('filaZero_establishment'));
       if (!estabelecimento || !estabelecimento.id) {
-        alert('Erro: Estabelecimento não encontrado!');
         return;
       }
 
@@ -71,21 +69,15 @@ const FormCategorias = ({ onClose, onSubmit, categoriaParaEditar = null, isEditi
       }
 
       if (response.data.success) {
-        const message = isEditing ? 'Categoria alterada com sucesso!' : 'Categoria criada com sucesso!';
-        alert(message);
         onSubmit(response.data.data);
       } else {
-        const errorMessage = isEditing ? 'Erro ao alterar categoria: ' : 'Erro ao criar categoria: ';
-        alert(errorMessage + response.data.message);
+        // Silenciar erro, apenas fazer callback
+        onSubmit(null);
       }
     } catch (error) {
       console.error('Erro ao processar categoria:', error);
-      if (error.response?.data?.message) {
-        alert('Erro: ' + error.response.data.message);
-      } else {
-        const errorMessage = isEditing ? 'Erro ao alterar categoria.' : 'Erro ao criar categoria.';
-        alert(errorMessage + ' Tente novamente.');
-      }
+      // Silenciar erro, apenas fazer callback
+      onSubmit(null);
     }
   };
 

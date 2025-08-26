@@ -138,6 +138,46 @@ app.get('/test-images', (req, res) => {
   }
 });
 
+// Rota para testar construção de URLs
+app.get('/api/test-urls', (req, res) => {
+  try {
+    const { buildImageUrl } = await import('./config/images.js');
+    
+    // Simular diferentes cenários
+    const testCases = [
+      '/uploads/categoria-123.jpg',
+      'https://exemplo.com/imagem.jpg',
+      null
+    ];
+    
+    const results = testCases.map(imagePath => {
+      try {
+        const url = buildImageUrl(imagePath, req);
+        return { imagePath, result: url, success: true };
+      } catch (error) {
+        return { imagePath, result: error.message, success: false };
+      }
+    });
+    
+    res.json({
+      success: true,
+      message: 'Teste de URLs executado',
+      results,
+      requestInfo: {
+        host: req.get('host'),
+        userAgent: req.get('User-Agent'),
+        protocol: req.protocol
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao testar URLs',
+      error: error.message
+    });
+  }
+});
+
 // Middleware de erro
 app.use((err, req, res, next) => {
   console.error('Erro:', err);

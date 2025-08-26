@@ -175,7 +175,16 @@ node test-urls.js
 
 # Verificar logs do servidor
 # Procurar por: "🌍 Detecção de ambiente" e "🖼️ URL de imagem construída"
+
+# Testar rota de debug
+curl https://filazero-sistema-de-gestao.onrender.com/api/test-urls
 ```
+
+### 6. **Debug Avançado**
+- **Rota de teste**: `/api/test-urls` - testa construção de URLs
+- **Logs detalhados**: Procurar por "🔧 construirUrlImagem chamada com"
+- **Verificar ambiente**: Procurar por "🌍 Ambiente detectado"
+- **URLs construídas**: Procurar por "🖼️ URL de imagem construída"
 
 ## 🖼️ Problema de Exibição de Imagens
 

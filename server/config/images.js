@@ -63,27 +63,48 @@ export const detectEnvironment = (req) => {
 
 // Função para construir URL de imagem
 export const buildImageUrl = (imagePath, req) => {
-  if (!imagePath) return null;
+  console.log('🔍 buildImageUrl iniciada com:', {
+    imagePath,
+    reqHost: req.get('host'),
+    reqUserAgent: req.get('User-Agent')
+  });
+  
+  if (!imagePath) {
+    console.log('❌ imagePath é null/undefined');
+    return null;
+  }
   
   // Se já é uma URL completa, retornar como está
   if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+    console.log('✅ URL já é completa, retornando:', imagePath);
     return imagePath;
   }
   
-  // Detectar ambiente
-  const { isProduction, config } = detectEnvironment(req);
-  
-  // Construir URL
-  const fullUrl = `${config.baseUrl}${imagePath}`;
-  
-  console.log('🖼️ URL de imagem construída:', {
-    originalPath: imagePath,
-    environment: isProduction ? 'production' : 'development',
-    baseUrl: config.baseUrl,
-    fullUrl: fullUrl
-  });
-  
-  return fullUrl;
+  try {
+    // Detectar ambiente
+    const envInfo = detectEnvironment(req);
+    console.log('🌍 Ambiente detectado:', envInfo);
+    
+    const { isProduction, config } = envInfo;
+    
+    // Construir URL
+    const fullUrl = `${config.baseUrl}${imagePath}`;
+    
+    console.log('🖼️ URL de imagem construída:', {
+      originalPath: imagePath,
+      environment: isProduction ? 'production' : 'development',
+      baseUrl: config.baseUrl,
+      fullUrl: fullUrl,
+      isProduction,
+      config
+    });
+    
+    return fullUrl;
+  } catch (error) {
+    console.error('❌ Erro em buildImageUrl:', error);
+    console.error('Stack trace:', error.stack);
+    throw error;
+  }
 };
 
 // Função para validar URL de imagem

@@ -2,6 +2,26 @@ import pool from '../config/db.js';
 import path from 'path';
 import { buildImageUrl } from '../config/images.js';
 
+// Função para construir URL completa da imagem (usando nova configuração)
+const construirUrlImagem = (imagem_url, req) => {
+  console.log('🔧 construirUrlImagem chamada com:', {
+    imagem_url,
+    host: req.get('host'),
+    userAgent: req.get('User-Agent'),
+    protocol: req.protocol
+  });
+  
+  try {
+    const result = buildImageUrl(imagem_url, req);
+    console.log('✅ buildImageUrl retornou:', result);
+    return result;
+  } catch (error) {
+    console.error('❌ Erro em buildImageUrl:', error);
+    // Fallback: retornar URL original se houver erro
+    return imagem_url;
+  }
+};
+
 // Cadastrar nova categoria
 const criarCategoria = async (req, res) => {
   try {
@@ -91,11 +111,6 @@ const criarCategoria = async (req, res) => {
       error: error.message
     });
   }
-};
-
-// Função para construir URL completa da imagem (usando nova configuração)
-const construirUrlImagem = (imagem_url, req) => {
-  return buildImageUrl(imagem_url, req);
 };
 
 // Buscar categorias por estabelecimento
