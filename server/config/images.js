@@ -20,10 +20,19 @@ export const imageConfig = {
   }
 };
 
+// Função para forçar produção em ambiente Render
+const forceProductionInRender = () => {
+  return process.env.RENDER === 'true' || 
+         process.env.NODE_ENV === 'production' ||
+         process.env.HOSTNAME?.includes('render.com');
+};
+
 // Função para detectar ambiente
 export const detectEnvironment = (req) => {
   const host = req.get('host') || '';
   const userAgent = req.get('User-Agent') || '';
+  const origin = req.get('origin') || '';
+  const referer = req.get('referer') || '';
   
   // Verificar variáveis de ambiente
   const envVars = {
@@ -39,24 +48,54 @@ export const detectEnvironment = (req) => {
     isProduction: host.includes('filazero-sistema-de-gestao.onrender.com')
   };
   
-  // Detectar se é produção
-  const isProduction = envVars.NODE_ENV === 'production' ||
-                      envVars.RENDER === 'true' ||
-                      hostIndicators.isRender ||
-                      hostIndicators.isProduction;
+  // Verificar origem da requisição (frontend)
+  const originIndicators = {
+    isNetlify: origin.includes('netlify.app') || referer.includes('netlify.app'),
+    isLocalhost: origin.includes('localhost') || referer.includes('localhost'),
+    isProduction: origin.includes('filazero.netlify.app') || referer.includes('filazero.netlify.app')
+  };
+  
+  // Detectar se é produção - PRIORIDADE para variáveis de ambiente
+  let isProduction = false;
+  
+  // 1. FORÇAR produção se estiver no Render (mais importante!)
+  if (forceProductionInRender()) {
+    isProduction = true;
+  }
+  // 2. Verificar variáveis de ambiente
+  else if (envVars.NODE_ENV === 'production' || envVars.RENDER === 'true') {
+    isProduction = true;
+  }
+  // 3. Verificar se o servidor está rodando no Render
+  else if (hostIndicators.isRender || hostIndicators.isProduction) {
+    isProduction = true;
+  }
+  // 4. Verificar se o frontend está em produção
+  else if (originIndicators.isProduction) {
+    isProduction = true;
+  }
+  // 5. Fallback: se não for nenhum dos acima, é desenvolvimento
+  else {
+    isProduction = false;
+  }
   
   console.log('🔍 Detecção de ambiente:', {
     envVars,
     hostIndicators,
+    originIndicators,
     host,
+    origin,
+    referer,
     userAgent: userAgent.substring(0, 100) + '...',
-    isProduction
+    isProduction,
+    finalDecision: isProduction ? 'PRODUÇÃO' : 'DESENVOLVIMENTO'
   });
   
   return {
     isProduction,
     config: isProduction ? imageConfig.production : imageConfig.development,
     host,
+    origin,
     envVars
   };
 };
@@ -88,7 +127,13 @@ export const buildImageUrl = (imagePath, req) => {
     const { isProduction, config } = envInfo;
     
     // Construir URL
-    const fullUrl = `${config.baseUrl}${imagePath}`;
+    let fullUrl = `${config.baseUrl}${imagePath}`;
+    
+    // FORÇAR HTTPS em produção se por algum motivo ainda estiver HTTP
+    if (isProduction && fullUrl.startsWith('http://')) {
+      fullUrl = fullUrl.replace('http://', 'https://');
+      console.log('🔄 URL forçada para HTTPS:', fullUrl);
+    }
     
     console.log('🖼️ URL de imagem construída:', {
       originalPath: imagePath,
@@ -96,7 +141,8 @@ export const buildImageUrl = (imagePath, req) => {
       baseUrl: config.baseUrl,
       fullUrl: fullUrl,
       isProduction,
-      config
+      config,
+      finalUrl: fullUrl
     });
     
     return fullUrl;
