@@ -16,27 +16,58 @@ const PORT = process.env.PORT || 3001;
 
 // Configuração CORS para produção
 const corsOptions = {
-  origin: [
-    'https://filazero.netlify.app',
-    'https://filazero-sistema-de-gestao.onrender.com',
-    'http://localhost:5173', // Para desenvolvimento local
-    'http://localhost:3000'  // Para desenvolvimento local
-  ],
+  origin: function (origin, callback) {
+    // Permitir requisições sem origin (como mobile apps)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      'https://filazero.netlify.app',
+      'https://filazero-sistema-de-gestao.onrender.com',
+      'http://localhost:5173',
+      'http://localhost:3000'
+    ];
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log('🚫 Origin bloqueada:', origin);
+      callback(new Error('Não permitido pelo CORS'));
+    }
+  },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: [
     'Content-Type', 
     'Authorization', 
     'X-Requested-With',
     'Accept',
     'Origin',
-    'User-Agent'
+    'User-Agent',
+    'Access-Control-Allow-Origin'
   ],
-  exposedHeaders: ['Content-Length', 'Content-Type']
+  exposedHeaders: ['Content-Length', 'Content-Type'],
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 };
 
 // Middlewares
 app.use(cors(corsOptions));
+
+// Middleware adicional para CORS (backup)
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', 'https://filazero.netlify.app');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  
+  // Responder a requisições OPTIONS
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(200);
+  } else {
+    next();
+  }
+});
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -94,7 +125,12 @@ app.use((req, res, next) => {
 const testDatabaseConnection = async () => {
   try {
     console.log('🔍 Tentando conectar ao banco de produção...');
-    console.log('🌐 DATABASE_URL:', process.env.DATABASE_URL?.substring(0, 50) + '...');
+    console.log('🌐 DATABASE_URL:', process.env.DATABASE_URL ? 'Configurada' : 'NÃO CONFIGURADA');
+    
+    if (!process.env.DATABASE_URL) {
+      console.error('❌ DATABASE_URL não está configurada!');
+      return;
+    }
     
     const result = await pool.query('SELECT NOW()');
     console.log('✅ Banco conectado em:', result.rows[0].now);
@@ -119,9 +155,11 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString(),
     environment: 'production',
     cors: {
-      allowedOrigins: corsOptions.origin,
-      credentials: corsOptions.credentials
-    }
+      allowedOrigins: ['https://filazero.netlify.app', 'https://filazero-sistema-de-gestao.onrender.com'],
+      credentials: true
+    },
+    headers: req.headers,
+    origin: req.get('Origin')
   });
 });
 
@@ -145,6 +183,17 @@ app.use((err, req, res, next) => {
   console.error('Método:', req.method);
   console.error('Headers:', req.headers);
   console.error('User-Agent:', req.get('User-Agent'));
+  console.error('Origin:', req.get('Origin'));
+  
+  // Se for erro de CORS
+  if (err.message === 'Não permitido pelo CORS') {
+    return res.status(403).json({
+      success: false,
+      message: 'Acesso negado pelo CORS',
+      origin: req.get('Origin'),
+      allowedOrigins: ['https://filazero.netlify.app', 'https://filazero-sistema-de-gestao.onrender.com']
+    });
+  }
   
   // Log detalhado para debug em produção
   console.error('Erro completo:', {
