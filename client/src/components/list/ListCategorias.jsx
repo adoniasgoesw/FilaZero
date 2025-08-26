@@ -1,22 +1,36 @@
 import React, { useState, useEffect } from 'react';
-import { Tag, Edit, Trash2, Power, PowerOff } from 'lucide-react';
-import api from '../../services/api';
-import Notification from '../elements/Notification';
+import { Power, PowerOff, Edit, Trash2 } from 'lucide-react';
+import api from '../../services/api.js';
 
-const ListCategorias = ({ onRefresh, onEdit }) => {
+const ListCategorias = ({ onRefresh }) => {
   const [categorias, setCategorias] = useState([]);
+  const [filteredCategorias, setFilteredCategorias] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filteredCategorias, setFilteredCategorias] = useState([]);
   const [activeCard, setActiveCard] = useState(null);
-  const [showNotification, setShowNotification] = useState(false);
-  const [categoriaParaDeletar, setCategoriaParaDeletar] = useState(null);
 
-  // Buscar categorias do estabelecimento
+  // Função helper para construir URL da imagem
+  const getImageUrl = (imagePath) => {
+    if (!imagePath) return null;
+    
+    // Detectar ambiente automaticamente
+    const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+    
+    if (isProduction) {
+      // Produção: usar Render
+      return `https://filazero-sistema-de-gestao.onrender.com${imagePath}`;
+    } else {
+      // Desenvolvimento: usar localhost
+      return `http://localhost:3001${imagePath}`;
+    }
+  };
+
+  // Buscar categorias do banco de dados
   const buscarCategorias = async () => {
     try {
       setLoading(true);
       const estabelecimento = JSON.parse(localStorage.getItem('filaZero_establishment'));
+      
       if (!estabelecimento || !estabelecimento.id) {
         console.error('Estabelecimento não encontrado');
         return;
@@ -24,7 +38,6 @@ const ListCategorias = ({ onRefresh, onEdit }) => {
 
       const response = await api.get(`/categorias/estabelecimento/${estabelecimento.id}`);
       if (response.data.success) {
-        console.log('📋 Categorias recebidas do backend:', response.data.data);
         setCategorias(response.data.data);
         setFilteredCategorias(response.data.data);
       }
@@ -35,7 +48,7 @@ const ListCategorias = ({ onRefresh, onEdit }) => {
     }
   };
 
-  // Filtrar categorias baseado no termo de busca
+  // Filtrar categorias por termo de busca
   useEffect(() => {
     if (searchTerm.trim() === '') {
       setFilteredCategorias(categorias);
@@ -47,91 +60,64 @@ const ListCategorias = ({ onRefresh, onEdit }) => {
     }
   }, [searchTerm, categorias]);
 
-  // Buscar categorias quando o componente montar ou quando onRefresh for chamado
+  // Carregar categorias quando o componente montar
   useEffect(() => {
     buscarCategorias();
   }, [onRefresh]);
 
-  // Função para deletar categoria
-  const deletarCategoria = async (id) => {
-    const categoria = categorias.find(cat => cat.id === id);
-    if (categoria) {
-      setCategoriaParaDeletar(categoria);
-      setShowNotification(true);
-      setActiveCard(null);
+  // Função para ativar/desativar categoria
+  const toggleStatusCategoria = async (id, novoStatus) => {
+    try {
+      const response = await api.put(`/categorias/${id}`, { status: novoStatus });
+      if (response.data.success) {
+        const statusText = novoStatus ? 'ativada' : 'desativada';
+        alert(`Categoria ${statusText} com sucesso!`);
+        buscarCategorias(); // Recarregar lista
+        setActiveCard(null); // Fechar botões
+      }
+    } catch (error) {
+      console.error('❌ Erro ao alterar status da categoria:', error);
+      alert('Erro ao alterar status da categoria. Tente novamente.');
     }
   };
 
   // Função para editar categoria
-  const editarCategoria = (id) => {
-    const categoria = categorias.find(cat => cat.id === id);
-    if (categoria && onEdit) {
-      onEdit(categoria);
-      setActiveCard(null);
-    }
+  const editarCategoria = () => {
+    // Implementar edição futuramente
+    alert('Funcionalidade de edição será implementada em breve!');
+    setActiveCard(null);
   };
 
-  // Função para ativar/desativar categoria
-  const toggleStatusCategoria = async (id, novoStatus) => {
-    try {
-      const response = await api.put(`/categorias/${id}/status`, { status: novoStatus });
-      if (response.data.success) {
-        buscarCategorias();
-        setActiveCard(null);
-      }
-    } catch (error) {
-      console.error('Erro ao alterar status da categoria:', error);
-    }
-  };
-
-  // Função para gerenciar clique no card (mobile)
-  const handleCardClick = (id) => {
-    if (activeCard === id) {
-      setActiveCard(null);
-    } else {
-      setActiveCard(id);
-    }
-  };
-
-  // Função para confirmar exclusão
-  const confirmarExclusao = async () => {
-    try {
-      if (categoriaParaDeletar) {
-        const response = await api.delete(`/categorias/${categoriaParaDeletar.id}`);
+  // Função para deletar categoria
+  const deletarCategoria = async (id) => {
+    if (window.confirm('Tem certeza que deseja excluir esta categoria?')) {
+      try {
+        const response = await api.delete(`/categorias/${id}`);
         if (response.data.success) {
+          alert('Categoria deletada com sucesso!');
           buscarCategorias();
-          setShowNotification(false);
-          setCategoriaParaDeletar(null);
         }
+      } catch (error) {
+        console.error('Erro ao deletar categoria:', error);
+        alert('Erro ao deletar categoria. Tente novamente.');
       }
-    } catch (error) {
-      console.error('Erro ao deletar categoria:', error);
     }
+    setActiveCard(null);
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="w-8 h-8 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Carregando categorias...</p>
-        </div>
+      <div className="flex justify-center items-center py-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-500"></div>
       </div>
     );
   }
 
   if (filteredCategorias.length === 0) {
     return (
-      <div className="text-center py-12">
-        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Tag className="w-8 h-8 text-gray-400" />
-        </div>
-        <h3 className="text-lg font-medium text-gray-900 mb-2">
-          {searchTerm ? 'Nenhuma categoria encontrada' : 'Nenhuma categoria cadastrada'}
-        </h3>
-        <p className="text-gray-500">
-          {searchTerm ? 'Tente ajustar os termos de busca.' : 'Comece cadastrando sua primeira categoria.'}
-        </p>
+      <div className="text-center text-gray-500 py-8">
+        <p className="text-lg">Nenhuma categoria encontrada</p>
+        <p className="text-sm">Crie sua primeira categoria para começar</p>
       </div>
     );
   }
@@ -139,121 +125,112 @@ const ListCategorias = ({ onRefresh, onEdit }) => {
   return (
     <div className="space-y-4">
       {/* Barra de busca */}
-      <div className="relative">
+      <div className="mb-6">
         <input
           type="text"
           placeholder="Buscar categorias..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
         />
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-        </div>
       </div>
 
       {/* Grid de categorias */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
         {filteredCategorias.map((categoria) => (
           <div
             key={categoria.id}
-            className="group relative bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-all duration-200 cursor-pointer"
-            onClick={() => handleCardClick(categoria.id)}
+            className={`relative bg-white border rounded-lg p-4 hover:shadow-lg transition-all duration-200 cursor-pointer ${
+              categoria.status ? 'border-gray-200' : 'border-gray-300 opacity-75'
+            }`}
+            onClick={() => setActiveCard(activeCard === categoria.id ? null : categoria.id)}
           >
-            {/* Card da categoria */}
-            <div className="p-4 text-center">
-              {/* Ícone da categoria */}
-              <div className="w-16 h-16 mx-auto mb-3 rounded-lg flex items-center justify-center"
-                   style={{ backgroundColor: categoria.cor || '#e5e7eb' }}>
-                <Tag className="w-8 h-8 text-white opacity-80" />
-              </div>
+            {/* Status */}
+            <div className="absolute top-2 right-2">
+              <span
+                className={`px-2 py-1 rounded-full text-xs font-medium shadow-md ${
+                  categoria.status
+                    ? 'bg-emerald-500 text-white'
+                    : 'bg-rose-500 text-white'
+                }`}
+              >
+                {categoria.status ? 'Ativa' : 'Inativa'}
+              </span>
+            </div>
 
-              {/* Nome da categoria */}
-              <h4 className="font-semibold text-gray-800 text-sm truncate">
-                {categoria.nome}
-              </h4>
+            {/* Imagem */}
+            <div className="w-full h-32 mb-3 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
+                             {categoria.imagem_url ? (
+                 <img
+                   src={getImageUrl(categoria.imagem_url)}
+                   alt={categoria.nome}
+                   className="w-full h-full object-cover"
+                   onError={(e) => {
+                     console.warn('Erro ao carregar imagem:', categoria.imagem_url);
+                     e.target.style.display = 'none';
+                   }}
+                 />
+               ) : (
+                <div className="text-gray-400">
+                  <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+              )}
+            </div>
 
-              {/* Status */}
-              <div className="mt-2">
-                {categoria.status ? (
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
-                    Ativa
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-rose-100 text-rose-800">
-                    Inativa
-                  </span>
-                )}
-              </div>
+            {/* Nome */}
+            <h3 className="font-medium text-gray-800 text-center mb-3 truncate">
+              {categoria.nome}
+            </h3>
 
-              {/* Botões de ação */}
-              <div className={`absolute top-2 right-2 flex flex-row space-x-1 transition-opacity duration-200 ${
-                activeCard === categoria.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-              }`}>
-                {/* Botão Ativar/Desativar */}
+            {/* Botões de ação */}
+            {activeCard === categoria.id && (
+              <div className="absolute top-2 left-2 flex flex-row space-x-1">
+                {/* Ativar/Desativar */}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     toggleStatusCategoria(categoria.id, !categoria.status);
                   }}
-                  className={`w-6 h-6 rounded-full flex items-center justify-center transition-all duration-200 ${
-                    categoria.status 
-                      ? 'bg-amber-500 hover:bg-amber-600 hover:scale-110' 
-                      : 'bg-emerald-500 hover:bg-emerald-600 hover:scale-110'
-                  } text-white shadow-md hover:shadow-lg`}
-                  title={categoria.status ? 'Desativar categoria' : 'Ativar categoria'}
+                  className={`p-2 rounded-lg text-white transition-colors ${
+                    categoria.status
+                      ? 'bg-yellow-500 hover:bg-yellow-600'
+                      : 'bg-emerald-500 hover:bg-emerald-600'
+                  }`}
+                  title={categoria.status ? 'Desativar' : 'Ativar'}
                 >
-                  {categoria.status ? (
-                    <PowerOff className="w-3 h-3" />
-                  ) : (
-                    <Power className="w-3 h-3" />
-                  )}
+                  {categoria.status ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
                 </button>
 
-                {/* Botão Editar */}
+                {/* Editar */}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    editarCategoria(categoria.id);
+                    editarCategoria(categoria);
                   }}
-                  className="w-6 h-6 bg-sky-500 hover:bg-sky-600 hover:scale-110 text-white rounded-full flex items-center justify-center transition-all duration-200 shadow-md hover:shadow-lg"
-                  title="Editar categoria"
+                  className="p-2 bg-blue-500 hover:bg-blue-600 rounded-lg text-white transition-colors"
+                  title="Editar"
                 >
-                  <Edit className="w-3 h-3" />
+                  <Edit className="w-4 h-4" />
                 </button>
 
-                {/* Botão Deletar */}
+                {/* Deletar */}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     deletarCategoria(categoria.id);
                   }}
-                  className="w-6 h-6 bg-rose-500 hover:bg-rose-600 hover:scale-110 text-white rounded-full flex items-center justify-center transition-all duration-200 shadow-md hover:shadow-lg"
-                  title="Deletar categoria"
+                  className="p-2 bg-red-500 hover:bg-red-600 rounded-lg text-white transition-colors"
+                  title="Deletar"
                 >
-                  <Trash2 className="w-3 h-3" />
+                  <Trash2 className="w-4 h-4" />
                 </button>
               </div>
-            </div>
+            )}
           </div>
         ))}
       </div>
-
-      {/* Componente de Notificação para Exclusão */}
-      <Notification
-        isOpen={showNotification}
-        onClose={() => {
-          setShowNotification(false);
-          setCategoriaParaDeletar(null);
-        }}
-        message={`Você deseja excluir essa categoria, "${categoriaParaDeletar?.nome}"?`}
-        onConfirm={confirmarExclusao}
-        confirmText="Sim, excluir"
-        cancelText="Cancelar"
-        type="warning"
-      />
     </div>
   );
 };

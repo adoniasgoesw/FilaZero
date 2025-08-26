@@ -17,11 +17,9 @@ const FormProdutos = ({ onClose, onSubmit }) => {
   });
 
   const categorias = [
-    'Bebidas',
-    'Comidas',
-    'Sobremesas',
-    'Acompanhamentos',
-    'Outros'
+    'Categoria 1',
+    'Categoria 2',
+    'Categoria 3'
   ];
 
   const handleChange = (e) => {

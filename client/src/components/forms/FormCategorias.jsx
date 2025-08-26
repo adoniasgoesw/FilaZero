@@ -1,34 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Tag } from 'lucide-react';
-import api from '../../services/api';
+import CancelButton from '../buttons/CancelButton';
+import api from '../../services/api.js';
 
-const FormCategorias = ({ onClose, onSubmit, categoriaParaEditar = null, isEditing = false }) => {
+const FormCategorias = ({ onClose, onSubmit }) => {
   const [formData, setFormData] = useState({
     nome: '',
-    descricao: '',
-    cor: '#e5e7eb',
-    icone: '',
-    status: true
+    imagem: null
   });
 
-  // Preencher formulário quando for edição
-  useEffect(() => {
-    if (isEditing && categoriaParaEditar) {
-      setFormData({
-        nome: categoriaParaEditar.nome || '',
-        descricao: categoriaParaEditar.descricao || '',
-        cor: categoriaParaEditar.cor || '#e5e7eb',
-        icone: categoriaParaEditar.icone || '',
-        status: categoriaParaEditar.status !== undefined ? categoriaParaEditar.status : true
-      });
-    }
-  }, [isEditing, categoriaParaEditar]);
-
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
+    const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: value
     }));
   };
 
@@ -36,6 +21,7 @@ const FormCategorias = ({ onClose, onSubmit, categoriaParaEditar = null, isEditi
     e.preventDefault();
     
     if (!formData.nome.trim()) {
+      alert('Nome é obrigatório!');
       return;
     }
 
@@ -43,37 +29,39 @@ const FormCategorias = ({ onClose, onSubmit, categoriaParaEditar = null, isEditi
       // Pegar o estabelecimento ID do localStorage
       const estabelecimento = JSON.parse(localStorage.getItem('filaZero_establishment'));
       if (!estabelecimento || !estabelecimento.id) {
+        alert('Erro: Estabelecimento não encontrado!');
         return;
       }
 
-      // Preparar dados para envio
-      const dadosParaEnviar = {
-        estabelecimento_id: estabelecimento.id,
-        nome: formData.nome.trim(),
-        descricao: formData.descricao.trim() || null,
-        cor: formData.cor,
-        icone: formData.icone.trim() || null,
-        status: formData.status
-      };
-
-      let response;
+      // Criar FormData para enviar arquivo
+      const formDataToSend = new FormData();
+      formDataToSend.append('estabelecimento_id', estabelecimento.id);
+      formDataToSend.append('nome', formData.nome);
       
-      if (isEditing && categoriaParaEditar) {
-        // Atualizar categoria existente
-        response = await api.put(`/categorias/${categoriaParaEditar.id}`, dadosParaEnviar);
-      } else {
-        // Criar nova categoria
-        response = await api.post('/categorias', dadosParaEnviar);
+      if (formData.imagem) {
+        formDataToSend.append('imagem', formData.imagem);
       }
+
+      const response = await api.post('/categorias', formDataToSend, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
 
       if (response.data.success) {
+        alert('Categoria criada com sucesso!');
         onSubmit(response.data.data);
+        onClose();
       } else {
-        onSubmit(null);
+        alert('Erro ao criar categoria: ' + response.data.message);
       }
     } catch (error) {
-      console.error('Erro ao processar categoria:', error);
-      onSubmit(null);
+      console.error('Erro ao criar categoria:', error);
+      if (error.response?.data?.message) {
+        alert('Erro: ' + error.response.data.message);
+      } else {
+        alert('Erro ao criar categoria. Tente novamente.');
+      }
     }
   };
 
@@ -84,7 +72,7 @@ const FormCategorias = ({ onClose, onSubmit, categoriaParaEditar = null, isEditi
           <Tag className="w-5 h-5 text-cyan-600" />
         </div>
         <h2 className="text-xl font-bold text-gray-800">
-          {isEditing ? 'Alterar Categoria' : 'Cadastrar Categoria'}
+          Cadastrar Categoria
         </h2>
       </div>
       
@@ -106,92 +94,63 @@ const FormCategorias = ({ onClose, onSubmit, categoriaParaEditar = null, isEditi
           />
         </div>
 
-        {/* Descrição */}
+        {/* Imagem */}
         <div>
-          <label htmlFor="descricao" className="block text-sm font-medium text-gray-700 mb-1">
-            Descrição
+          <label htmlFor="imagem" className="block text-sm font-medium text-gray-700 mb-1">
+            Imagem
           </label>
-          <textarea
-            id="descricao"
-            name="descricao"
-            value={formData.descricao}
-            onChange={handleChange}
-            rows="3"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-            placeholder="Descrição da categoria (opcional)"
-          />
-        </div>
-
-        {/* Cor */}
-        <div>
-          <label htmlFor="cor" className="block text-sm font-medium text-gray-700 mb-1">
-            Cor
-          </label>
-          <div className="flex items-center space-x-3">
+          <div className="relative">
             <input
-              type="color"
-              id="cor"
-              name="cor"
-              value={formData.cor}
-              onChange={handleChange}
-              className="w-12 h-10 border border-gray-300 rounded-lg cursor-pointer"
+              type="file"
+              id="imagem"
+              name="imagem"
+              accept="image/*"
+              onChange={(e) => {
+                const file = e.target.files[0];
+                if (file) {
+                  setFormData(prev => ({
+                    ...prev,
+                    imagem: file
+                  }));
+                }
+              }}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
             />
-            <input
-              type="text"
-              value={formData.cor}
-              onChange={handleChange}
-              name="cor"
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-              placeholder="#e5e7eb"
-            />
+            <div className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center hover:border-cyan-400 hover:bg-cyan-50 transition-all duration-200 overflow-hidden">
+              {formData.imagem ? (
+                <div className="w-full h-full relative">
+                  <img
+                    src={URL.createObjectURL(formData.imagem)}
+                    alt="Preview"
+                    className="w-full h-full object-cover rounded-lg"
+                  />
+                </div>
+              ) : (
+                <div className="text-center">
+                  <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-2">
+                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                  </div>
+                  <p className="text-xs text-gray-500">Clique para selecionar</p>
+                  <p className="text-xs text-gray-400">ou arraste aqui</p>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-
-        {/* Ícone */}
-        <div>
-          <label htmlFor="icone" className="block text-sm font-medium text-gray-700 mb-1">
-            Ícone
-          </label>
-          <input
-            type="text"
-            id="icone"
-            name="icone"
-            value={formData.icone}
-            onChange={handleChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-            placeholder="Nome do ícone (opcional)"
-          />
-        </div>
-
-        {/* Status */}
-        <div className="flex items-center">
-          <input
-            type="checkbox"
-            id="status"
-            name="status"
-            checked={formData.status}
-            onChange={handleChange}
-            className="w-4 h-4 text-cyan-600 focus:ring-cyan-500 border-gray-300 rounded"
-          />
-          <label htmlFor="status" className="ml-2 block text-sm text-gray-700">
-            Categoria ativa
-          </label>
         </div>
 
         {/* Botões */}
         <div className="flex space-x-3 pt-4">
-          <button
-            type="button"
+          <CancelButton
             onClick={onClose}
-            className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-colors"
-          >
-            Cancelar
-          </button>
+            className="flex-1 bg-gray-500 hover:bg-gray-600 text-white"
+          />
           <button
             type="submit"
-            className="flex-1 px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-colors"
+            className="flex-1 bg-gradient-to-r from-cyan-300 to-cyan-400 hover:from-cyan-400 hover:to-cyan-500 text-white h-12 px-4 rounded-xl font-medium transition-all duration-200"
           >
-            {isEditing ? 'Atualizar' : 'Cadastrar'}
+            Cadastrar
           </button>
         </div>
       </form>

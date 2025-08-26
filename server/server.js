@@ -4,23 +4,12 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import fs from 'fs';
+import multer from 'multer';
 import AuthRoutes from './routes/AuthRoutes.js';
 import pool from './config/db.js';
-import { initializeUploads } from './init-uploads.js';
-import { productionConfig, validateProductionEnvironment, setupProductionLogging } from './config/production.js';
 
 // Carregar variáveis de ambiente
 dotenv.config();
-
-// Validar ambiente de produção
-try {
-  validateProductionEnvironment();
-  setupProductionLogging();
-} catch (error) {
-  console.error('❌ Erro na validação do ambiente:', error.message);
-  process.exit(1);
-}
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -51,43 +40,46 @@ app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Configuração do Multer para upload de imagens
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/');
+  },
+  filename: function (req, file, cb) {
+    // Gerar nome único para o arquivo
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, 'categoria-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const fileFilter = (req, file, cb) => {
+  // Aceitar apenas imagens
+  if (file.mimetype.startsWith('image/')) {
+    cb(null, true);
+  } else {
+    cb(new Error('Apenas imagens são permitidas!'), false);
+  }
+};
+
+const upload = multer({
+  storage: storage,
+  fileFilter: fileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // Limite de 5MB
+  }
+});
+
 // Configurar pasta de uploads para servir arquivos estáticos
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Rota específica para servir imagens de uploads
-app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
-  setHeaders: (res, path) => {
-    // Configurar headers para imagens
-    if (path.endsWith('.jpg') || path.endsWith('.jpeg') || path.endsWith('.png') || path.endsWith('.gif') || path.endsWith('.webp')) {
-      res.setHeader('Content-Type', 'image/' + path.split('.').pop());
-      res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache por 1 ano
-    }
-  }
-});
-
-// Rota adicional para debug de uploads
-app.get('/api/uploads/:filename', (req, res) => {
-  const filename = req.params.filename;
-  const filePath = path.join(__dirname, 'uploads', filename);
-  
-  console.log('🔍 Tentando servir arquivo:', filename);
-  console.log('📍 Caminho completo:', filePath);
-  
-  // Verificar se arquivo existe
-  if (fs.existsSync(filePath)) {
-    console.log('✅ Arquivo encontrado, servindo...');
-    res.sendFile(filePath);
-  } else {
-    console.log('❌ Arquivo não encontrado');
-    res.status(404).json({
-      success: false,
-      message: 'Arquivo não encontrado',
-      filename: filename,
-      path: filePath
-    });
-  }
-});
+// Garantir que a pasta uploads existe
+import fs from 'fs';
+if (!fs.existsSync('uploads')) {
+  fs.mkdirSync('uploads');
+  console.log('✅ Pasta uploads criada');
+}
 
 // Headers de segurança
 app.use((req, res, next) => {
@@ -98,36 +90,24 @@ app.use((req, res, next) => {
   next();
 });
 
-// Teste de conexão com o banco e inicialização de uploads
-const initializeServices = async () => {
+// Teste de conexão com o banco
+const testDatabaseConnection = async () => {
   try {
-    // Inicializar pasta de uploads
-    console.log('📁 Inicializando serviços...');
-    const uploadsPath = initializeUploads();
-    console.log('✅ Pasta de uploads inicializada:', uploadsPath);
-    
-    // Testar conexão com o banco
     console.log('🔍 Tentando conectar ao banco de produção...');
     console.log('🌐 DATABASE_URL:', process.env.DATABASE_URL?.substring(0, 50) + '...');
     
     const result = await pool.query('SELECT NOW()');
     console.log('✅ Banco conectado em:', result.rows[0].now);
     console.log('🎯 Conexão de produção estabelecida com sucesso!');
-    
-    console.log('✅ Todos os serviços inicializados com sucesso!');
   } catch (err) {
-    console.error('❌ Erro ao inicializar serviços:', err.message);
+    console.error('❌ Erro ao conectar com o banco de produção:', err.message);
     console.error('🔍 Detalhes do erro:', err);
-    if (err.message.includes('uploads')) {
-      console.error('🔍 Problema com pasta de uploads - verifique permissões');
-    } else {
-      console.error('🔍 Verifique se a DATABASE_URL está correta no arquivo .env');
-      console.error('🔍 Verifique se o banco Neon.tech está acessível');
-    }
+    console.error('🔍 Verifique se a DATABASE_URL está correta no arquivo .env');
+    console.error('🔍 Verifique se o banco Neon.tech está acessível');
   }
 };
 
-initializeServices();
+testDatabaseConnection();
 
 // Rotas
 app.use('/api', AuthRoutes);
@@ -145,59 +125,6 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Rota para página de teste de imagens
-app.get('/test-images', (req, res) => {
-  const testHtmlPath = path.join(__dirname, 'test-images.html');
-  if (fs.existsSync(testHtmlPath)) {
-    res.sendFile(testHtmlPath);
-  } else {
-    res.status(404).json({
-      success: false,
-      message: 'Página de teste não encontrada'
-    });
-  }
-});
-
-// Rota para testar construção de URLs
-app.get('/api/test-urls', (req, res) => {
-  try {
-    const { buildImageUrl } = await import('./config/images.js');
-    
-    // Simular diferentes cenários
-    const testCases = [
-      '/uploads/categoria-123.jpg',
-      'https://exemplo.com/imagem.jpg',
-      null
-    ];
-    
-    const results = testCases.map(imagePath => {
-      try {
-        const url = buildImageUrl(imagePath, req);
-        return { imagePath, result: url, success: true };
-      } catch (error) {
-        return { imagePath, result: error.message, success: false };
-      }
-    });
-    
-    res.json({
-      success: true,
-      message: 'Teste de URLs executado',
-      results,
-      requestInfo: {
-        host: req.get('host'),
-        userAgent: req.get('User-Agent'),
-        protocol: req.protocol
-      }
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Erro ao testar URLs',
-      error: error.message
-    });
-  }
-});
-
 // Rota raiz para verificar se está funcionando
 app.get('/', (req, res) => {
   res.json({
@@ -206,63 +133,9 @@ app.get('/', (req, res) => {
     timestamp: new Date().toISOString(),
     endpoints: {
       health: '/api/health',
-      login: '/api/login',
-      testImages: '/test-images'
+      login: '/api/login'
     }
   });
-});
-
-// Rota para página de teste de imagens
-app.get('/test-images', (req, res) => {
-  const testHtmlPath = path.join(__dirname, 'test-images.html');
-  if (fs.existsSync(testHtmlPath)) {
-    res.sendFile(testHtmlPath);
-  } else {
-    res.status(404).json({
-      success: false,
-      message: 'Página de teste não encontrada'
-    });
-  }
-});
-
-// Rota para testar construção de URLs
-app.get('/api/test-urls', (req, res) => {
-  try {
-    const { buildImageUrl } = await import('./config/images.js');
-    
-    // Simular diferentes cenários
-    const testCases = [
-      '/uploads/categoria-123.jpg',
-      'https://exemplo.com/imagem.jpg',
-      null
-    ];
-    
-    const results = testCases.map(imagePath => {
-      try {
-        const url = buildImageUrl(imagePath, req);
-        return { imagePath, result: url, success: true };
-      } catch (error) {
-        return { imagePath, result: error.message, success: false };
-      }
-    });
-    
-    res.json({
-      success: true,
-      message: 'Teste de URLs executado',
-      results,
-      requestInfo: {
-        host: req.get('host'),
-        userAgent: req.get('User-Agent'),
-        protocol: req.protocol
-      }
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Erro ao testar URLs',
-      error: error.message
-    });
-  }
 });
 
 // Middleware de erro para produção
@@ -272,29 +145,6 @@ app.use((err, req, res, next) => {
   console.error('Método:', req.method);
   console.error('Headers:', req.headers);
   console.error('User-Agent:', req.get('User-Agent'));
-  
-  // Se for erro do Multer (upload de arquivo)
-  if (err.code === 'LIMIT_FILE_SIZE') {
-    return res.status(400).json({
-      success: false,
-      message: 'Arquivo muito grande. Tamanho máximo: 5MB'
-    });
-  }
-  
-  if (err.code === 'LIMIT_UNEXPECTED_FILE') {
-    return res.status(400).json({
-      success: false,
-      message: 'Campo de arquivo inesperado'
-    });
-  }
-  
-  // Se for erro de validação de arquivo
-  if (err.message === 'Apenas imagens são permitidas!') {
-    return res.status(400).json({
-      success: false,
-      message: err.message
-    });
-  }
   
   // Log detalhado para debug em produção
   console.error('Erro completo:', {
@@ -326,6 +176,7 @@ app.listen(PORT, () => {
   console.log(`🚀 Servidor de PRODUÇÃO rodando na porta ${PORT}`);
   console.log(`📡 API disponível em: https://filazero-sistema-de-gestao.onrender.com/api`);
   console.log(`🌐 Frontend: https://filazero.netlify.app`);
+  console.log(`📁 Pasta de uploads: ${path.join(__dirname, 'uploads')}`);
   console.log(`🔒 CORS configurado para produção`);
   console.log(`📊 Ambiente: ${process.env.NODE_ENV || 'production'}`);
 });
