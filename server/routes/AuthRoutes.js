@@ -7,9 +7,9 @@ import {
   buscarCategoriasPorEstabelecimento,
   buscarCategoriaPorId,
   atualizarCategoria,
+  atualizarStatusCategoria,
   deletarCategoria
 } from '../controllers/categorias.js';
-import { uploadMiddleware } from '../config/upload.js';
 
 const router = express.Router();
 
@@ -20,11 +20,11 @@ router.post('/login', login);
 router.get('/user/:userId/:estabelecimentoId', getUserProfile);
 
 // Rotas de Categorias
-router.post('/categorias', uploadMiddleware('imagem'), criarCategoria);
+router.post('/categorias', criarCategoria);
 router.get('/categorias/estabelecimento/:estabelecimento_id', buscarCategoriasPorEstabelecimento);
-router.put('/categorias/:id/status', atualizarCategoria); // Rota para alterar apenas status (DEVE VIR ANTES)
+router.put('/categorias/:id/status', atualizarStatusCategoria);
 router.get('/categorias/:id', buscarCategoriaPorId);
-router.put('/categorias/:id', uploadMiddleware('imagem'), atualizarCategoria);
+router.put('/categorias/:id', atualizarCategoria);
 router.delete('/categorias/:id', deletarCategoria);
 
 export default router;

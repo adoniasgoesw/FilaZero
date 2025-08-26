@@ -1,29 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import { Tag } from 'lucide-react';
-import CancelButton from '../buttons/CancelButton';
 import api from '../../services/api';
 
 const FormCategorias = ({ onClose, onSubmit, categoriaParaEditar = null, isEditing = false }) => {
   const [formData, setFormData] = useState({
     nome: '',
-    imagem: null
+    descricao: '',
+    cor: '#e5e7eb',
+    icone: '',
+    status: true
   });
 
   // Preencher formulário quando for edição
   useEffect(() => {
-    if (categoriaParaEditar && isEditing) {
+    if (isEditing && categoriaParaEditar) {
       setFormData({
         nome: categoriaParaEditar.nome || '',
-        imagem: null
+        descricao: categoriaParaEditar.descricao || '',
+        cor: categoriaParaEditar.cor || '#e5e7eb',
+        icone: categoriaParaEditar.icone || '',
+        status: categoriaParaEditar.status !== undefined ? categoriaParaEditar.status : true
       });
     }
-  }, [categoriaParaEditar, isEditing]);
+  }, [isEditing, categoriaParaEditar]);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: type === 'checkbox' ? checked : value
     }));
   };
 
@@ -41,42 +46,33 @@ const FormCategorias = ({ onClose, onSubmit, categoriaParaEditar = null, isEditi
         return;
       }
 
-      // Criar FormData para enviar arquivo
-      const formDataToSend = new FormData();
-      formDataToSend.append('estabelecimento_id', estabelecimento.id);
-      formDataToSend.append('nome', formData.nome);
-      
-      if (formData.imagem) {
-        formDataToSend.append('imagem', formData.imagem);
-      }
+      // Preparar dados para envio
+      const dadosParaEnviar = {
+        estabelecimento_id: estabelecimento.id,
+        nome: formData.nome.trim(),
+        descricao: formData.descricao.trim() || null,
+        cor: formData.cor,
+        icone: formData.icone.trim() || null,
+        status: formData.status
+      };
 
       let response;
       
       if (isEditing && categoriaParaEditar) {
         // Atualizar categoria existente
-        response = await api.put(`/categorias/${categoriaParaEditar.id}`, formDataToSend, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        });
+        response = await api.put(`/categorias/${categoriaParaEditar.id}`, dadosParaEnviar);
       } else {
         // Criar nova categoria
-        response = await api.post('/categorias', formDataToSend, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        });
+        response = await api.post('/categorias', dadosParaEnviar);
       }
 
       if (response.data.success) {
         onSubmit(response.data.data);
       } else {
-        // Silenciar erro, apenas fazer callback
         onSubmit(null);
       }
     } catch (error) {
       console.error('Erro ao processar categoria:', error);
-      // Silenciar erro, apenas fazer callback
       onSubmit(null);
     }
   };
@@ -110,89 +106,92 @@ const FormCategorias = ({ onClose, onSubmit, categoriaParaEditar = null, isEditi
           />
         </div>
 
-        {/* Imagem */}
+        {/* Descrição */}
         <div>
-          <label htmlFor="imagem" className="block text-sm font-medium text-gray-700 mb-1">
-            Imagem
+          <label htmlFor="descricao" className="block text-sm font-medium text-gray-700 mb-1">
+            Descrição
           </label>
-          <div className="relative">
+          <textarea
+            id="descricao"
+            name="descricao"
+            value={formData.descricao}
+            onChange={handleChange}
+            rows="3"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+            placeholder="Descrição da categoria (opcional)"
+          />
+        </div>
+
+        {/* Cor */}
+        <div>
+          <label htmlFor="cor" className="block text-sm font-medium text-gray-700 mb-1">
+            Cor
+          </label>
+          <div className="flex items-center space-x-3">
             <input
-              type="file"
-              id="imagem"
-              name="imagem"
-              accept="image/*"
-              onChange={(e) => {
-                const file = e.target.files[0];
-                if (file) {
-                  setFormData(prev => ({
-                    ...prev,
-                    imagem: file
-                  }));
-                }
-              }}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              type="color"
+              id="cor"
+              name="cor"
+              value={formData.cor}
+              onChange={handleChange}
+              className="w-12 h-10 border border-gray-300 rounded-lg cursor-pointer"
             />
-            <div className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center hover:border-cyan-400 hover:bg-cyan-50 transition-all duration-200 overflow-hidden">
-              {formData.imagem ? (
-                <div className="w-full h-full relative">
-                  {formData.imagem.type && formData.imagem.type.startsWith('image/') ? (
-                    <img
-                      src={URL.createObjectURL(formData.imagem)}
-                      alt="Preview"
-                      className="w-full h-full object-cover rounded-lg"
-                    />
-                  ) : (
-                    <div className="text-center">
-                      <div className="w-8 h-8 bg-cyan-100 rounded-lg flex items-center justify-center mx-auto mb-2">
-                        <svg className="w-5 h-5 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                      </div>
-                      <p className="text-xs text-cyan-600 font-medium">Arquivo Selecionado</p>
-                      <p className="text-xs text-gray-500 mt-1 truncate w-24">{formData.imagem.name}</p>
-                    </div>
-                  )}
-                </div>
-              ) : isEditing && categoriaParaEditar?.imagem_url ? (
-                // Exibir imagem atual quando for edição
-                <div className="w-full h-full relative">
-                  <img
-                    src={`http://localhost:3001${categoriaParaEditar.imagem_url}`}
-                    alt="Imagem atual"
-                    className="w-full h-full object-cover rounded-lg"
-                  />
-                  <div className="absolute top-1 right-1 bg-cyan-100 rounded-full p-1">
-                    <svg className="w-3 h-3 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center">
-                  <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-2">
-                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                    </svg>
-                  </div>
-                  <p className="text-xs text-gray-500">Clique para selecionar</p>
-                  <p className="text-xs text-gray-400">ou arraste aqui</p>
-                </div>
-              )}
-            </div>
+            <input
+              type="text"
+              value={formData.cor}
+              onChange={handleChange}
+              name="cor"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+              placeholder="#e5e7eb"
+            />
           </div>
+        </div>
+
+        {/* Ícone */}
+        <div>
+          <label htmlFor="icone" className="block text-sm font-medium text-gray-700 mb-1">
+            Ícone
+          </label>
+          <input
+            type="text"
+            id="icone"
+            name="icone"
+            value={formData.icone}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+            placeholder="Nome do ícone (opcional)"
+          />
+        </div>
+
+        {/* Status */}
+        <div className="flex items-center">
+          <input
+            type="checkbox"
+            id="status"
+            name="status"
+            checked={formData.status}
+            onChange={handleChange}
+            className="w-4 h-4 text-cyan-600 focus:ring-cyan-500 border-gray-300 rounded"
+          />
+          <label htmlFor="status" className="ml-2 block text-sm text-gray-700">
+            Categoria ativa
+          </label>
         </div>
 
         {/* Botões */}
         <div className="flex space-x-3 pt-4">
-          <CancelButton
+          <button
+            type="button"
             onClick={onClose}
-            className="flex-1 bg-gray-500 hover:bg-gray-600 text-white"
-          />
+            className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-colors"
+          >
+            Cancelar
+          </button>
           <button
             type="submit"
-            className="flex-1 bg-gradient-to-r from-cyan-300 to-cyan-400 hover:from-cyan-400 hover:to-cyan-500 text-white h-12 px-4 rounded-xl font-medium transition-all duration-200"
+            className="flex-1 px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-colors"
           >
-            {isEditing ? 'Alterar' : 'Cadastrar'}
+            {isEditing ? 'Atualizar' : 'Cadastrar'}
           </button>
         </div>
       </form>
