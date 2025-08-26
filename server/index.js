@@ -4,6 +4,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 import multer from 'multer';
 import AuthRoutes from './routes/AuthRoutes.js';
 import pool from './config/db.js';
@@ -30,7 +31,40 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Configurar pasta de uploads para servir arquivos estáticos
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Rota específica para servir imagens de uploads
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+  setHeaders: (res, path) => {
+    // Configurar headers para imagens
+    if (path.endsWith('.jpg') || path.endsWith('.jpeg') || path.endsWith('.png') || path.endsWith('.gif') || path.endsWith('.webp')) {
+      res.setHeader('Content-Type', 'image/' + path.split('.').pop());
+      res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache por 1 ano
+    }
+  }
+});
+
+// Rota adicional para debug de uploads
+app.get('/api/uploads/:filename', (req, res) => {
+  const filename = req.params.filename;
+  const filePath = path.join(__dirname, 'uploads', filename);
+  
+  console.log('🔍 Tentando servir arquivo:', filename);
+  console.log('📍 Caminho completo:', filePath);
+  
+  // Verificar se arquivo existe
+  if (fs.existsSync(filePath)) {
+    console.log('✅ Arquivo encontrado, servindo...');
+    res.sendFile(filePath);
+  } else {
+    console.log('❌ Arquivo não encontrado');
+    res.status(404).json({
+      success: false,
+      message: 'Arquivo não encontrado',
+      filename: filename,
+      path: filePath
+    });
+  }
+});
 
 // Middleware de segurança para produção
 if (NODE_ENV === 'production') {
@@ -89,6 +123,19 @@ app.get('/api/health', (req, res) => {
     message: 'API funcionando!', 
     timestamp: new Date().toISOString() 
   });
+});
+
+// Rota para página de teste de imagens
+app.get('/test-images', (req, res) => {
+  const testHtmlPath = path.join(__dirname, 'test-images.html');
+  if (fs.existsSync(testHtmlPath)) {
+    res.sendFile(testHtmlPath);
+  } else {
+    res.status(404).json({
+      success: false,
+      message: 'Página de teste não encontrada'
+    });
+  }
 });
 
 // Middleware de erro

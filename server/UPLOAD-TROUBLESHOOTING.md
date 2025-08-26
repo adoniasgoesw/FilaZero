@@ -54,6 +54,7 @@ npm run dev
 - Verificar se pasta `uploads` foi criada
 - Testar upload de imagem
 - Verificar logs no console
+- Acessar: `http://localhost:3001/test-images`
 
 ### 2. **Teste de Produção**
 ```bash
@@ -63,6 +64,13 @@ npm start
 - Verificar se pasta `uploads` foi criada
 - Verificar permissões da pasta
 - Testar upload de imagem
+- Acessar: `https://filazero-sistema-de-gestao.onrender.com/test-images`
+
+### 3. **Página de Teste de Imagens**
+- Acesse `/test-images` no seu servidor
+- Teste se as imagens estão sendo servidas
+- Verifique URLs das imagens
+- Teste a API de uploads
 
 ### 3. **Verificação de Logs**
 ```bash
@@ -131,6 +139,42 @@ corsOrigins: [
 ### 3. **Tamanho de Arquivo**
 - Limite configurado para 5MB
 - Verificar se arquivo não excede limite
+
+## 🖼️ Problema de Exibição de Imagens
+
+### 1. **Sintomas**
+- ✅ Upload funciona (imagem é salva)
+- ✅ Banco salva caminho da imagem
+- ❌ Imagem não é exibida no frontend
+- ❌ URL da imagem retorna 404
+
+### 2. **Causas Comuns**
+- **Servidor não serve arquivos estáticos**: Express.static não configurado
+- **Caminho incorreto**: URL base diferente em produção
+- **Permissões**: Pasta uploads sem acesso de leitura
+- **Headers**: Content-Type incorreto para imagens
+
+### 3. **Soluções Implementadas**
+- **Express.static configurado** com headers corretos
+- **URLs completas** construídas automaticamente
+- **Rota de debug** `/api/uploads/:filename`
+- **Página de teste** `/test-images`
+- **Cache configurado** para melhor performance
+
+### 4. **Como Testar**
+```bash
+# 1. Verificar se pasta uploads existe
+ls -la server/uploads/
+
+# 2. Testar acesso direto à imagem
+curl -I https://seu-servidor.com/uploads/categoria-123.jpg
+
+# 3. Usar página de teste
+# Acesse: https://seu-servidor.com/test-images
+
+# 4. Verificar logs do servidor
+# Procurar por mensagens de upload e URL
+```
 
 ## 🆘 Se o Problema Persistir
 

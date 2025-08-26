@@ -59,7 +59,7 @@ const Categorias = () => {
             <div className="flex-shrink-0">
               <AddButton 
                 onClick={openModal}
-                text="Mais Categorias"
+                text="Categorias"
                 className="bg-gradient-to-r from-cyan-300 to-cyan-400 hover:from-cyan-400 hover:to-cyan-500 text-white h-12"
               />
             </div>

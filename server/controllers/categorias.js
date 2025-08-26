@@ -61,12 +61,19 @@ const criarCategoria = async (req, res) => {
       [estabelecimento_id, nome, descricao, imagem_url, cor, icone, status]
     );
 
-    console.log('✅ Categoria criada com sucesso:', novaCategoria.rows[0]);
+    // Adicionar URL completa da imagem
+    const categoriaComImagem = {
+      ...novaCategoria.rows[0],
+      imagem_url: construirUrlImagem(novaCategoria.rows[0].imagem_url, req)
+    };
+
+    console.log('✅ Categoria criada com sucesso:', categoriaComImagem);
+    console.log('🖼️ URL da imagem:', categoriaComImagem.imagem_url);
     
     res.status(201).json({
       success: true,
       message: 'Categoria criada com sucesso',
-      data: novaCategoria.rows[0]
+      data: categoriaComImagem
     });
 
   } catch (error) {
@@ -85,6 +92,27 @@ const criarCategoria = async (req, res) => {
   }
 };
 
+// Função para construir URL completa da imagem
+const construirUrlImagem = (imagem_url, req) => {
+  if (!imagem_url) return null;
+  
+  // Se já é uma URL completa, retornar como está
+  if (imagem_url.startsWith('http://') || imagem_url.startsWith('https://')) {
+    return imagem_url;
+  }
+  
+  // Construir URL completa baseada no host da requisição
+  const protocol = req.protocol;
+  const host = req.get('host');
+  
+  // Se estiver em produção e não tiver host, usar URL padrão
+  if (!host && process.env.NODE_ENV === 'production') {
+    return `https://filazero-sistema-de-gestao.onrender.com${imagem_url}`;
+  }
+  
+  return `${protocol}://${host}${imagem_url}`;
+};
+
 // Buscar categorias por estabelecimento
 const buscarCategoriasPorEstabelecimento = async (req, res) => {
   try {
@@ -95,9 +123,18 @@ const buscarCategoriasPorEstabelecimento = async (req, res) => {
       [estabelecimento_id]
     );
 
+    // Adicionar URLs completas das imagens
+    const categoriasComImagens = categorias.rows.map(categoria => ({
+      ...categoria,
+      imagem_url: construirUrlImagem(categoria.imagem_url, req)
+    }));
+
+    console.log('📋 Categorias encontradas:', categoriasComImagens.length);
+    console.log('🖼️ URLs das imagens:', categoriasComImagens.map(cat => ({ id: cat.id, nome: cat.nome, imagem_url: cat.imagem_url })));
+
     res.json({
       success: true,
-      data: categorias.rows
+      data: categoriasComImagens
     });
 
   } catch (error) {
@@ -108,7 +145,7 @@ const buscarCategoriasPorEstabelecimento = async (req, res) => {
       error: error.message
     });
   }
-};
+ };
 
 // Buscar categoria por ID
 const buscarCategoriaPorId = async (req, res) => {
@@ -127,9 +164,17 @@ const buscarCategoriaPorId = async (req, res) => {
       });
     }
 
+    // Adicionar URL completa da imagem
+    const categoriaComImagem = {
+      ...categoria.rows[0],
+      imagem_url: construirUrlImagem(categoria.rows[0].imagem_url, req)
+    };
+
+    console.log('🔍 Categoria encontrada:', { id: categoriaComImagem.id, nome: categoriaComImagem.nome, imagem_url: categoriaComImagem.imagem_url });
+
     res.json({
       success: true,
-      data: categoria.rows[0]
+      data: categoriaComImagem
     });
 
   } catch (error) {
@@ -229,14 +274,21 @@ const atualizarCategoria = async (req, res) => {
 
     const categoriaAtualizada = await pool.query(query, values);
     
-    console.log('✅ Categoria atualizada com sucesso:', categoriaAtualizada.rows[0]);
+    // Adicionar URL completa da imagem
+    const categoriaComImagem = {
+      ...categoriaAtualizada.rows[0],
+      imagem_url: construirUrlImagem(categoriaAtualizada.rows[0].imagem_url, req)
+    };
+    
+    console.log('✅ Categoria atualizada com sucesso:', categoriaComImagem);
     console.log('🔍 Query executada:', query);
     console.log('📊 Valores:', values);
+    console.log('🖼️ URL da imagem:', categoriaComImagem.imagem_url);
 
     res.json({
       success: true,
       message: 'Categoria atualizada com sucesso',
-      data: categoriaAtualizada.rows[0]
+      data: categoriaComImagem
     });
 
   } catch (error) {

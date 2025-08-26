@@ -39,7 +39,7 @@ const Pagamentos = () => {
           <div className="flex-shrink-0">
             <AddButton 
               onClick={openModal}
-              text="Mais Pagamentos"
+              text=" Pagamentos"
               className="bg-gradient-to-r from-pink-300 to-pink-400 hover:from-pink-400 hover:to-pink-500 text-white"
             />
           </div>

@@ -78,17 +78,15 @@ const ListCategorias = ({ onRefresh, onEdit }) => {
     try {
       console.log('🔄 Alterando status da categoria:', { id, novoStatus });
       const response = await api.put(`/categorias/${id}/status`, { status: novoStatus });
-      if (response.data.success) {
-        const statusText = novoStatus ? 'ativada' : 'desativada';
-        const statusColor = novoStatus ? 'emerald' : 'rose';
-        console.log('✅ Status alterado com sucesso:', statusText);
-        alert(`Categoria ${statusText} com sucesso!`);
-        buscarCategorias(); // Recarregar lista
-        setActiveCard(null); // Fechar botões
-      }
+              if (response.data.success) {
+          const statusText = novoStatus ? 'ativada' : 'desativada';
+          const statusColor = novoStatus ? 'emerald' : 'rose';
+          console.log('✅ Status alterado com sucesso:', statusText);
+          buscarCategorias(); // Recarregar lista
+          setActiveCard(null); // Fechar botões
+        }
     } catch (error) {
       console.error('❌ Erro ao alterar status da categoria:', error);
-      alert('Erro ao alterar status da categoria. Tente novamente.');
     }
   };
 
@@ -110,7 +108,6 @@ const ListCategorias = ({ onRefresh, onEdit }) => {
       }
     } catch (error) {
       console.error('Erro ao deletar categoria:', error);
-      alert('Erro ao deletar categoria. Tente novamente.');
     } finally {
       setShowNotification(false);
       setCategoriaParaDeletar(null);
