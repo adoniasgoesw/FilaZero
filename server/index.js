@@ -19,10 +19,23 @@ const NODE_ENV = process.env.NODE_ENV || 'development';
 
 // Middlewares
 app.use(cors({
-  origin: NODE_ENV === 'production' 
-    ? process.env.FRONTEND_URL || 'https://filazero.com'
-    : 'http://localhost:5173',
-  credentials: true
+  origin: [
+    'https://filazero.netlify.app',
+    'https://filazero-sistema-de-gestao.onrender.com',
+    'http://localhost:5173', // Para desenvolvimento local
+    'http://localhost:3000'  // Para desenvolvimento local
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: [
+    'Content-Type', 
+    'Authorization', 
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+    'User-Agent'
+  ],
+  exposedHeaders: ['Content-Length', 'Content-Type']
 }));
 
 app.use(express.json({ limit: '10mb' }));

@@ -145,6 +145,59 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Rota para página de teste de imagens
+app.get('/test-images', (req, res) => {
+  const testHtmlPath = path.join(__dirname, 'test-images.html');
+  if (fs.existsSync(testHtmlPath)) {
+    res.sendFile(testHtmlPath);
+  } else {
+    res.status(404).json({
+      success: false,
+      message: 'Página de teste não encontrada'
+    });
+  }
+});
+
+// Rota para testar construção de URLs
+app.get('/api/test-urls', (req, res) => {
+  try {
+    const { buildImageUrl } = await import('./config/images.js');
+    
+    // Simular diferentes cenários
+    const testCases = [
+      '/uploads/categoria-123.jpg',
+      'https://exemplo.com/imagem.jpg',
+      null
+    ];
+    
+    const results = testCases.map(imagePath => {
+      try {
+        const url = buildImageUrl(imagePath, req);
+        return { imagePath, result: url, success: true };
+      } catch (error) {
+        return { imagePath, result: error.message, success: false };
+      }
+    });
+    
+    res.json({
+      success: true,
+      message: 'Teste de URLs executado',
+      results,
+      requestInfo: {
+        host: req.get('host'),
+        userAgent: req.get('User-Agent'),
+        protocol: req.protocol
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao testar URLs',
+      error: error.message
+    });
+  }
+});
+
 // Rota raiz para verificar se está funcionando
 app.get('/', (req, res) => {
   res.json({
