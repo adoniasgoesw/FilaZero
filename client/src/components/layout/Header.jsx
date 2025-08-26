@@ -5,7 +5,7 @@ import AcesseButton from '../buttons/AcessButton.jsx';
 
 const Header = ({ onAcesseClick }) => {
   return (
-    <header className="flex justify-between items-center p-4 bg-white shadow-md">
+    <header className="flex justify-between items-center px-6 py-4 bg-white border-b border-gray-100 shadow-sm">
       <Logo />
       <AcesseButton onClick={onAcesseClick} />
     </header>

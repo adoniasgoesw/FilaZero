@@ -2,6 +2,8 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import AuthRoutes from './routes/AuthRoutes.js';
 import pool from './config/db.js';
 
@@ -28,6 +30,11 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Configurar pasta de uploads para servir arquivos estáticos
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Headers de segurança
 app.use((req, res, next) => {
@@ -90,11 +97,33 @@ app.get('/', (req, res) => {
 app.use((err, req, res, next) => {
   console.error('Erro de produção:', err);
   
+  // Se for erro do Multer (upload de arquivo)
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(400).json({
+      success: false,
+      message: 'Arquivo muito grande. Tamanho máximo: 5MB'
+    });
+  }
+  
+  if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+    return res.status(400).json({
+      success: false,
+      message: 'Campo de arquivo inesperado'
+    });
+  }
+  
+  // Se for erro de validação de arquivo
+  if (err.message === 'Apenas imagens são permitidas!') {
+    return res.status(400).json({
+      success: false,
+      message: err.message
+    });
+  }
+  
   // Não expor detalhes internos em produção
   res.status(500).json({ 
     success: false, 
-    message: 'Erro interno do servidor',
-    error: process.env.NODE_ENV === 'development' ? err.message : 'Erro interno'
+    message: 'Erro interno do servidor'
   });
 });
 

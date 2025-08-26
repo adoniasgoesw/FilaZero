@@ -1,10 +1,11 @@
-// src/servers/API.js
+// src/services/api.js
 import axios from "axios";
 
-// URL da API definida no .env.*
-// Exemplo: import.meta.env.VITE_API_URL
+// URL da API - usar localhost:3001 como padrão se não estiver definida
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+
 const API = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
+  baseURL: API_URL,
   headers: {
     "Content-Type": "application/json",
   },

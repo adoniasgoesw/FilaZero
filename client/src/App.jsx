@@ -4,7 +4,7 @@ import AppRoute from './routes/AppRoute.jsx';
 
 function App() {
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-gray-50">
       <AppRoute />
     </div>
   );

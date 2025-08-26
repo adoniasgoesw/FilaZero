@@ -1,10 +1,10 @@
 import React from 'react';
 import Sidebar from '../components/layout/Sidebar';
 import SearchBar from '../components/layout/SearchBar';
-import ConfigButton from '../components/buttons/ConfigButton';
-import { Home as HomeIcon } from 'lucide-react';
+import AddButton from '../components/buttons/AddButton';
+import { History as HistoryIcon } from 'lucide-react';
 
-const Home = () => {
+const Historico = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <Sidebar />
@@ -12,8 +12,8 @@ const Home = () => {
       <div className="md:ml-20 p-6">
         <div className="flex items-center w-full">
           {/* Ícone da página */}
-          <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
-            <HomeIcon className="w-6 h-6 text-blue-600" />
+          <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center flex-shrink-0">
+            <HistoryIcon className="w-6 h-6 text-orange-600" />
           </div>
           
           {/* Espaçamento */}
@@ -25,15 +25,17 @@ const Home = () => {
           {/* Espaçamento */}
           <div className="w-4 flex-shrink-0"></div>
           
-          {/* Botão de configuração */}
-          <ConfigButton 
-            onClick={() => console.log('Config clicked')}
+          {/* Botão de adicionar */}
+          <AddButton 
+            onClick={() => console.log('Add clicked')}
             className="flex-shrink-0"
-          />
+          >
+            Abrir Caixa
+          </AddButton>
         </div>
       </div>
     </div>
   );
 };
 
-export default Home;
+export default Historico;

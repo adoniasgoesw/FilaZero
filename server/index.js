@@ -1,7 +1,10 @@
-// server/index.js
+// server/index.js - Servidor de Desenvolvimento/Teste
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import multer from 'multer';
 import AuthRoutes from './routes/AuthRoutes.js';
 import pool from './config/db.js';
 
@@ -10,10 +13,40 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const NODE_ENV = process.env.NODE_ENV || 'development';
 
 // Middlewares
-app.use(cors());
-app.use(express.json());
+app.use(cors({
+  origin: NODE_ENV === 'production' 
+    ? process.env.FRONTEND_URL || 'https://filazero.com'
+    : 'http://localhost:5173',
+  credentials: true
+}));
+
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Configurar pasta de uploads para servir arquivos estáticos
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Middleware de segurança para produção
+if (NODE_ENV === 'production') {
+  // Rate limiting
+  app.use((req, res, next) => {
+    // Implementar rate limiting aqui se necessário
+    next();
+  });
+  
+  // Headers de segurança
+  app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    next();
+  });
+}
 
 // Teste de conexão com o banco
 const testDatabaseConnection = async () => {
@@ -48,14 +81,50 @@ app.get('/api/health', (req, res) => {
 // Middleware de erro
 app.use((err, req, res, next) => {
   console.error('Erro:', err);
-  res.status(500).json({ 
+  
+  // Se for erro do Multer (upload de arquivo)
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({
+        success: false,
+        message: 'Arquivo muito grande. Tamanho máximo: 5MB'
+      });
+    }
+    if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+      return res.status(400).json({
+        success: false,
+        message: 'Campo de arquivo inesperado'
+      });
+    }
+  }
+  
+  // Se for erro de validação de arquivo
+  if (err.message === 'Apenas imagens são permitidas!') {
+    return res.status(400).json({
+      success: false,
+      message: err.message
+    });
+  }
+  
+  // Erro genérico
+  const statusCode = err.statusCode || 500;
+  const message = NODE_ENV === 'production' 
+    ? 'Erro interno do servidor' 
+    : err.message;
+  
+  res.status(statusCode).json({ 
     success: false, 
-    message: 'Erro interno do servidor' 
+    message,
+    ...(NODE_ENV === 'development' && { stack: err.stack })
   });
 });
 
-// Iniciar servidor
+// Iniciar servidor de desenvolvimento
 app.listen(PORT, () => {
-  console.log(`🚀 Servidor rodando na porta ${PORT}`);
+  console.log(`🚀 Servidor de DESENVOLVIMENTO rodando na porta ${PORT}`);
+  console.log(`🌍 Ambiente: ${NODE_ENV}`);
   console.log(`📡 API disponível em: http://localhost:${PORT}/api`);
+  console.log(`📁 Pasta de uploads: ${path.join(__dirname, 'uploads')}`);
+  console.log(`🔧 Modo desenvolvimento/teste ativado`);
+  console.log(`🎯 Para testar: http://localhost:${PORT}/api/health`);
 });
