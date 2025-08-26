@@ -1,4 +1,5 @@
 import pool from '../config/db.js';
+import path from 'path';
 
 // Cadastrar nova categoria
 const criarCategoria = async (req, res) => {
@@ -7,6 +8,8 @@ const criarCategoria = async (req, res) => {
     console.log('📁 Arquivo recebido:', req.file);
     console.log('📋 Body recebido:', req.body);
     console.log('🔍 Headers:', req.headers);
+    console.log('🌐 User-Agent:', req.get('User-Agent'));
+    console.log('📱 É dispositivo móvel?', /Mobile|Android|iPhone|iPad/.test(req.get('User-Agent')));
     
     const {
       estabelecimento_id,
@@ -20,6 +23,7 @@ const criarCategoria = async (req, res) => {
     // Verificar se a imagem foi enviada
     const imagem_url = req.file ? `/uploads/${req.file.filename}` : null;
     console.log('🖼️ Imagem URL:', imagem_url);
+    console.log('📁 Caminho completo da imagem:', req.file ? path.join(process.cwd(), 'uploads', req.file.filename) : 'Nenhuma imagem');
 
     // Validar campos obrigatórios
     if (!estabelecimento_id || !nome) {

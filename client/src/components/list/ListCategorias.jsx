@@ -106,7 +106,6 @@ const ListCategorias = ({ onRefresh, onEdit }) => {
     try {
       const response = await api.delete(`/categorias/${categoriaParaDeletar.id}`);
       if (response.data.success) {
-        alert('Categoria deletada com sucesso!');
         buscarCategorias();
       }
     } catch (error) {
@@ -263,7 +262,7 @@ const ListCategorias = ({ onRefresh, onEdit }) => {
           setShowNotification(false);
           setCategoriaParaDeletar(null);
         }}
-        message={`Você deseja excluir permanentemente a categoria "${categoriaParaDeletar?.nome}"? Esta ação não pode ser desfeita.`}
+        message={`Você deseja excluir essa categoria, "${categoriaParaDeletar?.nome}"?`}
         onConfirm={confirmarExclusao}
         confirmText="Sim, excluir"
         cancelText="Cancelar"

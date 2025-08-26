@@ -7,6 +7,7 @@ import { fileURLToPath } from 'url';
 import multer from 'multer';
 import AuthRoutes from './routes/AuthRoutes.js';
 import pool from './config/db.js';
+import { initializeUploads } from './init-uploads.js';
 
 // Carregar variáveis de ambiente
 dotenv.config();
@@ -48,24 +49,36 @@ if (NODE_ENV === 'production') {
   });
 }
 
-// Teste de conexão com o banco
-const testDatabaseConnection = async () => {
+// Teste de conexão com o banco e inicialização de uploads
+const initializeServices = async () => {
   try {
+    // Inicializar pasta de uploads
+    console.log('📁 Inicializando serviços...');
+    const uploadsPath = initializeUploads();
+    console.log('✅ Pasta de uploads inicializada:', uploadsPath);
+    
+    // Testar conexão com o banco
     console.log('🔍 Tentando conectar ao banco...');
     console.log('🌐 URL do banco:', process.env.DATABASE_URL?.substring(0, 50) + '...');
     
     const result = await pool.query('SELECT NOW()');
     console.log('✅ Banco conectado em:', result.rows[0].now);
     console.log('🎯 Conexão estabelecida com sucesso!');
+    
+    console.log('✅ Todos os serviços inicializados com sucesso!');
   } catch (err) {
-    console.error('❌ Erro ao conectar com o banco:', err.message);
+    console.error('❌ Erro ao inicializar serviços:', err.message);
     console.error('🔍 Detalhes do erro:', err);
-    console.error('🔍 Verifique se a DATABASE_URL está correta no arquivo .env');
-    console.error('🔍 Verifique se o banco Neon.tech está acessível');
+    if (err.message.includes('uploads')) {
+      console.error('🔍 Problema com pasta de uploads - verifique permissões');
+    } else {
+      console.error('🔍 Verifique se a DATABASE_URL está correta no arquivo .env');
+      console.error('🔍 Verifique se o banco Neon.tech está acessível');
+    }
   }
 };
 
-testDatabaseConnection();
+initializeServices();
 
 // Rotas
 app.use('/api', AuthRoutes);
