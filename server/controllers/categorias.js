@@ -3,6 +3,11 @@ import pool from '../config/db.js';
 // Cadastrar nova categoria
 const criarCategoria = async (req, res) => {
   try {
+    console.log('📝 Iniciando criação de categoria...');
+    console.log('📁 Arquivo recebido:', req.file);
+    console.log('📋 Body recebido:', req.body);
+    console.log('🔍 Headers:', req.headers);
+    
     const {
       estabelecimento_id,
       nome,
@@ -14,6 +19,7 @@ const criarCategoria = async (req, res) => {
 
     // Verificar se a imagem foi enviada
     const imagem_url = req.file ? `/uploads/${req.file.filename}` : null;
+    console.log('🖼️ Imagem URL:', imagem_url);
 
     // Validar campos obrigatórios
     if (!estabelecimento_id || !nome) {
@@ -51,6 +57,8 @@ const criarCategoria = async (req, res) => {
       [estabelecimento_id, nome, descricao, imagem_url, cor, icone, status]
     );
 
+    console.log('✅ Categoria criada com sucesso:', novaCategoria.rows[0]);
+    
     res.status(201).json({
       success: true,
       message: 'Categoria criada com sucesso',
@@ -58,7 +66,13 @@ const criarCategoria = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Erro ao criar categoria:', error);
+    console.error('❌ Erro ao criar categoria:', error);
+    console.error('🔍 Detalhes do erro:', {
+      message: error.message,
+      stack: error.stack,
+      code: error.code
+    });
+    
     res.status(500).json({
       success: false,
       message: 'Erro interno do servidor',
@@ -73,7 +87,7 @@ const buscarCategoriasPorEstabelecimento = async (req, res) => {
     const { estabelecimento_id } = req.params;
 
     const categorias = await pool.query(
-      'SELECT * FROM categorias WHERE estabelecimento_id = $1 AND status = true ORDER BY nome',
+      'SELECT * FROM categorias WHERE estabelecimento_id = $1 ORDER BY nome',
       [estabelecimento_id]
     );
 
@@ -127,6 +141,12 @@ const buscarCategoriaPorId = async (req, res) => {
 // Atualizar categoria
 const atualizarCategoria = async (req, res) => {
   try {
+    console.log('📝 Iniciando atualização de categoria...');
+    console.log('🆔 ID da categoria:', req.params.id);
+    console.log('📋 Body recebido:', req.body);
+    console.log('🔗 URL da requisição:', req.originalUrl);
+    console.log('📡 Método HTTP:', req.method);
+    
     const { id } = req.params;
     const {
       nome,
@@ -151,6 +171,13 @@ const atualizarCategoria = async (req, res) => {
 
     // Verificar se a imagem foi enviada
     const imagem_url = req.file ? `/uploads/${req.file.filename}` : undefined;
+    
+    // Se não foi enviada imagem, não incluir na atualização
+    if (!req.file) {
+      console.log('📷 Nenhuma imagem enviada, mantendo imagem atual');
+    } else {
+      console.log('📷 Nova imagem recebida:', req.file.filename);
+    }
 
     // Construir query de atualização dinamicamente
     let query = 'UPDATE categorias SET';
@@ -169,7 +196,7 @@ const atualizarCategoria = async (req, res) => {
       paramCount++;
     }
 
-    if (imagem_url !== undefined) {
+    if (imagem_url !== undefined && req.file) {
       query += paramCount === 1 ? ` imagem_url = $${paramCount}` : `, imagem_url = $${paramCount}`;
       values.push(imagem_url);
       paramCount++;
@@ -193,10 +220,14 @@ const atualizarCategoria = async (req, res) => {
       paramCount++;
     }
 
-    query += `, atualizado_em = CURRENT_TIMESTAMP WHERE id = $${paramCount} RETURNING *`;
+    query += ` WHERE id = $${paramCount} RETURNING *`;
     values.push(id);
 
     const categoriaAtualizada = await pool.query(query, values);
+    
+    console.log('✅ Categoria atualizada com sucesso:', categoriaAtualizada.rows[0]);
+    console.log('🔍 Query executada:', query);
+    console.log('📊 Valores:', values);
 
     res.json({
       success: true,
@@ -214,14 +245,14 @@ const atualizarCategoria = async (req, res) => {
   }
 };
 
-// Deletar categoria (soft delete)
+// Deletar categoria (exclusão completa)
 const deletarCategoria = async (req, res) => {
   try {
     const { id } = req.params;
 
     // Verificar se a categoria existe
     const categoriaExistente = await pool.query(
-      'SELECT id FROM categorias WHERE id = $1',
+      'SELECT id, imagem_url FROM categorias WHERE id = $1',
       [id]
     );
 
@@ -232,19 +263,39 @@ const deletarCategoria = async (req, res) => {
       });
     }
 
-    // Soft delete - apenas desativa a categoria
+    // Deletar arquivo de imagem se existir
+    if (categoriaExistente.rows[0].imagem_url) {
+      const fs = await import('fs');
+      const path = await import('path');
+      const { fileURLToPath } = await import('url');
+      
+      const __filename = fileURLToPath(import.meta.url);
+      const __dirname = path.dirname(__filename);
+      const imagePath = path.join(__dirname, '..', categoriaExistente.rows[0].imagem_url);
+      
+      try {
+        if (fs.existsSync(imagePath)) {
+          fs.unlinkSync(imagePath);
+          console.log('🗑️ Arquivo de imagem deletado:', imagePath);
+        }
+      } catch (fileError) {
+        console.warn('⚠️ Erro ao deletar arquivo de imagem:', fileError.message);
+      }
+    }
+
+    // Deletar categoria do banco de dados
     await pool.query(
-      'UPDATE categorias SET status = false, atualizado_em = CURRENT_TIMESTAMP WHERE id = $1',
+      'DELETE FROM categorias WHERE id = $1',
       [id]
     );
 
     res.json({
       success: true,
-      message: 'Categoria deletada com sucesso'
+      message: 'Categoria excluída permanentemente'
     });
 
   } catch (error) {
-    console.error('Erro ao deletar categoria:', error);
+    console.error('❌ Erro ao deletar categoria:', error);
     res.status(500).json({
       success: false,
       message: 'Erro interno do servidor',

@@ -23,7 +23,15 @@ const corsOptions = {
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  allowedHeaders: [
+    'Content-Type', 
+    'Authorization', 
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+    'User-Agent'
+  ],
+  exposedHeaders: ['Content-Length', 'Content-Type']
 };
 
 // Middlewares
@@ -96,6 +104,10 @@ app.get('/', (req, res) => {
 // Middleware de erro para produção
 app.use((err, req, res, next) => {
   console.error('Erro de produção:', err);
+  console.error('URL da requisição:', req.originalUrl);
+  console.error('Método:', req.method);
+  console.error('Headers:', req.headers);
+  console.error('User-Agent:', req.get('User-Agent'));
   
   // Se for erro do Multer (upload de arquivo)
   if (err.code === 'LIMIT_FILE_SIZE') {
@@ -119,6 +131,14 @@ app.use((err, req, res, next) => {
       message: err.message
     });
   }
+  
+  // Log detalhado para debug em produção
+  console.error('Erro completo:', {
+    message: err.message,
+    stack: err.stack,
+    code: err.code,
+    statusCode: err.statusCode
+  });
   
   // Não expor detalhes internos em produção
   res.status(500).json({ 

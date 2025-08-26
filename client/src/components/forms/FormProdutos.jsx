@@ -255,11 +255,12 @@ const FormProdutos = ({ onClose, onSubmit }) => {
             onClick={onClose}
             className="flex-1 bg-gray-500 hover:bg-gray-600 text-white"
           />
-          <AddButton
+          <button
             type="submit"
-            text="Cadastrar Produto"
-            className="flex-1 bg-gradient-to-r from-purple-300 to-purple-400 hover:from-purple-400 hover:to-purple-500 text-white"
-          />
+            className="flex-1 bg-gradient-to-r from-purple-300 to-purple-400 hover:from-purple-400 hover:to-purple-500 text-white h-12 px-4 rounded-xl font-medium transition-all duration-200"
+          >
+            Cadastrar
+          </button>
         </div>
       </form>
     </div>

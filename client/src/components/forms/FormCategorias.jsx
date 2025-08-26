@@ -1,14 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Tag } from 'lucide-react';
-import AddButton from '../buttons/AddButton';
 import CancelButton from '../buttons/CancelButton';
 import api from '../../services/api';
 
-const FormCategorias = ({ onClose, onSubmit }) => {
+const FormCategorias = ({ onClose, onSubmit, categoriaParaEditar = null, isEditing = false }) => {
   const [formData, setFormData] = useState({
     nome: '',
-    imagem: ''
+    imagem: null
   });
+
+  // Preencher formulário quando for edição
+  useEffect(() => {
+    if (categoriaParaEditar && isEditing) {
+      setFormData({
+        nome: categoriaParaEditar.nome || '',
+        imagem: null
+      });
+    }
+  }, [categoriaParaEditar, isEditing]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -43,25 +52,39 @@ const FormCategorias = ({ onClose, onSubmit }) => {
         formDataToSend.append('imagem', formData.imagem);
       }
 
-      // Fazer requisição para a API
-      const response = await api.post('/categorias', formDataToSend, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      let response;
+      
+      if (isEditing && categoriaParaEditar) {
+        // Atualizar categoria existente
+        response = await api.put(`/categorias/${categoriaParaEditar.id}`, formDataToSend, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+      } else {
+        // Criar nova categoria
+        response = await api.post('/categorias', formDataToSend, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+      }
 
       if (response.data.success) {
-        alert('Categoria criada com sucesso!');
+        const message = isEditing ? 'Categoria alterada com sucesso!' : 'Categoria criada com sucesso!';
+        alert(message);
         onSubmit(response.data.data);
       } else {
-        alert('Erro ao criar categoria: ' + response.data.message);
+        const errorMessage = isEditing ? 'Erro ao alterar categoria: ' : 'Erro ao criar categoria: ';
+        alert(errorMessage + response.data.message);
       }
     } catch (error) {
-      console.error('Erro ao criar categoria:', error);
+      console.error('Erro ao processar categoria:', error);
       if (error.response?.data?.message) {
         alert('Erro: ' + error.response.data.message);
       } else {
-        alert('Erro ao criar categoria. Tente novamente.');
+        const errorMessage = isEditing ? 'Erro ao alterar categoria.' : 'Erro ao criar categoria.';
+        alert(errorMessage + ' Tente novamente.');
       }
     }
   };
@@ -72,7 +95,9 @@ const FormCategorias = ({ onClose, onSubmit }) => {
         <div className="w-10 h-10 bg-cyan-100 rounded-lg flex items-center justify-center">
           <Tag className="w-5 h-5 text-cyan-600" />
         </div>
-        <h2 className="text-xl font-bold text-gray-800">Cadastrar Categoria</h2>
+        <h2 className="text-xl font-bold text-gray-800">
+          {isEditing ? 'Alterar Categoria' : 'Cadastrar Categoria'}
+        </h2>
       </div>
       
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -136,6 +161,20 @@ const FormCategorias = ({ onClose, onSubmit }) => {
                     </div>
                   )}
                 </div>
+              ) : isEditing && categoriaParaEditar?.imagem_url ? (
+                // Exibir imagem atual quando for edição
+                <div className="w-full h-full relative">
+                  <img
+                    src={`http://localhost:3001${categoriaParaEditar.imagem_url}`}
+                    alt="Imagem atual"
+                    className="w-full h-full object-cover rounded-lg"
+                  />
+                  <div className="absolute top-1 right-1 bg-cyan-100 rounded-full p-1">
+                    <svg className="w-3 h-3 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                </div>
               ) : (
                 <div className="text-center">
                   <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-2">
@@ -157,11 +196,12 @@ const FormCategorias = ({ onClose, onSubmit }) => {
             onClick={onClose}
             className="flex-1 bg-gray-500 hover:bg-gray-600 text-white"
           />
-          <AddButton
+          <button
             type="submit"
-            text="Cadastrar Categoria"
-            className="flex-1 bg-gradient-to-r from-cyan-300 to-cyan-400 hover:from-cyan-400 hover:to-cyan-500 text-white"
-          />
+            className="flex-1 bg-gradient-to-r from-cyan-300 to-cyan-400 hover:from-cyan-400 hover:to-cyan-500 text-white h-12 px-4 rounded-xl font-medium transition-all duration-200"
+          >
+            {isEditing ? 'Alterar' : 'Cadastrar'}
+          </button>
         </div>
       </form>
     </div>

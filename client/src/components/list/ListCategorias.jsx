@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Tag, Edit, Trash2, Power, PowerOff } from 'lucide-react';
 import api from '../../services/api';
+import Notification from '../elements/Notification';
 
-const ListCategorias = ({ onRefresh }) => {
+const ListCategorias = ({ onRefresh, onEdit }) => {
   const [categorias, setCategorias] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredCategorias, setFilteredCategorias] = useState([]);
   const [activeCard, setActiveCard] = useState(null);
+  const [showNotification, setShowNotification] = useState(false);
+  const [categoriaParaDeletar, setCategoriaParaDeletar] = useState(null);
 
   // Buscar categorias do estabelecimento
   const buscarCategorias = async () => {
@@ -21,6 +24,9 @@ const ListCategorias = ({ onRefresh }) => {
 
       const response = await api.get(`/categorias/estabelecimento/${estabelecimento.id}`);
       if (response.data.success) {
+        console.log('📋 Categorias recebidas do backend:', response.data.data);
+        console.log('🔍 Total de categorias:', response.data.data.length);
+        console.log('📊 Status das categorias:', response.data.data.map(cat => ({ id: cat.id, nome: cat.nome, status: cat.status })));
         setCategorias(response.data.data);
         setFilteredCategorias(response.data.data);
       }
@@ -50,38 +56,38 @@ const ListCategorias = ({ onRefresh }) => {
 
   // Função para deletar categoria
   const deletarCategoria = async (id) => {
-    if (window.confirm('Tem certeza que deseja deletar esta categoria?')) {
-      try {
-        const response = await api.delete(`/categorias/${id}`);
-        if (response.data.success) {
-          alert('Categoria deletada com sucesso!');
-          buscarCategorias(); // Recarregar lista
-        }
-      } catch (error) {
-        console.error('Erro ao deletar categoria:', error);
-        alert('Erro ao deletar categoria. Tente novamente.');
-      }
+    const categoria = categorias.find(cat => cat.id === id);
+    if (categoria) {
+      setCategoriaParaDeletar(categoria);
+      setShowNotification(true);
+      setActiveCard(null); // Fechar botões
     }
   };
 
   // Função para editar categoria
   const editarCategoria = (id) => {
-    // TODO: Implementar edição de categoria
-    alert(`Editar categoria ${id} - Funcionalidade em desenvolvimento`);
+    const categoria = categorias.find(cat => cat.id === id);
+    if (categoria && onEdit) {
+      onEdit(categoria);
+      setActiveCard(null); // Fechar botões
+    }
   };
 
   // Função para ativar/desativar categoria
   const toggleStatusCategoria = async (id, novoStatus) => {
     try {
-      const response = await api.put(`/categorias/${id}`, { status: novoStatus });
+      console.log('🔄 Alterando status da categoria:', { id, novoStatus });
+      const response = await api.put(`/categorias/${id}/status`, { status: novoStatus });
       if (response.data.success) {
         const statusText = novoStatus ? 'ativada' : 'desativada';
+        const statusColor = novoStatus ? 'emerald' : 'rose';
+        console.log('✅ Status alterado com sucesso:', statusText);
         alert(`Categoria ${statusText} com sucesso!`);
         buscarCategorias(); // Recarregar lista
         setActiveCard(null); // Fechar botões
       }
     } catch (error) {
-      console.error('Erro ao alterar status da categoria:', error);
+      console.error('❌ Erro ao alterar status da categoria:', error);
       alert('Erro ao alterar status da categoria. Tente novamente.');
     }
   };
@@ -92,6 +98,23 @@ const ListCategorias = ({ onRefresh }) => {
       setActiveCard(null); // Fechar se já estiver aberto
     } else {
       setActiveCard(id); // Abrir botões
+    }
+  };
+
+  const confirmarExclusao = async () => {
+    if (!categoriaParaDeletar) return;
+    try {
+      const response = await api.delete(`/categorias/${categoriaParaDeletar.id}`);
+      if (response.data.success) {
+        alert('Categoria deletada com sucesso!');
+        buscarCategorias();
+      }
+    } catch (error) {
+      console.error('Erro ao deletar categoria:', error);
+      alert('Erro ao deletar categoria. Tente novamente.');
+    } finally {
+      setShowNotification(false);
+      setCategoriaParaDeletar(null);
     }
   };
 
@@ -133,10 +156,12 @@ const ListCategorias = ({ onRefresh }) => {
           {filteredCategorias.map((categoria) => (
                          <div
                key={categoria.id}
-               className={`bg-white rounded-xl border-2 transition-all duration-200 group aspect-square flex flex-col cursor-pointer p-3 sm:p-4 ${
+               className={`rounded-xl border-2 transition-all duration-200 group aspect-square flex flex-col cursor-pointer p-3 sm:p-4 ${
                  activeCard === categoria.id 
                    ? 'border-cyan-400 shadow-lg' 
-                   : 'border-gray-200 hover:shadow-lg'
+                   : categoria.status 
+                     ? 'bg-white border-gray-200 hover:shadow-lg' 
+                     : 'bg-gray-50 border-gray-300 opacity-75'
                }`}
                onClick={() => handleCardClick(categoria.id)}
              >
@@ -149,7 +174,7 @@ const ListCategorias = ({ onRefresh }) => {
                         Ativa
                       </span>
                     ) : (
-                      <span className="px-2 py-1 bg-gray-500 text-white rounded-full text-xs font-medium shadow-md">
+                      <span className="px-2 py-1 bg-rose-500 text-white rounded-full text-xs font-medium shadow-md">
                         Inativa
                       </span>
                     )}
@@ -177,8 +202,8 @@ const ListCategorias = ({ onRefresh }) => {
                    <Tag className="w-6 h-6 sm:w-8 sm:h-8 text-white opacity-80" />
                  </div>
 
-                                 {/* Botões de ação (hover no desktop, clique no mobile) */}
-                 <div className={`absolute top-2 right-2 flex flex-col space-y-1 transition-opacity duration-200 ${
+                                                                   {/* Botões de ação (hover no desktop, clique no mobile) - Agora em linha horizontal no topo */}
+                  <div className={`absolute top-2 right-2 flex flex-row space-x-1 transition-opacity duration-200 ${
                    activeCard === categoria.id 
                      ? 'opacity-100' 
                      : 'opacity-0 group-hover:opacity-100'
@@ -211,7 +236,7 @@ const ListCategorias = ({ onRefresh }) => {
 
                    {/* Botão Deletar */}
                    <button
-                     onClick={() => deletarCategoria(categoria.id)}
+                                           onClick={() => deletarCategoria(categoria.id)}
                      className="w-6 h-6 bg-rose-500 hover:bg-rose-600 hover:scale-110 text-white rounded-full flex items-center justify-center transition-all duration-200 shadow-md hover:shadow-lg"
                      title="Deletar categoria"
                    >
@@ -230,6 +255,20 @@ const ListCategorias = ({ onRefresh }) => {
           ))}
         </div>
       )}
+
+      {/* Componente de Notificação para Exclusão */}
+      <Notification
+        isOpen={showNotification}
+        onClose={() => {
+          setShowNotification(false);
+          setCategoriaParaDeletar(null);
+        }}
+        message={`Você deseja excluir permanentemente a categoria "${categoriaParaDeletar?.nome}"? Esta ação não pode ser desfeita.`}
+        onConfirm={confirmarExclusao}
+        confirmText="Sim, excluir"
+        cancelText="Cancelar"
+        type="warning"
+      />
     </div>
   );
 };

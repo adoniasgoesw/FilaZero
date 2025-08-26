@@ -139,11 +139,12 @@ const FormUsuarios = ({ onClose, onSubmit }) => {
             onClick={onClose}
             className="flex-1 bg-gray-500 hover:bg-gray-600 text-white"
           />
-          <AddButton
+          <button
             type="submit"
-            text="Cadastrar Usuário"
-            className="flex-1 bg-gradient-to-r from-indigo-300 to-indigo-400 hover:from-indigo-400 hover:to-indigo-500 text-white"
-          />
+            className="flex-1 bg-gradient-to-r from-indigo-300 to-indigo-400 hover:from-indigo-400 hover:to-indigo-500 text-white h-12 px-4 rounded-xl font-medium transition-all duration-200"
+          >
+            Cadastrar
+          </button>
         </div>
       </form>
     </div>

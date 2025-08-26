@@ -52,6 +52,7 @@ const upload = multer({
 // Rotas de Categorias
 router.post('/categorias', upload.single('imagem'), criarCategoria);
 router.get('/categorias/estabelecimento/:estabelecimento_id', buscarCategoriasPorEstabelecimento);
+router.put('/categorias/:id/status', atualizarCategoria); // Rota para alterar apenas status (DEVE VIR ANTES)
 router.get('/categorias/:id', buscarCategoriaPorId);
 router.put('/categorias/:id', upload.single('imagem'), atualizarCategoria);
 router.delete('/categorias/:id', deletarCategoria);
