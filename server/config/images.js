@@ -1,4 +1,4 @@
-// server/config/images.js - Configuração de URLs de imagens
+// server/config/images.js - Configuração de URLs de imagens (VERSÃO CORRIGIDA)
 import dotenv from 'dotenv';
 
 dotenv.config();
