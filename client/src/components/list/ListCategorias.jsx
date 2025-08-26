@@ -7,6 +7,7 @@ const ListCategorias = ({ onRefresh }) => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredCategorias, setFilteredCategorias] = useState([]);
+  const [activeCard, setActiveCard] = useState(null);
 
   // Buscar categorias do estabelecimento
   const buscarCategorias = async () => {
@@ -77,10 +78,20 @@ const ListCategorias = ({ onRefresh }) => {
         const statusText = novoStatus ? 'ativada' : 'desativada';
         alert(`Categoria ${statusText} com sucesso!`);
         buscarCategorias(); // Recarregar lista
+        setActiveCard(null); // Fechar botões
       }
     } catch (error) {
       console.error('Erro ao alterar status da categoria:', error);
       alert('Erro ao alterar status da categoria. Tente novamente.');
+    }
+  };
+
+  // Função para gerenciar clique no card (mobile)
+  const handleCardClick = (id) => {
+    if (activeCard === id) {
+      setActiveCard(null); // Fechar se já estiver aberto
+    } else {
+      setActiveCard(id); // Abrir botões
     }
   };
 
@@ -120,10 +131,15 @@ const ListCategorias = ({ onRefresh }) => {
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
           {filteredCategorias.map((categoria) => (
-            <div
-              key={categoria.id}
-              className="bg-white rounded-xl border border-gray-200 p-3 sm:p-4 hover:shadow-lg transition-all duration-200 group aspect-square flex flex-col"
-            >
+                         <div
+               key={categoria.id}
+               className={`bg-white rounded-xl border-2 transition-all duration-200 group aspect-square flex flex-col cursor-pointer p-3 sm:p-4 ${
+                 activeCard === categoria.id 
+                   ? 'border-cyan-400 shadow-lg' 
+                   : 'border-gray-200 hover:shadow-lg'
+               }`}
+               onClick={() => handleCardClick(categoria.id)}
+             >
                              {/* Imagem da Categoria */}
                <div className="relative flex-1 mb-3">
                                    {/* Status no canto inferior direito */}
@@ -161,8 +177,12 @@ const ListCategorias = ({ onRefresh }) => {
                    <Tag className="w-6 h-6 sm:w-8 sm:h-8 text-white opacity-80" />
                  </div>
 
-                {/* Botões de ação (hover) */}
-                <div className="absolute top-2 right-2 flex flex-col space-y-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                 {/* Botões de ação (hover no desktop, clique no mobile) */}
+                 <div className={`absolute top-2 right-2 flex flex-col space-y-1 transition-opacity duration-200 ${
+                   activeCard === categoria.id 
+                     ? 'opacity-100' 
+                     : 'opacity-0 group-hover:opacity-100'
+                 }`}>
                                      {/* Botão Ativar/Desativar */}
                    <button
                      onClick={() => toggleStatusCategoria(categoria.id, !categoria.status)}

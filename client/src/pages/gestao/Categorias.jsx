@@ -43,7 +43,7 @@ const Categorias = () => {
               <AddButton 
                 onClick={openModal}
                 text="Mais Categorias"
-                className="bg-gradient-to-r from-cyan-300 to-cyan-400 hover:from-cyan-400 hover:to-cyan-500 text-white"
+                className="bg-gradient-to-r from-cyan-300 to-cyan-400 hover:from-cyan-400 hover:to-cyan-500 text-white h-12"
               />
             </div>
           </div>

@@ -8,7 +8,7 @@ const BaseModal = ({ isOpen, onClose, children }) => {
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          className="fixed top-0 right-0 h-full w-[35%] bg-white shadow-xl z-50"
+          className="fixed top-0 right-0 h-full w-full sm:w-[35%] bg-white shadow-xl z-50"
           initial={{ x: '100%' }}
           animate={{ x: 0 }}
           exit={{ x: '100%' }}
