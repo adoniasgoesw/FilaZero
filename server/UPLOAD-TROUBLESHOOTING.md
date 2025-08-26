@@ -140,6 +140,43 @@ corsOrigins: [
 - Limite configurado para 5MB
 - Verificar se arquivo não excede limite
 
+## 🔒 Problema de Mixed Content (HTTPS/HTTP)
+
+### 1. **Sintomas**
+- ❌ Erro no console: "Mixed Content: The page was loaded over HTTPS, but requested an insecure element"
+- ❌ Imagens não carregam em produção
+- ❌ URLs das imagens apontam para `http://localhost:3001` em vez de produção
+
+### 2. **Causa**
+- Frontend em HTTPS (`https://filazero.netlify.app`)
+- Backend retornando URLs HTTP (`http://localhost:3001`)
+- Navegador bloqueia conteúdo misto por segurança
+
+### 3. **Solução Implementada**
+- **Configuração centralizada** em `server/config/images.js`
+- **Detecção automática** de ambiente (dev/prod)
+- **URLs sempre HTTPS** em produção
+- **Fallback inteligente** para desenvolvimento
+
+### 4. **Como Funciona**
+```javascript
+// Em desenvolvimento
+// URL: http://localhost:3001/uploads/imagem.jpg
+
+// Em produção  
+// URL: https://filazero-sistema-de-gestao.onrender.com/uploads/imagem.jpg
+```
+
+### 5. **Teste da Solução**
+```bash
+# Executar teste de URLs
+cd server
+node test-urls.js
+
+# Verificar logs do servidor
+# Procurar por: "🌍 Detecção de ambiente" e "🖼️ URL de imagem construída"
+```
+
 ## 🖼️ Problema de Exibição de Imagens
 
 ### 1. **Sintomas**
@@ -147,12 +184,14 @@ corsOrigins: [
 - ✅ Banco salva caminho da imagem
 - ❌ Imagem não é exibida no frontend
 - ❌ URL da imagem retorna 404
+- ❌ **Mixed Content Error**: HTTPS tentando carregar HTTP
 
 ### 2. **Causas Comuns**
 - **Servidor não serve arquivos estáticos**: Express.static não configurado
 - **Caminho incorreto**: URL base diferente em produção
 - **Permissões**: Pasta uploads sem acesso de leitura
 - **Headers**: Content-Type incorreto para imagens
+- **🔴 Mixed Content**: Frontend HTTPS tentando carregar imagens HTTP
 
 ### 3. **Soluções Implementadas**
 - **Express.static configurado** com headers corretos
@@ -160,6 +199,9 @@ corsOrigins: [
 - **Rota de debug** `/api/uploads/:filename`
 - **Página de teste** `/test-images`
 - **Cache configurado** para melhor performance
+- **🔒 URLs sempre HTTPS** em produção (resolve Mixed Content)
+- **🌍 Detecção automática** de ambiente (dev/prod)
+- **📝 Configuração centralizada** de URLs de imagens
 
 ### 4. **Como Testar**
 ```bash

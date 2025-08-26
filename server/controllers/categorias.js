@@ -1,5 +1,6 @@
 import pool from '../config/db.js';
 import path from 'path';
+import { buildImageUrl } from '../config/images.js';
 
 // Cadastrar nova categoria
 const criarCategoria = async (req, res) => {
@@ -92,25 +93,9 @@ const criarCategoria = async (req, res) => {
   }
 };
 
-// Função para construir URL completa da imagem
+// Função para construir URL completa da imagem (usando nova configuração)
 const construirUrlImagem = (imagem_url, req) => {
-  if (!imagem_url) return null;
-  
-  // Se já é uma URL completa, retornar como está
-  if (imagem_url.startsWith('http://') || imagem_url.startsWith('https://')) {
-    return imagem_url;
-  }
-  
-  // Construir URL completa baseada no host da requisição
-  const protocol = req.protocol;
-  const host = req.get('host');
-  
-  // Se estiver em produção e não tiver host, usar URL padrão
-  if (!host && process.env.NODE_ENV === 'production') {
-    return `https://filazero-sistema-de-gestao.onrender.com${imagem_url}`;
-  }
-  
-  return `${protocol}://${host}${imagem_url}`;
+  return buildImageUrl(imagem_url, req);
 };
 
 // Buscar categorias por estabelecimento
