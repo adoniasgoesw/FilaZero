@@ -9,20 +9,30 @@ import { Tag } from 'lucide-react';
 
 const Categorias = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [categoriaParaEditar, setCategoriaParaEditar] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
   const openModal = () => {
+    setCategoriaParaEditar(null); // Reset para criação
     setIsModalOpen(true);
   };
 
   const closeModal = () => {
     setIsModalOpen(false);
+    setCategoriaParaEditar(null); // Reset ao fechar
   };
 
   const handleSubmit = (formData) => {
     console.log('Categoria processada:', formData);
     setRefreshKey(prev => prev + 1); // Forçar refresh da lista
     closeModal();
+  };
+
+  const handleListAction = (action) => {
+    if (action.action === 'edit') {
+      setCategoriaParaEditar(action.categoria);
+      setIsModalOpen(true);
+    }
   };
 
   return (
@@ -57,7 +67,7 @@ const Categorias = () => {
         {/* Conteúdo Principal */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6">
           {/* Listagem de Categorias */}
-          <ListCategorias onRefresh={refreshKey} />
+          <ListCategorias onRefresh={refreshKey} onAction={handleListAction} />
         </div>
       </div>
 
@@ -69,6 +79,7 @@ const Categorias = () => {
         <FormCategorias 
           onClose={closeModal} 
           onSubmit={handleSubmit}
+          categoriaParaEditar={categoriaParaEditar}
         />
       </BaseModal>
     </div>

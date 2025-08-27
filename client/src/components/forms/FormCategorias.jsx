@@ -3,11 +3,38 @@ import { Tag } from 'lucide-react';
 import CancelButton from '../buttons/CancelButton';
 import api from '../../services/api.js';
 
-const FormCategorias = ({ onClose, onSubmit }) => {
+const FormCategorias = ({ onClose, onSubmit, categoriaParaEditar = null }) => {
   const [formData, setFormData] = useState({
-    nome: '',
+    nome: categoriaParaEditar?.nome || '',
     imagem: null
   });
+  
+  const [imagemPreview, setImagemPreview] = useState(
+    categoriaParaEditar?.imagem_url ? getImageUrl(categoriaParaEditar.imagem_url) : null
+  );
+  
+  const isEditando = !!categoriaParaEditar;
+  
+  // Função helper para construir URL da imagem
+  const getImageUrl = (imagePath) => {
+    if (!imagePath) return null;
+    
+    // Se já é uma URL completa, retornar como está
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+      return imagePath;
+    }
+    
+    // Detectar ambiente automaticamente
+    const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+    
+    if (isProduction) {
+      // Produção: usar Render
+      return `https://filazero-sistema-de-gestao.onrender.com${imagePath}`;
+    } else {
+      // Desenvolvimento: usar localhost
+      return `http://localhost:3001${imagePath}`;
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -55,25 +82,38 @@ const FormCategorias = ({ onClose, onSubmit }) => {
         console.log(`📦 ${key}:`, value);
       }
 
-      const response = await api.post('/categorias', formDataToSend, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      let response;
+      
+      if (isEditando) {
+        // Atualizar categoria existente
+        response = await api.put(`/categorias/${categoriaParaEditar.id}`, formDataToSend, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+      } else {
+        // Criar nova categoria
+        response = await api.post('/categorias', formDataToSend, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+      }
 
       if (response.data.success) {
-        alert('Categoria criada com sucesso!');
+        const mensagem = isEditando ? 'Categoria atualizada com sucesso!' : 'Categoria criada com sucesso!';
+        alert(mensagem);
         onSubmit(response.data.data);
         onClose();
       } else {
-        alert('Erro ao criar categoria: ' + response.data.message);
+        alert('Erro ao ' + (isEditando ? 'atualizar' : 'criar') + ' categoria: ' + response.data.message);
       }
     } catch (error) {
-      console.error('Erro ao criar categoria:', error);
+      console.error('Erro ao ' + (isEditando ? 'atualizar' : 'criar') + ' categoria:', error);
       if (error.response?.data?.message) {
         alert('Erro: ' + error.response.data.message);
       } else {
-        alert('Erro ao criar categoria. Tente novamente.');
+        alert('Erro ao ' + (isEditando ? 'atualizar' : 'criar') + ' categoria. Tente novamente.');
       }
     }
   };
@@ -85,7 +125,7 @@ const FormCategorias = ({ onClose, onSubmit }) => {
           <Tag className="w-5 h-5 text-cyan-600" />
         </div>
         <h2 className="text-xl font-bold text-gray-800">
-          Cadastrar Categoria
+          {isEditando ? 'Alterar Categoria' : 'Cadastrar Categoria'}
         </h2>
       </div>
       
@@ -138,6 +178,14 @@ const FormCategorias = ({ onClose, onSubmit }) => {
                     className="w-full h-full object-cover rounded-lg"
                   />
                 </div>
+              ) : imagemPreview ? (
+                <div className="w-full h-full relative">
+                  <img
+                    src={imagemPreview}
+                    alt="Imagem atual"
+                    className="w-full h-full object-cover rounded-lg"
+                  />
+                </div>
               ) : (
                 <div className="text-center">
                   <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-2">
@@ -163,7 +211,7 @@ const FormCategorias = ({ onClose, onSubmit }) => {
             type="submit"
             className="flex-1 bg-gradient-to-r from-cyan-300 to-cyan-400 hover:from-cyan-400 hover:to-cyan-500 text-white h-12 px-4 rounded-xl font-medium transition-all duration-200"
           >
-            Cadastrar
+            {isEditando ? 'Alterar' : 'Cadastrar'}
           </button>
         </div>
       </form>

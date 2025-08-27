@@ -130,7 +130,69 @@ const buscarCategoriasPorEstabelecimento = async (req, res) => {
   }
 };
 
+// Deletar categoria
+const deletarCategoria = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    console.log('🗑️ Iniciando exclusão da categoria:', id);
+    
+    // Buscar categoria para pegar o caminho da imagem
+    const categoria = await pool.query(
+      'SELECT imagem_url FROM categorias WHERE id = $1',
+      [id]
+    );
+    
+    if (categoria.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Categoria não encontrada'
+      });
+    }
+    
+    // Deletar categoria do banco
+    await pool.query('DELETE FROM categorias WHERE id = $1', [id]);
+    
+    // Se tinha imagem, deletar arquivo
+    if (categoria.rows[0].imagem_url) {
+      const fs = await import('fs');
+      const path = await import('path');
+      const { fileURLToPath } = await import('url');
+      
+      const __filename = fileURLToPath(import.meta.url);
+      const __dirname = path.dirname(__filename);
+      
+      const imagePath = path.join(__dirname, '..', categoria.rows[0].imagem_url.replace(/^\/uploads\//, 'uploads/'));
+      
+      try {
+        if (fs.existsSync(imagePath)) {
+          fs.unlinkSync(imagePath);
+          console.log('🗑️ Arquivo de imagem deletado:', imagePath);
+        }
+      } catch (error) {
+        console.warn('⚠️ Erro ao deletar arquivo de imagem:', error.message);
+      }
+    }
+    
+    console.log('✅ Categoria deletada com sucesso');
+    
+    res.json({
+      success: true,
+      message: 'Categoria deletada com sucesso'
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro ao deletar categoria:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro interno do servidor',
+      error: error.message
+    });
+  }
+};
+
 export {
   criarCategoria,
-  buscarCategoriasPorEstabelecimento
+  buscarCategoriasPorEstabelecimento,
+  deletarCategoria
 };

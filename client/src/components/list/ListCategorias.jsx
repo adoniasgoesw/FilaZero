@@ -2,11 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Power, PowerOff, Edit, Trash2 } from 'lucide-react';
 import api from '../../services/api.js';
 
-const ListCategorias = ({ onRefresh }) => {
+const ListCategorias = ({ onRefresh, onAction }) => {
   const [categorias, setCategorias] = useState([]);
-  const [filteredCategorias, setFilteredCategorias] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
   const [activeCard, setActiveCard] = useState(null);
 
   // Função helper para construir URL da imagem
@@ -52,7 +50,6 @@ const ListCategorias = ({ onRefresh }) => {
       const response = await api.get(`/categorias/estabelecimento/${estabelecimento.id}`);
       if (response.data.success) {
         setCategorias(response.data.data);
-        setFilteredCategorias(response.data.data);
       }
     } catch (error) {
       console.error('Erro ao buscar categorias:', error);
@@ -60,18 +57,6 @@ const ListCategorias = ({ onRefresh }) => {
       setLoading(false);
     }
   };
-
-  // Filtrar categorias por termo de busca
-  useEffect(() => {
-    if (searchTerm.trim() === '') {
-      setFilteredCategorias(categorias);
-    } else {
-      const filtered = categorias.filter(categoria =>
-        categoria.nome.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      setFilteredCategorias(filtered);
-    }
-  }, [searchTerm, categorias]);
 
   // Carregar categorias quando o componente montar
   useEffect(() => {
@@ -95,15 +80,17 @@ const ListCategorias = ({ onRefresh }) => {
   };
 
   // Função para editar categoria
-  const editarCategoria = () => {
-    // Implementar edição futuramente
-    alert('Funcionalidade de edição será implementada em breve!');
+  const editarCategoria = (categoria) => {
+    // Emitir evento para abrir modal de edição
+    if (onAction && typeof onAction === 'function') {
+      onAction({ action: 'edit', categoria });
+    }
     setActiveCard(null);
   };
 
   // Função para deletar categoria
   const deletarCategoria = async (id) => {
-    if (window.confirm('Tem certeza que deseja excluir esta categoria?')) {
+    if (window.confirm('Tem certeza que deseja excluir esta categoria? Esta ação não pode ser desfeita.')) {
       try {
         const response = await api.delete(`/categorias/${id}`);
         if (response.data.success) {
@@ -126,7 +113,7 @@ const ListCategorias = ({ onRefresh }) => {
     );
   }
 
-  if (filteredCategorias.length === 0) {
+  if (categorias.length === 0) {
     return (
       <div className="text-center text-gray-500 py-8">
         <p className="text-lg">Nenhuma categoria encontrada</p>
@@ -137,42 +124,61 @@ const ListCategorias = ({ onRefresh }) => {
 
   return (
     <div className="space-y-4">
-      {/* Barra de busca */}
-      <div className="mb-6">
-        <input
-          type="text"
-          placeholder="Buscar categorias..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-        />
-      </div>
-
       {/* Grid de categorias */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-        {filteredCategorias.map((categoria) => (
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+        {categorias.map((categoria) => (
           <div
             key={categoria.id}
-            className={`relative bg-white border rounded-lg p-4 hover:shadow-lg transition-all duration-200 cursor-pointer ${
+            className={`relative bg-white border rounded-xl p-3 hover:shadow-lg transition-all duration-200 cursor-pointer group ${
               categoria.status ? 'border-gray-200' : 'border-gray-300 opacity-75'
             }`}
             onClick={() => setActiveCard(activeCard === categoria.id ? null : categoria.id)}
           >
-            {/* Status */}
-            <div className="absolute top-2 right-2">
-              <span
-                className={`px-2 py-1 rounded-full text-xs font-medium shadow-md ${
+            {/* Botões de ação - aparecem no hover */}
+            <div className="absolute top-3 right-3 flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+              {/* Ativar/Desativar */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleStatusCategoria(categoria.id, !categoria.status);
+                }}
+                className={`w-6 h-6 rounded-full text-white transition-colors flex items-center justify-center ${
                   categoria.status
-                    ? 'bg-emerald-500 text-white'
-                    : 'bg-rose-500 text-white'
+                    ? 'bg-yellow-500 hover:bg-yellow-600'
+                    : 'bg-emerald-500 hover:bg-emerald-600'
                 }`}
+                title={categoria.status ? 'Desativar' : 'Ativar'}
               >
-                {categoria.status ? 'Ativa' : 'Inativa'}
-              </span>
+                {categoria.status ? <PowerOff className="w-3 h-3" /> : <Power className="w-3 h-3" />}
+              </button>
+
+              {/* Editar */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  editarCategoria(categoria);
+                }}
+                className="w-6 h-6 bg-blue-500 hover:bg-blue-600 rounded-full text-white transition-colors flex items-center justify-center"
+                title="Editar"
+              >
+                <Edit className="w-3 h-3" />
+              </button>
+
+              {/* Deletar */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  deletarCategoria(categoria.id);
+                }}
+                className="w-6 h-6 bg-red-500 hover:bg-red-600 rounded-full text-white transition-colors flex items-center justify-center"
+                title="Deletar"
+              >
+                <Trash2 className="w-3 h-3" />
+              </button>
             </div>
 
             {/* Imagem */}
-            <div className="w-full h-32 mb-3 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
+            <div className="w-full aspect-square mb-3 rounded-xl overflow-hidden bg-gray-100 flex items-center justify-center">
               {categoria.imagem_url ? (
                 <img
                   src={getImageUrl(categoria.imagem_url)}
@@ -197,54 +203,22 @@ const ListCategorias = ({ onRefresh }) => {
             </div>
 
             {/* Nome */}
-            <h3 className="font-medium text-gray-800 text-center mb-3 truncate">
+            <h3 className="font-medium text-gray-800 text-center mb-2 truncate">
               {categoria.nome}
             </h3>
 
-            {/* Botões de ação */}
-            {activeCard === categoria.id && (
-              <div className="absolute top-2 left-2 flex flex-row space-x-1">
-                {/* Ativar/Desativar */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleStatusCategoria(categoria.id, !categoria.status);
-                  }}
-                  className={`p-2 rounded-lg text-white transition-colors ${
-                    categoria.status
-                      ? 'bg-yellow-500 hover:bg-yellow-600'
-                      : 'bg-emerald-500 hover:bg-emerald-600'
-                  }`}
-                  title={categoria.status ? 'Desativar' : 'Ativar'}
-                >
-                  {categoria.status ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
-                </button>
-
-                {/* Editar */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    editarCategoria(categoria);
-                  }}
-                  className="p-2 bg-blue-500 hover:bg-blue-600 rounded-lg text-white transition-colors"
-                  title="Editar"
-                >
-                  <Edit className="w-4 h-4" />
-                </button>
-
-                {/* Deletar */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    deletarCategoria(categoria.id);
-                  }}
-                  className="p-2 bg-red-500 hover:bg-red-600 rounded-lg text-white transition-colors"
-                  title="Deletar"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            )}
+            {/* Status - canto inferior direito */}
+            <div className="absolute bottom-3 right-3">
+              <span
+                className={`px-2 py-1 rounded-full text-xs font-medium shadow-md ${
+                  categoria.status
+                    ? 'bg-emerald-500 text-white'
+                    : 'bg-rose-500 text-white'
+                }`}
+              >
+                {categoria.status ? 'Ativa' : 'Inativa'}
+              </span>
+            </div>
           </div>
         ))}
       </div>

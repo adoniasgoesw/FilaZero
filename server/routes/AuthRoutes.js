@@ -5,7 +5,8 @@ import { login } from '../controllers/login.js';
 import { getUserProfile } from '../controllers/user.js';
 import {
   criarCategoria,
-  buscarCategoriasPorEstabelecimento
+  buscarCategoriasPorEstabelecimento,
+  deletarCategoria
 } from '../controllers/categorias.js';
 
 
@@ -20,6 +21,7 @@ router.get('/user/:userId/:estabelecimentoId', getUserProfile);
 // Rotas de Categorias
 router.post('/categorias', criarCategoria);
 router.get('/categorias/estabelecimento/:estabelecimento_id', buscarCategoriasPorEstabelecimento);
+router.delete('/categorias/:id', deletarCategoria);
 
 
 
