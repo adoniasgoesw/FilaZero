@@ -172,11 +172,8 @@ const atualizarCategoria = async (req, res) => {
     let imagem_url = categoriaExistente.rows[0].imagem_url;
     
     if (req.file) {
-      // Detectar ambiente de forma mais robusta
-      const isProduction = process.env.NODE_ENV === 'production' || 
-                          process.env.RENDER === 'true' ||
-                          process.env.HOSTNAME?.includes('render.com') ||
-                          req.get('host')?.includes('render.com');
+      // Em produção (Render), usar URL completa
+      const isProduction = process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'prod';
       
       if (isProduction) {
         imagem_url = `https://filazero-sistema-de-gestao.onrender.com/uploads/${req.file.filename}`;
@@ -191,7 +188,8 @@ const atualizarCategoria = async (req, res) => {
     const categoriaAtualizada = await pool.query(
       `UPDATE categorias 
        SET nome = COALESCE($1, nome), 
-           imagem_url = $2
+           imagem_url = $2,
+           updated_at = CURRENT_TIMESTAMP
        WHERE id = $3 
        RETURNING *`,
       [nome || categoriaExistente.rows[0].nome, imagem_url, id]
@@ -237,10 +235,11 @@ const atualizarStatusCategoria = async (req, res) => {
       });
     }
     
-    // Atualizar status (sem updated_at pois não existe na tabela)
+    // Atualizar status
     const categoriaAtualizada = await pool.query(
       `UPDATE categorias 
-       SET status = $1
+       SET status = $1, 
+           updated_at = CURRENT_TIMESTAMP
        WHERE id = $2 
        RETURNING *`,
       [status, id]

@@ -19,30 +19,21 @@ const ListCategorias = ({ onRefresh, onAction }) => {
       return imagePath;
     }
     
-    // Se começa com /uploads, é um caminho relativo que precisa ser processado
-    if (imagePath.startsWith('/uploads/')) {
-      // Detectar ambiente baseado na URL atual da aplicação
-      const currentUrl = window.location.href;
-      const isProduction = currentUrl.includes('netlify.app') || currentUrl.includes('onrender.com');
-      console.log('🌍 Ambiente detectado:', isProduction ? 'Produção' : 'Desenvolvimento');
-      console.log('🔗 URL atual:', currentUrl);
-      
-      if (isProduction) {
-        // Produção: usar Render
-        const url = `https://filazero-sistema-de-gestao.onrender.com${imagePath}`;
-        console.log('🔗 URL construída para produção:', url);
-        return url;
-      } else {
-        // Desenvolvimento: usar localhost
-        const url = `http://localhost:3001${imagePath}`;
-        console.log('🔗 URL construída para desenvolvimento:', url);
-        return url;
-      }
-    }
+    // Detectar ambiente automaticamente
+    const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+    console.log('🌍 Ambiente detectado:', isProduction ? 'Produção' : 'Desenvolvimento');
     
-    // Se não for nenhum dos casos acima, retornar como está
-    console.log('⚠️ Caminho não reconhecido, retornando como está:', imagePath);
-    return imagePath;
+    if (isProduction) {
+      // Produção: usar Render
+      const url = `https://filazero-sistema-de-gestao.onrender.com${imagePath}`;
+      console.log('🔗 URL construída para produção:', url);
+      return url;
+    } else {
+      // Desenvolvimento: usar localhost
+      const url = `http://localhost:3001${imagePath}`;
+      console.log('🔗 URL construída para desenvolvimento:', url);
+      return url;
+    }
   };
 
   // Buscar categorias do banco de dados
@@ -155,8 +146,8 @@ const ListCategorias = ({ onRefresh, onAction }) => {
                 }}
                 className={`w-6 h-6 rounded-full text-white transition-colors flex items-center justify-center ${
                   categoria.status
-                    ? 'bg-orange-500 hover:bg-orange-600' // Laranja para desativar (quando está ativa)
-                    : 'bg-emerald-500 hover:bg-emerald-600' // Verde para ativar (quando está inativa)
+                    ? 'bg-yellow-500 hover:bg-yellow-600'
+                    : 'bg-emerald-500 hover:bg-emerald-600'
                 }`}
                 title={categoria.status ? 'Desativar' : 'Ativar'}
               >
