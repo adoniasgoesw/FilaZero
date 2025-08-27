@@ -4,7 +4,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import multer from 'multer';
+// Multer movido para middleware dedicado
 import AuthRoutes from './routes/AuthRoutes.js';
 import pool from './config/db.js';
 
@@ -68,35 +68,8 @@ app.use((req, res, next) => {
   }
 });
 
-// Configuração do Multer para upload de imagens
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    const uploadsPath = path.join(__dirname, 'uploads');
-    cb(null, uploadsPath);
-  },
-  filename: function (req, file, cb) {
-    // Gerar nome único para o arquivo
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'categoria-' + uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
-const fileFilter = (req, file, cb) => {
-  // Aceitar apenas imagens
-  if (file.mimetype.startsWith('image/')) {
-    cb(null, true);
-  } else {
-    cb(new Error('Apenas imagens são permitidas!'), false);
-  }
-};
-
-const upload = multer({
-  storage: storage,
-  fileFilter: fileFilter,
-  limits: {
-    fileSize: 5 * 1024 * 1024 // Limite de 5MB
-  }
-});
+// Configuração do Multer movida para middleware dedicado
+// para evitar conflitos com as rotas
 
 // Middleware de upload para categorias (DEVE VIR ANTES dos middlewares de parsing)
 app.post('/api/categorias', upload.single('imagem'), (req, res, next) => {
@@ -179,6 +152,17 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Rota específica para testar categorias
+app.post('/api/categorias/test', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Endpoint de categorias funcionando',
+    timestamp: new Date().toISOString(),
+    body: req.body,
+    headers: req.headers
+  });
+});
+
 // Rota raiz para verificar se está funcionando
 app.get('/', (req, res) => {
   res.json({
@@ -208,6 +192,14 @@ app.use((err, req, res, next) => {
       message: 'Acesso negado pelo CORS',
       origin: req.get('Origin'),
       allowedOrigins: ['https://filazero.netlify.app', 'https://filazero-sistema-de-gestao.onrender.com']
+    });
+  }
+  
+  // Tratar erro específico "Unexpected end of form"
+  if (err.message === 'Unexpected end of form') {
+    return res.status(400).json({
+      success: false,
+      message: 'Erro no envio do formulário. Verifique se todos os campos estão preenchidos corretamente e tente novamente.'
     });
   }
   

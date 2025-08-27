@@ -13,6 +13,15 @@ const criarCategoria = async (req, res) => {
     console.log('🔑 Content-Type:', req.get('Content-Type'));
     console.log('📦 FormData keys:', Object.keys(req.body));
     
+    // Verificar se o body está vazio ou malformado
+    if (!req.body || Object.keys(req.body).length === 0) {
+      console.log('❌ Body vazio ou malformado');
+      return res.status(400).json({
+        success: false,
+        message: 'Dados do formulário não recebidos corretamente'
+      });
+    }
+    
     const {
       estabelecimento_id,
       nome,
@@ -97,6 +106,15 @@ const criarCategoria = async (req, res) => {
 
   } catch (error) {
     console.error('❌ Erro ao criar categoria:', error);
+    
+    // Log detalhado para debug
+    console.error('🔍 Detalhes do erro:', {
+      message: error.message,
+      stack: error.stack,
+      code: error.code,
+      name: error.name
+    });
+    
     res.status(500).json({
       success: false,
       message: 'Erro interno do servidor',
