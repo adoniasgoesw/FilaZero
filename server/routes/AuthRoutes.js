@@ -15,6 +15,13 @@ import {
   atualizarStatusProduto, 
   deletarProduto 
 } from '../controllers/produtos.js';
+import { 
+  criarComplemento, 
+  buscarComplementosPorEstabelecimento, 
+  atualizarComplemento, 
+  atualizarStatusComplemento, 
+  deletarComplemento 
+} from '../controllers/complementos.js';
 import { upload, handleMulterError, validateUpload } from '../middlewares/uploadMiddleware.js';
 
 const router = express.Router();
@@ -35,5 +42,12 @@ router.post('/produtos', upload.single('imagem'), handleMulterError, validateUpl
 router.put('/produtos/:id', upload.single('imagem'), handleMulterError, validateUpload, atualizarProduto);
 router.put('/produtos/:id/status', atualizarStatusProduto);
 router.delete('/produtos/:id', deletarProduto);
+
+// Rotas de complementos
+router.get('/complementos/estabelecimento/:estabelecimento_id', buscarComplementosPorEstabelecimento);
+router.post('/complementos', upload.single('imagem'), handleMulterError, validateUpload, criarComplemento);
+router.put('/complementos/:id', upload.single('imagem'), handleMulterError, validateUpload, atualizarComplemento);
+router.put('/complementos/:id/status', atualizarStatusComplemento);
+router.delete('/complementos/:id', deletarComplemento);
 
 export default router;

@@ -5,7 +5,31 @@ import AddButton from '../buttons/AddButton';
 import Notification from '../elements/Notification.jsx';
 import api from '../../services/api.js';
 
-const FormProdutos = ({ onClose, onSubmit, produtoParaEditar = null }) => {
+const FormComplementos = ({ onClose, onSubmit, complementoParaEditar = null }) => {
+  const [formData, setFormData] = useState({
+    nome: complementoParaEditar?.nome || '',
+    valor_venda: complementoParaEditar?.valor_venda || '',
+    valor_custo: complementoParaEditar?.valor_custo || ''
+  });
+  
+  const [imagemPreview, setImagemPreview] = useState(
+    complementoParaEditar?.imagem_url ? getImageUrl(complementoParaEditar.imagem_url) : null
+  );
+  
+  const [loading, setLoading] = useState(false);
+  
+  // Estado para notificação
+  const [notification, setNotification] = useState({
+    isOpen: false,
+    type: 'info',
+    title: '',
+    message: '',
+    onConfirm: null,
+    showConfirm: false
+  });
+  
+  const isEditando = !!complementoParaEditar;
+
   // Função helper para construir URL da imagem
   const getImageUrl = (imagePath) => {
     if (!imagePath) return null;
@@ -26,78 +50,6 @@ const FormProdutos = ({ onClose, onSubmit, produtoParaEditar = null }) => {
       return `http://localhost:3001${imagePath}`;
     }
   };
-
-  const [formData, setFormData] = useState({
-    nome: produtoParaEditar?.nome || '',
-    descricao: produtoParaEditar?.descricao || '',
-    categoria_id: produtoParaEditar?.categoria_id || '',
-    valor_venda: produtoParaEditar?.valor_venda || '',
-    valor_custo: produtoParaEditar?.valor_custo || '',
-    habilitar_estoque: produtoParaEditar?.habilitar_estoque || false,
-    estoque_quantidade: produtoParaEditar?.estoque_quantidade || '',
-    habilitar_tempo_preparo: produtoParaEditar?.habilitar_tempo_preparo || false,
-    tempo_preparo: produtoParaEditar?.tempo_preparo || ''
-  });
-  
-  const [imagemPreview, setImagemPreview] = useState(
-    produtoParaEditar?.imagem_url ? getImageUrl(produtoParaEditar.imagem_url) : null
-  );
-  
-  const [categorias, setCategorias] = useState([]);
-  const [loading, setLoading] = useState(false);
-  
-  // Estado para notificação
-  const [notification, setNotification] = useState({
-    isOpen: false,
-    type: 'info',
-    title: '',
-    message: '',
-    onConfirm: null,
-    showConfirm: false
-  });
-  
-  const isEditando = !!produtoParaEditar;
-
-  // Buscar categorias do estabelecimento
-  const buscarCategorias = async () => {
-    try {
-      const estabelecimento = JSON.parse(localStorage.getItem('filaZero_establishment'));
-      if (!estabelecimento || !estabelecimento.id) return;
-
-      const response = await api.get(`/categorias/estabelecimento/${estabelecimento.id}`);
-      if (response.data.success) {
-        setCategorias(response.data.data);
-      }
-    } catch (error) {
-      console.error('Erro ao buscar categorias:', error);
-    }
-  };
-
-  // Carregar categorias quando o componente montar
-  useEffect(() => {
-    buscarCategorias();
-  }, []);
-
-  // Atualizar formData quando produtoParaEditar mudar
-  useEffect(() => {
-    if (produtoParaEditar) {
-      setFormData({
-        nome: produtoParaEditar.nome || '',
-        descricao: produtoParaEditar.descricao || '',
-        categoria_id: produtoParaEditar.categoria_id || '',
-        valor_venda: produtoParaEditar.valor_venda || '',
-        valor_custo: produtoParaEditar.valor_custo || '',
-        habilitar_estoque: produtoParaEditar.habilitar_estoque || false,
-        estoque_quantidade: produtoParaEditar.estoque_quantidade || '',
-        habilitar_tempo_preparo: produtoParaEditar.habilitar_tempo_preparo || false,
-        tempo_preparo: produtoParaEditar.tempo_preparo || ''
-      });
-      
-      setImagemPreview(
-        produtoParaEditar.imagem_url ? getImageUrl(produtoParaEditar.imagem_url) : null
-      );
-    }
-  }, [produtoParaEditar]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -132,11 +84,6 @@ const FormProdutos = ({ onClose, onSubmit, produtoParaEditar = null }) => {
       return;
     }
 
-    if (!formData.categoria_id) {
-      showNotification('warning', 'Campo Obrigatório', 'Categoria é obrigatória!');
-      return;
-    }
-
     try {
       setLoading(true);
       
@@ -153,22 +100,16 @@ const FormProdutos = ({ onClose, onSubmit, produtoParaEditar = null }) => {
       const formDataToSend = new FormData();
       formDataToSend.append('estabelecimento_id', estabelecimento.id);
       formDataToSend.append('nome', formData.nome);
-      formDataToSend.append('descricao', formData.descricao);
-      formDataToSend.append('categoria_id', formData.categoria_id);
       formDataToSend.append('valor_venda', formData.valor_venda);
       formDataToSend.append('valor_custo', formData.valor_custo);
-      formDataToSend.append('habilitar_estoque', formData.habilitar_estoque);
-      formDataToSend.append('estoque_quantidade', formData.estoque_quantidade);
-      formDataToSend.append('habilitar_tempo_preparo', formData.habilitar_tempo_preparo);
-      formDataToSend.append('tempo_preparo', formData.tempo_preparo);
       
       if (formData.imagem) {
         formDataToSend.append('imagem', formData.imagem);
       }
       
-      // Se estiver editando, incluir o ID do produto
+      // Se estiver editando, incluir o ID do complemento
       if (isEditando) {
-        formDataToSend.append('id', produtoParaEditar.id);
+        formDataToSend.append('id', complementoParaEditar.id);
       }
 
       // Log do que está sendo enviado
@@ -177,15 +118,15 @@ const FormProdutos = ({ onClose, onSubmit, produtoParaEditar = null }) => {
       let response;
       
       if (isEditando) {
-        // Atualizar produto existente
-        response = await api.put(`/produtos/${produtoParaEditar.id}`, formDataToSend, {
+        // Atualizar complemento existente
+        response = await api.put(`/complementos/${complementoParaEditar.id}`, formDataToSend, {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
         });
       } else {
-        // Criar novo produto
-        response = await api.post('/produtos', formDataToSend, {
+        // Criar novo complemento
+        response = await api.post('/complementos', formDataToSend, {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
@@ -193,19 +134,19 @@ const FormProdutos = ({ onClose, onSubmit, produtoParaEditar = null }) => {
       }
 
       if (response.data.success) {
-        const mensagem = isEditando ? 'Produto atualizado com sucesso!' : 'Produto criado com sucesso!';
+        const mensagem = isEditando ? 'Complemento atualizado com sucesso!' : 'Complemento criado com sucesso!';
         showNotification('success', 'Sucesso', mensagem);
         onSubmit(response.data.data);
         onClose();
       } else {
-        showNotification('error', 'Erro', 'Erro ao ' + (isEditando ? 'atualizar' : 'criar') + ' produto: ' + response.data.message);
+        showNotification('error', 'Erro', 'Erro ao ' + (isEditando ? 'atualizar' : 'criar') + ' complemento: ' + response.data.message);
       }
     } catch (error) {
-      console.error('Erro ao ' + (isEditando ? 'atualizar' : 'criar') + ' produto:', error);
+      console.error('Erro ao ' + (isEditando ? 'atualizar' : 'criar') + ' complemento:', error);
       if (error.response?.data?.message) {
         showNotification('error', 'Erro', 'Erro: ' + error.response.data.message);
       } else {
-        showNotification('error', 'Erro', 'Erro ao ' + (isEditando ? 'atualizar' : 'criar') + ' produto. Tente novamente.');
+        showNotification('error', 'Erro', 'Erro ao ' + (isEditando ? 'atualizar' : 'criar') + ' complemento. Tente novamente.');
       }
     } finally {
       setLoading(false);
@@ -221,7 +162,7 @@ const FormProdutos = ({ onClose, onSubmit, produtoParaEditar = null }) => {
             <Package className="w-5 h-5 text-cyan-600" />
           </div>
           <h2 className="text-xl font-bold text-gray-800">
-            {isEditando ? 'Alterar Produto' : 'Cadastrar Produto'}
+            {isEditando ? 'Alterar Complemento' : 'Cadastrar Complemento'}
           </h2>
         </div>
       </div>
@@ -232,7 +173,7 @@ const FormProdutos = ({ onClose, onSubmit, produtoParaEditar = null }) => {
           {/* Nome - Obrigatório */}
           <div>
             <label htmlFor="nome" className="block text-sm font-medium text-gray-700 mb-2">
-              Nome do Produto *
+              Nome do Complemento *
             </label>
             <input
               type="text"
@@ -242,14 +183,14 @@ const FormProdutos = ({ onClose, onSubmit, produtoParaEditar = null }) => {
               onChange={handleChange}
               required
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-              placeholder="Nome do produto"
+              placeholder="Nome do complemento"
             />
           </div>
 
           {/* Imagem - Logo abaixo do nome */}
           <div>
             <label htmlFor="imagem" className="block text-sm font-medium text-gray-700 mb-2">
-              Imagem do Produto
+              Imagem do Complemento
             </label>
             <div className="relative">
               <input
@@ -300,43 +241,7 @@ const FormProdutos = ({ onClose, onSubmit, produtoParaEditar = null }) => {
             </div>
           </div>
 
-          {/* Categoria - Obrigatório */}
-          <div>
-            <label htmlFor="categoria_id" className="block text-sm font-medium text-gray-700 mb-2">
-              Categoria *
-            </label>
-            <select
-              id="categoria_id"
-              name="categoria_id"
-              value={formData.categoria_id}
-              onChange={handleChange}
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-            >
-              <option value="">Selecione uma categoria</option>
-              {categorias.map((categoria) => (
-                <option key={categoria.id} value={categoria.id}>
-                  {categoria.nome}
-                </option>
-              ))}
-            </select>
-          </div>
 
-          {/* Descrição */}
-          <div>
-            <label htmlFor="descricao" className="block text-sm font-medium text-gray-700 mb-2">
-              Descrição
-            </label>
-            <textarea
-              id="descricao"
-              name="descricao"
-              value={formData.descricao}
-              onChange={handleChange}
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-              placeholder="Descrição do produto"
-            />
-          </div>
 
           {/* Valores */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -374,75 +279,7 @@ const FormProdutos = ({ onClose, onSubmit, produtoParaEditar = null }) => {
             </div>
           </div>
 
-          {/* Estoque */}
-          <div className="space-y-4">
-            <div className="flex items-center space-x-3">
-              <input
-                type="checkbox"
-                id="habilitar_estoque"
-                name="habilitar_estoque"
-                checked={formData.habilitar_estoque}
-                onChange={handleChange}
-                className="w-4 h-4 text-cyan-600 border-gray-300 rounded focus:ring-cyan-500"
-              />
-              <label htmlFor="habilitar_estoque" className="text-sm font-medium text-gray-700">
-                Habilitar Controle de Estoque
-              </label>
-            </div>
-            
-            {formData.habilitar_estoque && (
-              <div>
-                <label htmlFor="estoque_quantidade" className="block text-sm font-medium text-gray-700 mb-2">
-                  Quantidade em Estoque
-                </label>
-                <input
-                  type="number"
-                  id="estoque_quantidade"
-                  name="estoque_quantidade"
-                  value={formData.estoque_quantidade}
-                  onChange={handleChange}
-                  min="0"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-                  placeholder="0"
-                />
-              </div>
-            )}
-          </div>
 
-          {/* Tempo de Preparo */}
-          <div className="space-y-4">
-            <div className="flex items-center space-x-3">
-              <input
-                type="checkbox"
-                id="habilitar_tempo_preparo"
-                name="habilitar_tempo_preparo"
-                checked={formData.habilitar_tempo_preparo}
-                onChange={handleChange}
-                className="w-4 h-4 text-cyan-600 border-gray-300 rounded focus:ring-cyan-500"
-              />
-              <label htmlFor="habilitar_tempo_preparo" className="text-sm font-medium text-gray-700">
-                Habilitar Tempo de Preparo
-              </label>
-            </div>
-            
-            {formData.habilitar_tempo_preparo && (
-              <div>
-                <label htmlFor="tempo_preparo" className="block text-sm font-medium text-gray-700 mb-2">
-                  Tempo de Preparo (minutos)
-                </label>
-                <input
-                  type="number"
-                  id="tempo_preparo"
-                  name="tempo_preparo"
-                  value={formData.tempo_preparo}
-                  onChange={handleChange}
-                  min="0"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-                  placeholder="0"
-                />
-              </div>
-            )}
-          </div>
 
           {/* Espaçamento para os botões fixos */}
           <div className="h-20"></div>
@@ -481,4 +318,4 @@ const FormProdutos = ({ onClose, onSubmit, produtoParaEditar = null }) => {
   );
 };
 
-export default FormProdutos;
+export default FormComplementos;
