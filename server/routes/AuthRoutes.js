@@ -1,30 +1,39 @@
 // server/routes/AuthRoutes.js
 import express from 'express';
-import { upload, handleMulterError, validateUpload } from '../middlewares/uploadMiddleware.js';
-
 import { login } from '../controllers/login.js';
-import { getUserProfile } from '../controllers/user.js';
-import {
-  criarCategoria,
-  buscarCategoriasPorEstabelecimento,
-  atualizarCategoria,
-  atualizarStatusCategoria,
-  deletarCategoria
+import { 
+  criarCategoria, 
+  buscarCategoriasPorEstabelecimento, 
+  atualizarCategoria, 
+  atualizarStatusCategoria, 
+  deletarCategoria 
 } from '../controllers/categorias.js';
+import { 
+  criarProduto, 
+  buscarProdutosPorEstabelecimento, 
+  atualizarProduto, 
+  atualizarStatusProduto, 
+  deletarProduto 
+} from '../controllers/produtos.js';
+import { upload, handleMulterError, validateUpload } from '../middlewares/uploadMiddleware.js';
 
 const router = express.Router();
 
 // Rota de login
 router.post('/login', login);
 
-// Rota para buscar perfil do usuário
-router.get('/user/:userId/:estabelecimentoId', getUserProfile);
-
-// Rotas de Categorias com middleware de upload robusto
-router.post('/categorias', upload.single('imagem'), handleMulterError, validateUpload, criarCategoria);
+// Rotas de categorias
 router.get('/categorias/estabelecimento/:estabelecimento_id', buscarCategoriasPorEstabelecimento);
+router.post('/categorias', upload.single('imagem'), handleMulterError, validateUpload, criarCategoria);
 router.put('/categorias/:id', upload.single('imagem'), handleMulterError, validateUpload, atualizarCategoria);
 router.put('/categorias/:id/status', atualizarStatusCategoria);
 router.delete('/categorias/:id', deletarCategoria);
+
+// Rotas de produtos
+router.get('/produtos/estabelecimento/:estabelecimento_id', buscarProdutosPorEstabelecimento);
+router.post('/produtos', upload.single('imagem'), handleMulterError, validateUpload, criarProduto);
+router.put('/produtos/:id', upload.single('imagem'), handleMulterError, validateUpload, atualizarProduto);
+router.put('/produtos/:id/status', atualizarStatusProduto);
+router.delete('/produtos/:id', deletarProduto);
 
 export default router;
