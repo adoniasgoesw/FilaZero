@@ -27,14 +27,25 @@ const criarCategoria = async (req, res) => {
     
     if (req.file) {
       // Em produção (Render), usar URL completa
-      const isProduction = process.env.NODE_ENV === 'production';
+      const isProduction = process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'prod';
+      console.log('🌍 Ambiente detectado no backend:', isProduction ? 'Produção' : 'Desenvolvimento');
+      console.log('🔑 NODE_ENV:', process.env.NODE_ENV);
+      console.log('📁 Arquivo recebido:', req.file.filename);
+      
       if (isProduction) {
         imagem_url = `https://filazero-sistema-de-gestao.onrender.com/uploads/${req.file.filename}`;
       } else {
         imagem_url = `/uploads/${req.file.filename}`;
       }
-      console.log('🖼️ Imagem URL:', imagem_url);
-      console.log('🌍 Ambiente:', isProduction ? 'Produção' : 'Desenvolvimento');
+      
+      // Verificar se a URL não está duplicada
+      if (imagem_url.includes('https://filazero-sistema-de-gestao.onrender.comhttps://')) {
+        console.error('❌ ERRO: URL duplicada detectada!');
+        imagem_url = imagem_url.replace('https://filazero-sistema-de-gestao.onrender.comhttps://', 'https://');
+        console.log('🔧 URL corrigida:', imagem_url);
+      }
+      
+      console.log('🖼️ Imagem URL salva:', imagem_url);
     }
 
     // Validar campos obrigatórios

@@ -13,20 +13,28 @@ const ListCategorias = ({ onRefresh }) => {
   const getImageUrl = (imagePath) => {
     if (!imagePath) return null;
     
+    console.log('🖼️ getImageUrl chamado com:', imagePath);
+    
     // Se já é uma URL completa, retornar como está
     if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+      console.log('✅ URL já é completa, retornando como está');
       return imagePath;
     }
     
     // Detectar ambiente automaticamente
     const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+    console.log('🌍 Ambiente detectado:', isProduction ? 'Produção' : 'Desenvolvimento');
     
     if (isProduction) {
       // Produção: usar Render
-      return `https://filazero-sistema-de-gestao.onrender.com${imagePath}`;
+      const url = `https://filazero-sistema-de-gestao.onrender.com${imagePath}`;
+      console.log('🔗 URL construída para produção:', url);
+      return url;
     } else {
       // Desenvolvimento: usar localhost
-      return `http://localhost:3001${imagePath}`;
+      const url = `http://localhost:3001${imagePath}`;
+      console.log('🔗 URL construída para desenvolvimento:', url);
+      return url;
     }
   };
 
@@ -165,17 +173,21 @@ const ListCategorias = ({ onRefresh }) => {
 
             {/* Imagem */}
             <div className="w-full h-32 mb-3 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
-                             {categoria.imagem_url ? (
-                 <img
-                   src={getImageUrl(categoria.imagem_url)}
-                   alt={categoria.nome}
-                   className="w-full h-full object-cover"
-                   onError={(e) => {
-                     console.warn('Erro ao carregar imagem:', categoria.imagem_url);
-                     e.target.style.display = 'none';
-                   }}
-                 />
-               ) : (
+              {categoria.imagem_url ? (
+                <img
+                  src={getImageUrl(categoria.imagem_url)}
+                  alt={categoria.nome}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    console.warn('❌ Erro ao carregar imagem:', categoria.imagem_url);
+                    console.warn('🔗 URL tentada:', e.target.src);
+                    e.target.style.display = 'none';
+                  }}
+                  onLoad={() => {
+                    console.log('✅ Imagem carregada com sucesso:', categoria.imagem_url);
+                  }}
+                />
+              ) : (
                 <div className="text-gray-400">
                   <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2 2v12a2 2 0 002 2z" />
