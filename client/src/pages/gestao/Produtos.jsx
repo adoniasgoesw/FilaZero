@@ -8,6 +8,7 @@ import FormProdutos from '../../components/forms/FormProdutos';
 import FormComplementos from '../../components/forms/FormComplementos';
 import ListProdutos from '../../components/list/ListProdutos';
 import ListComplementos from '../../components/list/ListComplementos';
+import ErrorBoundary from '../../components/elements/ErrorBoundary';
 import { Package } from 'lucide-react';
 
 const Produtos = () => {
@@ -154,23 +155,29 @@ const Produtos = () => {
         </div>
       </div>
 
-      {/* Modal com Formulário */}
-      <BaseModal 
-        isOpen={isModalOpen} 
+      {/* Modal para formulários */}
+      <BaseModal
+        isOpen={isModalOpen}
         onClose={closeModal}
+        title={viewMode === 'produtos' ? 'Produtos' : 'Complementos'}
+        size="4xl"
       >
         {viewMode === 'produtos' ? (
-          <FormProdutos 
-            onClose={closeModal} 
-            onSubmit={handleSubmit}
-            produtoParaEditar={produtoParaEditar}
-          />
+          <ErrorBoundary>
+            <FormProdutos
+              onClose={closeModal}
+              onSubmit={handleSubmit}
+              produtoParaEditar={produtoParaEditar}
+            />
+          </ErrorBoundary>
         ) : (
-          <FormComplementos 
-            onClose={closeModal} 
-            onSubmit={handleSubmit}
-            complementoParaEditar={complementoParaEditar}
-          />
+          <ErrorBoundary>
+            <FormComplementos
+              onClose={closeModal}
+              onSubmit={handleSubmit}
+              complementoParaEditar={complementoParaEditar}
+            />
+          </ErrorBoundary>
         )}
       </BaseModal>
     </div>
