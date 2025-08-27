@@ -1,130 +1,116 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, X } from 'lucide-react';
+import CancelButton from '../buttons/CancelButton';
 
 const Notification = ({ 
   isOpen, 
   onClose, 
+  type = 'info', 
+  title, 
   message, 
   onConfirm, 
-  confirmText = "Confirmar",
-  cancelText = "Cancelar",
-  type = "warning" // warning, success, error, info
+  confirmText = 'Confirmar', 
+  cancelText = 'Cancelar', 
+  showConfirm = false 
 }) => {
   if (!isOpen) return null;
 
-  const getTypeStyles = () => {
+  const getNotificationStyle = () => {
     switch (type) {
-      case 'warning':
-        return {
-          iconBg: 'bg-amber-100',
-          iconColor: 'text-amber-600',
-          borderColor: 'border-amber-200',
-          confirmBg: 'bg-rose-500 hover:bg-rose-600', // Vermelho para exclusão
-          cancelBg: 'bg-gray-500 hover:bg-gray-600'
-        };
       case 'success':
         return {
-          iconBg: 'bg-emerald-100',
-          iconColor: 'text-emerald-600',
-          borderColor: 'border-emerald-200',
-          confirmBg: 'bg-emerald-500 hover:bg-emerald-600',
-          cancelBg: 'bg-gray-500 hover:bg-gray-600'
+          icon: '✅',
+          bgColor: 'bg-green-50',
+          borderColor: 'border-green-200',
+          iconColor: 'text-green-600',
+          titleColor: 'text-green-800',
+          iconBg: 'bg-green-100'
         };
       case 'error':
         return {
-          iconBg: 'bg-rose-100',
-          iconColor: 'text-rose-600',
-          borderColor: 'border-rose-200',
-          confirmBg: 'bg-rose-500 hover:bg-rose-600',
-          cancelBg: 'bg-gray-500 hover:bg-gray-600'
+          icon: '❌',
+          bgColor: 'bg-red-50',
+          borderColor: 'border-red-200',
+          iconColor: 'text-red-600',
+          titleColor: 'text-red-800',
+          iconBg: 'bg-red-100'
+        };
+      case 'warning':
+        return {
+          icon: '⚠️',
+          bgColor: 'bg-yellow-50',
+          borderColor: 'border-yellow-200',
+          iconColor: 'text-yellow-600',
+          titleColor: 'text-yellow-800',
+          iconBg: 'bg-yellow-100'
+        };
+      case 'delete':
+        return {
+          icon: '⚠️',
+          bgColor: 'bg-red-50',
+          borderColor: 'border-red-200',
+          iconColor: 'text-red-600',
+          titleColor: 'text-red-800',
+          iconBg: 'bg-red-100'
         };
       case 'info':
-        return {
-          iconBg: 'bg-blue-100',
-          iconColor: 'text-blue-600',
-          borderColor: 'border-blue-200',
-          confirmBg: 'bg-blue-500 hover:bg-blue-600',
-          cancelBg: 'bg-gray-500 hover:bg-gray-600'
-        };
       default:
         return {
-          iconBg: 'bg-amber-100',
-          iconColor: 'text-amber-600',
-          borderColor: 'border-amber-200',
-          confirmBg: 'bg-rose-500 hover:bg-rose-600', // Vermelho para exclusão
-          cancelBg: 'bg-gray-500 hover:bg-gray-600'
+          icon: 'ℹ️',
+          bgColor: 'bg-blue-50',
+          borderColor: 'border-blue-200',
+          iconColor: 'text-blue-600',
+          titleColor: 'text-blue-800',
+          iconBg: 'bg-blue-100'
         };
     }
   };
 
-  const styles = getTypeStyles();
+  const styles = getNotificationStyle();
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <>
-          {/* Notificação */}
-          <motion.div
-            initial={{ 
-              opacity: 0, 
-              scale: 0.8, 
-              y: -50 
-            }}
-            animate={{ 
-              opacity: 1, 
-              scale: 1, 
-              y: 0 
-            }}
-            exit={{ 
-              opacity: 0, 
-              scale: 0.8, 
-              y: -50 
-            }}
-            transition={{ 
-              type: "spring", 
-              stiffness: 300, 
-              damping: 30 
-            }}
-            className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[9999] w-80 max-w-xs"
-          >
-            {/* Card da notificação */}
-            <div className={`bg-white rounded-2xl shadow-2xl border-2 ${styles.borderColor} overflow-hidden`}>
-                             {/* Ícone de exclamação no canto superior esquerdo - Girado */}
-               <div className={`absolute -top-3 -left-3 w-12 h-12 ${styles.iconBg} rounded-full flex items-center justify-center shadow-lg border-4 border-white`}>
-                 <AlertTriangle className={`w-6 h-6 ${styles.iconColor} transform rotate-12`} />
-               </div>
-              
-                             {/* Conteúdo */}
-               <div className="pt-6 pb-4 px-5">
-                 {/* Mensagem */}
-                 <div className="text-center mb-4">
-                   <p className="text-gray-800 text-base font-medium leading-relaxed">
-                     {message}
-                   </p>
-                 </div>
-                 
-                 {/* Botões */}
-                 <div className="flex space-x-3">
-                   <button
-                     onClick={onClose}
-                     className={`flex-1 py-2.5 px-3 ${styles.cancelBg} text-white rounded-lg font-medium transition-all duration-200 hover:scale-105 shadow-md text-sm`}
-                   >
-                     {cancelText}
-                   </button>
-                   <button
-                     onClick={onConfirm}
-                     className={`flex-1 py-2.5 px-3 ${styles.confirmBg} text-white rounded-lg font-medium transition-all duration-200 hover:scale-105 shadow-md text-sm`}
-                   >
-                     {confirmText}
-                   </button>
-                 </div>
-               </div>
-            </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
+    <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+      <div className={`${styles.bgColor} ${styles.borderColor} border-2 rounded-xl p-4 max-w-xs w-full shadow-xl relative`}>
+        {/* Ícone de aviso em bolinha sobrepondo o topo e lateral esquerda */}
+        <div className={`absolute -top-3 -left-3 w-8 h-8 ${styles.iconBg} rounded-full flex items-center justify-center shadow-lg border-2 border-white`}>
+          <AlertTriangle className={`w-4 h-4 ${styles.iconColor} transform rotate-12`} />
+        </div>
+
+        {/* Header com título e botão fechar */}
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex-1 pr-8">
+            <h3 className={`text-lg font-semibold ${styles.titleColor}`}>
+              {title}
+            </h3>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors duration-200 ml-2">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Mensagem */}
+        <div className="mb-4">
+          <p className="text-gray-700 text-base leading-relaxed">
+            {message}
+          </p>
+        </div>
+
+        {/* Botões de ação - apenas se showConfirm for true */}
+        {showConfirm && (
+          <div className="flex space-x-2">
+            <CancelButton onClick={onClose} className="flex-1 bg-gray-500 hover:bg-gray-600 text-white text-base py-2">
+              {cancelText}
+            </CancelButton>
+            <button
+              onClick={() => { onConfirm(); onClose(); }}
+              className="flex-1 px-4 py-2 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 bg-red-500 hover:bg-red-600 text-white text-base"
+            >
+              {confirmText}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
 
