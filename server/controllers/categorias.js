@@ -152,10 +152,10 @@ const buscarCategoriasPorEstabelecimento = async (req, res) => {
 const atualizarCategoria = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nome, estabelecimento_id } = req.body;
+    const { nome, estabelecimento_id, descricao, cor, icone } = req.body;
     
     console.log('✏️ Iniciando atualização da categoria:', id);
-    console.log('📋 Dados recebidos:', { nome, estabelecimento_id });
+    console.log('📋 Dados recebidos:', { nome, estabelecimento_id, descricao, cor, icone });
     console.log('📁 Arquivo recebido:', req.file);
     
     // Verificar se a categoria existe
@@ -202,15 +202,36 @@ const atualizarCategoria = async (req, res) => {
       console.log('🖼️ Nova imagem URL:', imagem_url);
     }
     
+    // Preparar campos para atualização
+    const camposAtualizados = {
+      nome: nome || categoriaExistente.rows[0].nome,
+      descricao: descricao !== undefined ? descricao : categoriaExistente.rows[0].descricao,
+      cor: cor !== undefined ? cor : categoriaExistente.rows[0].cor,
+      icone: icone !== undefined ? icone : categoriaExistente.rows[0].icone,
+      imagem_url: imagem_url
+    };
+    
+    console.log('🔧 Campos que serão atualizados:', camposAtualizados);
+    
     // Atualizar categoria
     const categoriaAtualizada = await pool.query(
       `UPDATE categorias 
-       SET nome = COALESCE($1, nome), 
-           imagem_url = $2,
+       SET nome = $1, 
+           descricao = $2,
+           cor = $3,
+           icone = $4,
+           imagem_url = $5,
            updated_at = CURRENT_TIMESTAMP
-       WHERE id = $3 
+       WHERE id = $6 
        RETURNING *`,
-      [nome || categoriaExistente.rows[0].nome, imagem_url, id]
+      [
+        camposAtualizados.nome,
+        camposAtualizados.descricao,
+        camposAtualizados.cor,
+        camposAtualizados.icone,
+        camposAtualizados.imagem_url,
+        id
+      ]
     );
     
     console.log('✅ Categoria atualizada com sucesso:', categoriaAtualizada.rows[0]);
@@ -223,6 +244,8 @@ const atualizarCategoria = async (req, res) => {
     
   } catch (error) {
     console.error('❌ Erro ao atualizar categoria:', error);
+    console.error('🔍 Stack trace:', error.stack);
+    
     res.status(500).json({
       success: false,
       message: 'Erro interno do servidor',
@@ -238,7 +261,34 @@ const atualizarStatusCategoria = async (req, res) => {
     const { status } = req.body;
     
     console.log('🔄 Iniciando atualização de status da categoria:', id);
-    console.log('📊 Novo status:', status);
+    console.log('📊 Novo status recebido:', status);
+    console.log('📋 Tipo do status:', typeof status);
+    console.log('🔍 Body completo:', req.body);
+    
+    // Validar se o status foi enviado
+    if (status === undefined || status === null) {
+      return res.status(400).json({
+        success: false,
+        message: 'Status é obrigatório'
+      });
+    }
+    
+    // Converter para boolean se necessário
+    let statusBoolean = status;
+    if (typeof status === 'string') {
+      if (status.toLowerCase() === 'true' || status === '1') {
+        statusBoolean = true;
+      } else if (status.toLowerCase() === 'false' || status === '0') {
+        statusBoolean = false;
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: 'Status deve ser true ou false'
+        });
+      }
+    }
+    
+    console.log('🔧 Status convertido para boolean:', statusBoolean);
     
     // Verificar se a categoria existe
     const categoriaExistente = await pool.query(
@@ -247,11 +297,16 @@ const atualizarStatusCategoria = async (req, res) => {
     );
     
     if (categoriaExistente.rows.length === 0) {
+      console.log('❌ Categoria não encontrada:', id);
       return res.status(404).json({
         success: false,
         message: 'Categoria não encontrada'
       });
     }
+    
+    console.log('📋 Categoria encontrada:', categoriaExistente.rows[0]);
+    console.log('🔄 Status atual:', categoriaExistente.rows[0].status);
+    console.log('🔄 Novo status:', statusBoolean);
     
     // Atualizar status
     const categoriaAtualizada = await pool.query(
@@ -260,7 +315,7 @@ const atualizarStatusCategoria = async (req, res) => {
            updated_at = CURRENT_TIMESTAMP
        WHERE id = $2 
        RETURNING *`,
-      [status, id]
+      [statusBoolean, id]
     );
     
     console.log('✅ Status da categoria atualizado com sucesso:', categoriaAtualizada.rows[0]);
@@ -273,6 +328,8 @@ const atualizarStatusCategoria = async (req, res) => {
     
   } catch (error) {
     console.error('❌ Erro ao atualizar status da categoria:', error);
+    console.error('🔍 Stack trace:', error.stack);
+    
     res.status(500).json({
       success: false,
       message: 'Erro interno do servidor',
