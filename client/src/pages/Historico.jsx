@@ -9,7 +9,7 @@ const Historico = () => {
     <div className="min-h-screen bg-gray-50">
       <Sidebar />
       
-      <div className="md:ml-20 p-6">
+      <div className="md:ml-20 p-3 sm:p-6">
         <div className="flex items-center w-full">
           {/* Ícone da página */}
           <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center flex-shrink-0">

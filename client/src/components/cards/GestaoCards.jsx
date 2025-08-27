@@ -72,35 +72,72 @@ const GestaoCards = () => {
   };
 
   return (
-    <div className="flex flex-wrap justify-start gap-3 sm:gap-4 max-w-6xl">
-      {cards.map((card) => {
-        const IconComponent = card.icon;
-        return (
-          <div 
-            key={card.id} 
-            className="bg-white/90 backdrop-blur-sm rounded-xl p-3 sm:p-4 w-40 h-40 sm:w-44 sm:h-44 md:w-44 md:h-48 lg:w-48 lg:h-48 card-hover cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300 hover:transform hover:-translate-y-1 hover:scale-105"
-            onClick={() => handleCardClick(card.id, card.route)}
-          >
-            <div className="flex flex-col items-center text-center h-full justify-between">
-              {/* Ícone com gradiente */}
-              <div className={`icon-container w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-lg flex items-center justify-center bg-gradient-to-br ${card.gradient} transition-all duration-300 hover:rotate-2 hover:scale-110`}>
-                <IconComponent className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white" />
+    <div className="flex justify-center">
+      <div className="grid grid-cols-2 gap-4 max-w-6xl">
+        {/* Coluna 1 - Sempre centralizada */}
+        <div className="flex flex-col items-center space-y-4">
+          {cards.slice(0, Math.ceil(cards.length / 2)).map((card) => {
+            const IconComponent = card.icon;
+            return (
+              <div 
+                key={card.id} 
+                className="bg-white/90 backdrop-blur-sm rounded-xl p-3 sm:p-4 w-40 h-40 sm:w-44 sm:h-44 md:w-44 md:h-48 lg:w-48 lg:h-48 card-hover cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300 hover:transform hover:-translate-y-1 hover:scale-105"
+                onClick={() => handleCardClick(card.id, card.route)}
+              >
+                <div className="flex flex-col items-center text-center h-full justify-between">
+                  {/* Ícone com gradiente */}
+                  <div className={`icon-container w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-lg flex items-center justify-center bg-gradient-to-br ${card.gradient} transition-all duration-300 hover:rotate-2 hover:scale-110`}>
+                    <IconComponent className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:w-6 text-white" />
+                  </div>
+                  
+                  {/* Título e descrição */}
+                  <div>
+                    <h3 className="text-sm sm:text-base md:text-lg font-semibold text-gray-800 mb-1">{card.title}</h3>
+                    <p className="text-xs text-gray-500 leading-tight">{card.description}</p>
+                  </div>
+                  
+                  {/* Badge com estatística */}
+                  <div className={`${card.badgeBg} rounded-md px-2 py-1`}>
+                    <span className={`${card.badgeText} font-medium text-xs`}>{card.badgeValue}</span>
+                  </div>
+                </div>
               </div>
-              
-              {/* Título e descrição */}
-              <div>
-                <h3 className="text-sm sm:text-base md:text-lg font-semibold text-gray-800 mb-1">{card.title}</h3>
-                <p className="text-xs text-gray-500 leading-tight">{card.description}</p>
+            );
+          })}
+        </div>
+
+        {/* Coluna 2 - Sempre centralizada */}
+        <div className="flex flex-col items-center space-y-4">
+          {cards.slice(Math.ceil(cards.length / 2)).map((card) => {
+            const IconComponent = card.icon;
+            return (
+              <div 
+                key={card.id} 
+                className="bg-white/90 backdrop-blur-sm rounded-xl p-3 sm:p-4 w-40 h-40 sm:w-44 sm:h-44 md:w-44 md:h-48 lg:w-48 lg:h-48 card-hover cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300 hover:transform hover:-translate-y-1 hover:scale-105"
+                onClick={() => handleCardClick(card.id, card.route)}
+              >
+                <div className="flex flex-col items-center text-center h-full justify-between">
+                  {/* Ícone com gradiente */}
+                  <div className={`icon-container w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-lg flex items-center justify-center bg-gradient-to-br ${card.gradient} transition-all duration-300 hover:rotate-2 hover:scale-110`}>
+                    <IconComponent className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:w-6 text-white" />
+                  </div>
+                  
+                  {/* Título e descrição */}
+                  <div>
+                    <h3 className="text-sm sm:text-base md:text-lg font-semibold text-gray-800 mb-1">{card.title}</h3>
+                    <p className="text-xs text-gray-500 leading-tight">{card.description}</p>
+                  </div>
+                  
+                  {/* Badge com estatística */}
+                  <div className={`${card.badgeBg} rounded-md px-2 py-1`}>
+                    <span className={`${card.badgeText} font-medium text-xs`}>{card.badgeValue}</span>
+                  </div>
+                </div>
               </div>
-              
-              {/* Badge com estatística */}
-              <div className={`${card.badgeBg} rounded-md px-2 py-1`}>
-                <span className={`${card.badgeText} font-medium text-xs`}>{card.badgeValue}</span>
-              </div>
-            </div>
-          </div>
-        );
-      })}
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 };

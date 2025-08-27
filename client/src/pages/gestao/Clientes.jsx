@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Sidebar from '../../components/layout/Sidebar';
 import SearchBar from '../../components/layout/SearchBar';
 import AddButton from '../../components/buttons/AddButton';
+import BackButton from '../../components/buttons/BackButton';
 import BaseModal from '../../components/modals/Base';
 import FormClientes from '../../components/forms/FormClientes';
 import { Users } from 'lucide-react';
@@ -19,29 +20,52 @@ const Clientes = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-50">
       <Sidebar />
       
-      <div className="md:ml-20 p-6">
-        {/* Header com ícone, barra de pesquisa e botão */}
-        <div className="flex items-center justify-between w-full mb-6">
-          {/* Ícone da página */}
-          <div className="w-14 h-14 bg-teal-100 rounded-xl flex items-center justify-center flex-shrink-0">
-            <Users className="w-7 h-7 text-teal-600" />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Header com botão voltar, barra de pesquisa e botão */}
+        <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4">
+          <div className="flex items-center justify-between">
+            {/* Botão Voltar */}
+            <div className="flex-shrink-0">
+              <BackButton 
+                onClick={() => window.history.back()}
+                className="bg-gray-100 hover:bg-gray-200 text-gray-700 h-12 px-4"
+              />
+            </div>
+            
+            {/* Barra de pesquisa */}
+            <div className="flex-1 mx-6">
+              <SearchBar placeholder="Buscar clientes..." />
+            </div>
+            
+            {/* Botão ADD */}
+            <div className="flex-shrink-0">
+              <AddButton 
+                onClick={openModal}
+                text="Mais Clientes"
+                className="bg-gradient-to-r from-teal-300 to-teal-400 hover:from-teal-400 hover:to-teal-500 text-white h-12"
+              />
+            </div>
           </div>
-          
-          {/* Espaçamento */}
-          <div className="flex-1 mx-6">
-            <SearchBar />
+        </div>
+
+        {/* Título da página com ícone */}
+        <div className="bg-white px-4 sm:px-6 py-3 border-b border-gray-100">
+          <div className="flex items-center">
+            <div className="w-8 h-8 bg-teal-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Users className="w-4 h-4 text-teal-600" />
+            </div>
+            <h1 className="text-lg font-semibold text-gray-800 ml-3">Clientes</h1>
           </div>
-          
-          {/* Botão ADD */}
-          <div className="flex-shrink-0">
-            <AddButton 
-              onClick={openModal}
-              text="Mais Clientes"
-              className="bg-gradient-to-r from-teal-300 to-teal-400 hover:from-teal-400 hover:to-teal-500 text-white"
-            />
+        </div>
+
+        {/* Conteúdo Principal */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+          {/* Conteúdo da página de clientes */}
+          <div className="text-center text-gray-500 py-8">
+            <p className="text-lg">Funcionalidade de clientes em desenvolvimento</p>
           </div>
         </div>
       </div>

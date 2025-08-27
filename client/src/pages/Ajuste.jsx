@@ -11,7 +11,7 @@ const Ajuste = () => {
     <div className="min-h-screen bg-gray-50">
       <Sidebar />
       
-      <div className="md:ml-20 p-6">
+      <div className="md:ml-20 p-3 sm:p-6">
         {/* Header com ícone e título */}
         <div className="flex items-center w-full mb-6">
           <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -20,30 +20,38 @@ const Ajuste = () => {
           <h1 className="text-2xl font-bold text-gray-800 ml-4">Ajuste</h1>
         </div>
 
-        {/* Cards organizados verticalmente no canto esquerdo */}
+        {/* Cards organizados verticalmente - títulos no start, cards centralizados no mobile */}
         <div className="space-y-6 max-w-6xl mb-20 sm:mb-24 md:mb-32 lg:mb-20">
           {/* Card de Perfil */}
           <div>
             <h3 className="text-lg font-semibold text-gray-700 mb-3">Perfil</h3>
-            <ProfileCard />
+            <div className="flex justify-center md:justify-start">
+              <ProfileCard />
+            </div>
           </div>
 
           {/* Cards de Gestão */}
           <div>
             <h3 className="text-lg font-semibold text-gray-700 mb-3">Gestão</h3>
-            <GestaoCards />
+            <div className="flex justify-center md:justify-start">
+              <GestaoCards />
+            </div>
           </div>
 
           {/* Cards de Administração */}
           <div>
             <h3 className="text-lg font-semibold text-gray-700 mb-3">Administração</h3>
-            <AdministracaoCards />
+            <div className="flex justify-center md:justify-start">
+              <AdministracaoCards />
+            </div>
           </div>
 
           {/* Cards de Delivery */}
           <div>
             <h3 className="text-lg font-semibold text-gray-700 mb-3">Delivery</h3>
-            <DeliveryCards />
+            <div className="flex justify-center md:justify-start">
+              <DeliveryCards />
+            </div>
           </div>
         </div>
       </div>

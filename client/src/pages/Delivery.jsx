@@ -7,7 +7,7 @@ const Delivery = () => {
     <div className="min-h-screen bg-gray-50">
       <Sidebar />
       
-      <div className="md:ml-20 p-6">
+      <div className="md:ml-20 p-3 sm:p-6">
         <div className="flex items-center">
           <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
             <TruckIcon className="w-6 h-6 text-green-600" />

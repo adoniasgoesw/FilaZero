@@ -56,7 +56,7 @@ const ProfileCard = () => {
   }, [user, establishment]);
 
   return (
-    <div className="bg-white rounded-2xl shadow-lg w-80 overflow-hidden">
+    <div className="bg-white rounded-2xl shadow-lg w-82 overflow-hidden">
       {/* Header com Logo */}
       <div className="bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-2 flex items-center justify-between">
         <div className="flex items-center space-x-3">

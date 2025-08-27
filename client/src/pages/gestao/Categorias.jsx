@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Sidebar from '../../components/layout/Sidebar';
 import SearchBar from '../../components/layout/SearchBar';
 import AddButton from '../../components/buttons/AddButton';
+import BackButton from '../../components/buttons/BackButton';
 import BaseModal from '../../components/modals/Base';
 import FormCategorias from '../../components/forms/FormCategorias';
 import ListCategorias from '../../components/list/ListCategorias';
@@ -40,12 +41,15 @@ const Categorias = () => {
       <Sidebar />
       
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header com ícone, barra de pesquisa e botão */}
+        {/* Header com botão voltar, barra de pesquisa e botão */}
         <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between">
-            {/* Ícone da página */}
-            <div className="w-12 h-12 bg-cyan-100 rounded-xl flex items-center justify-center flex-shrink-0">
-              <Tag className="w-6 h-6 text-cyan-600" />
+            {/* Botão Voltar */}
+            <div className="flex-shrink-0">
+              <BackButton 
+                onClick={() => window.history.back()}
+                className="bg-gray-100 hover:bg-gray-200 text-gray-700 h-12 px-4"
+              />
             </div>
             
             {/* Barra de pesquisa */}
@@ -61,6 +65,16 @@ const Categorias = () => {
                 className="bg-gradient-to-r from-cyan-300 to-cyan-400 hover:from-cyan-400 hover:to-cyan-500 text-white h-12"
               />
             </div>
+          </div>
+        </div>
+
+        {/* Título da página com ícone */}
+        <div className="bg-white px-4 sm:px-6 py-3 border-b border-gray-100">
+          <div className="flex items-center">
+            <div className="w-8 h-8 bg-cyan-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Tag className="w-4 h-4 text-cyan-600" />
+            </div>
+            <h1 className="text-lg font-semibold text-gray-800 ml-3">Categorias</h1>
           </div>
         </div>
 
