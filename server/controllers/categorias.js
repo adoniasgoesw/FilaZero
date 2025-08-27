@@ -130,6 +130,137 @@ const buscarCategoriasPorEstabelecimento = async (req, res) => {
   }
 };
 
+// Atualizar categoria
+const atualizarCategoria = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nome, estabelecimento_id } = req.body;
+    
+    console.log('✏️ Iniciando atualização da categoria:', id);
+    console.log('📋 Dados recebidos:', { nome, estabelecimento_id });
+    console.log('📁 Arquivo recebido:', req.file);
+    
+    // Verificar se a categoria existe
+    const categoriaExistente = await pool.query(
+      'SELECT * FROM categorias WHERE id = $1',
+      [id]
+    );
+    
+    if (categoriaExistente.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Categoria não encontrada'
+      });
+    }
+    
+    // Verificar se já existe outra categoria com o mesmo nome no estabelecimento
+    if (nome && nome !== categoriaExistente.rows[0].nome) {
+      const categoriaComMesmoNome = await pool.query(
+        'SELECT id FROM categorias WHERE nome = $1 AND estabelecimento_id = $2 AND id != $3',
+        [nome, estabelecimento_id, id]
+      );
+      
+      if (categoriaComMesmoNome.rows.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Já existe uma categoria com este nome neste estabelecimento'
+        });
+      }
+    }
+    
+    // Preparar dados para atualização
+    let imagem_url = categoriaExistente.rows[0].imagem_url;
+    
+    if (req.file) {
+      // Em produção (Render), usar URL completa
+      const isProduction = process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'prod';
+      
+      if (isProduction) {
+        imagem_url = `https://filazero-sistema-de-gestao.onrender.com/uploads/${req.file.filename}`;
+      } else {
+        imagem_url = `/uploads/${req.file.filename}`;
+      }
+      
+      console.log('🖼️ Nova imagem URL:', imagem_url);
+    }
+    
+    // Atualizar categoria
+    const categoriaAtualizada = await pool.query(
+      `UPDATE categorias 
+       SET nome = COALESCE($1, nome), 
+           imagem_url = $2
+       WHERE id = $3 
+       RETURNING *`,
+      [nome || categoriaExistente.rows[0].nome, imagem_url, id]
+    );
+    
+    console.log('✅ Categoria atualizada com sucesso:', categoriaAtualizada.rows[0]);
+    
+    res.json({
+      success: true,
+      message: 'Categoria atualizada com sucesso',
+      data: categoriaAtualizada.rows[0]
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro ao atualizar categoria:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro interno do servidor',
+      error: error.message
+    });
+  }
+};
+
+// Atualizar status da categoria
+const atualizarStatusCategoria = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    
+    console.log('🔄 Iniciando atualização de status da categoria:', id);
+    console.log('📊 Novo status:', status);
+    
+    // Verificar se a categoria existe
+    const categoriaExistente = await pool.query(
+      'SELECT * FROM categorias WHERE id = $1',
+      [id]
+    );
+    
+    if (categoriaExistente.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Categoria não encontrada'
+      });
+    }
+    
+    // Atualizar status (sem updated_at pois não existe na tabela)
+    const categoriaAtualizada = await pool.query(
+      `UPDATE categorias 
+       SET status = $1
+       WHERE id = $2 
+       RETURNING *`,
+      [status, id]
+    );
+    
+    console.log('✅ Status da categoria atualizado com sucesso:', categoriaAtualizada.rows[0]);
+    
+    res.json({
+      success: true,
+      message: 'Status da categoria atualizado com sucesso',
+      data: categoriaAtualizada.rows[0]
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro ao atualizar status da categoria:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro interno do servidor',
+      error: error.message
+    });
+  }
+};
+
 // Deletar categoria
 const deletarCategoria = async (req, res) => {
   try {
@@ -194,5 +325,7 @@ const deletarCategoria = async (req, res) => {
 export {
   criarCategoria,
   buscarCategoriasPorEstabelecimento,
+  atualizarCategoria,
+  atualizarStatusCategoria,
   deletarCategoria
 };

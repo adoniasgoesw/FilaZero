@@ -19,21 +19,28 @@ const ListCategorias = ({ onRefresh, onAction }) => {
       return imagePath;
     }
     
-    // Detectar ambiente automaticamente
-    const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
-    console.log('🌍 Ambiente detectado:', isProduction ? 'Produção' : 'Desenvolvimento');
-    
-    if (isProduction) {
-      // Produção: usar Render
-      const url = `https://filazero-sistema-de-gestao.onrender.com${imagePath}`;
-      console.log('🔗 URL construída para produção:', url);
-      return url;
-    } else {
-      // Desenvolvimento: usar localhost
-      const url = `http://localhost:3001${imagePath}`;
-      console.log('🔗 URL construída para desenvolvimento:', url);
-      return url;
+    // Se começa com /uploads, é um caminho relativo que precisa ser processado
+    if (imagePath.startsWith('/uploads/')) {
+      // Detectar ambiente automaticamente
+      const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+      console.log('🌍 Ambiente detectado:', isProduction ? 'Produção' : 'Desenvolvimento');
+      
+      if (isProduction) {
+        // Produção: usar Render
+        const url = `https://filazero-sistema-de-gestao.onrender.com${imagePath}`;
+        console.log('🔗 URL construída para produção:', url);
+        return url;
+      } else {
+        // Desenvolvimento: usar localhost
+        const url = `http://localhost:3001${imagePath}`;
+        console.log('🔗 URL construída para desenvolvimento:', url);
+        return url;
+      }
     }
+    
+    // Se não for nenhum dos casos acima, retornar como está
+    console.log('⚠️ Caminho não reconhecido, retornando como está:', imagePath);
+    return imagePath;
   };
 
   // Buscar categorias do banco de dados
@@ -66,7 +73,7 @@ const ListCategorias = ({ onRefresh, onAction }) => {
   // Função para ativar/desativar categoria
   const toggleStatusCategoria = async (id, novoStatus) => {
     try {
-      const response = await api.put(`/categorias/${id}`, { status: novoStatus });
+      const response = await api.put(`/categorias/${id}/status`, { status: novoStatus });
       if (response.data.success) {
         const statusText = novoStatus ? 'ativada' : 'desativada';
         alert(`Categoria ${statusText} com sucesso!`);
@@ -125,17 +132,19 @@ const ListCategorias = ({ onRefresh, onAction }) => {
   return (
     <div className="space-y-4">
       {/* Grid de categorias */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-3 sm:gap-4">
         {categorias.map((categoria) => (
           <div
             key={categoria.id}
-            className={`relative bg-white border rounded-xl p-3 hover:shadow-lg transition-all duration-200 cursor-pointer group ${
+            className={`relative bg-white border rounded-xl p-2 sm:p-3 hover:shadow-lg transition-all duration-200 cursor-pointer group ${
               categoria.status ? 'border-gray-200' : 'border-gray-300 opacity-75'
             }`}
             onClick={() => setActiveCard(activeCard === categoria.id ? null : categoria.id)}
           >
-            {/* Botões de ação - aparecem no hover */}
-            <div className="absolute top-3 right-3 flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            {/* Botões de ação - aparecem no clique */}
+            <div className={`absolute top-4 right-4 flex space-x-2 transition-opacity duration-200 z-10 ${
+              activeCard === categoria.id ? 'opacity-100' : 'opacity-0'
+            }`}>
               {/* Ativar/Desativar */}
               <button
                 onClick={(e) => {
@@ -144,8 +153,8 @@ const ListCategorias = ({ onRefresh, onAction }) => {
                 }}
                 className={`w-6 h-6 rounded-full text-white transition-colors flex items-center justify-center ${
                   categoria.status
-                    ? 'bg-yellow-500 hover:bg-yellow-600'
-                    : 'bg-emerald-500 hover:bg-emerald-600'
+                    ? 'bg-orange-500 hover:bg-orange-600' // Laranja para desativar (quando está ativa)
+                    : 'bg-emerald-500 hover:bg-emerald-600' // Verde para ativar (quando está inativa)
                 }`}
                 title={categoria.status ? 'Desativar' : 'Ativar'}
               >
@@ -178,7 +187,7 @@ const ListCategorias = ({ onRefresh, onAction }) => {
             </div>
 
             {/* Imagem */}
-            <div className="w-full aspect-square mb-3 rounded-xl overflow-hidden bg-gray-100 flex items-center justify-center">
+            <div className="relative w-full aspect-square mb-2 sm:mb-3 rounded-xl overflow-hidden bg-gray-100 flex items-center justify-center">
               {categoria.imagem_url ? (
                 <img
                   src={getImageUrl(categoria.imagem_url)}
@@ -200,25 +209,27 @@ const ListCategorias = ({ onRefresh, onAction }) => {
                   </svg>
                 </div>
               )}
+              
+              {/* Status - DENTRO da imagem, canto inferior direito */}
+              <div className="absolute bottom-2 right-2 z-10">
+                <span
+                  className={`px-2 py-1 rounded-full text-xs font-medium shadow-md ${
+                    categoria.status
+                      ? 'bg-emerald-500 text-white'
+                      : 'bg-rose-500 text-white'
+                  }`}
+                >
+                  {categoria.status ? 'Ativa' : 'Inativa'}
+                </span>
+              </div>
             </div>
 
             {/* Nome */}
-            <h3 className="font-medium text-gray-800 text-center mb-2 truncate">
+            <h3 className="font-medium text-gray-800 text-center mb-1 sm:mb-2 truncate text-sm sm:text-base">
               {categoria.nome}
             </h3>
 
-            {/* Status - canto inferior direito */}
-            <div className="absolute bottom-3 right-3">
-              <span
-                className={`px-2 py-1 rounded-full text-xs font-medium shadow-md ${
-                  categoria.status
-                    ? 'bg-emerald-500 text-white'
-                    : 'bg-rose-500 text-white'
-                }`}
-              >
-                {categoria.status ? 'Ativa' : 'Inativa'}
-              </span>
-            </div>
+
           </div>
         ))}
       </div>

@@ -17,7 +17,11 @@ const NODE_ENV = process.env.NODE_ENV || 'development';
 
 // Middlewares
 app.use(cors({
-  origin: 'http://localhost:5173',
+  origin: [
+    'http://localhost:5173',
+    'https://filazero.netlify.app',
+    'https://filazero-sistema-de-gestao.netlify.app'
+  ],
   credentials: true
 }));
 
@@ -84,10 +88,7 @@ const testDatabaseConnection = async () => {
 
 testDatabaseConnection();
 
-// Middleware de upload para categorias
-app.post('/api/categorias', upload.single('imagem'), (req, res, next) => {
-  next();
-});
+
 
 // Rotas
 app.use('/api', AuthRoutes);

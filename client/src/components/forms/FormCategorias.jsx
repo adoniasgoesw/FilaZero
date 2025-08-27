@@ -3,6 +3,33 @@ import { Tag } from 'lucide-react';
 import CancelButton from '../buttons/CancelButton';
 import api from '../../services/api.js';
 
+  // Função helper para construir URL da imagem
+  const getImageUrl = (imagePath) => {
+    if (!imagePath) return null;
+    
+    // Se já é uma URL completa, retornar como está
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+      return imagePath;
+    }
+    
+    // Se começa com /uploads, é um caminho relativo que precisa ser processado
+    if (imagePath.startsWith('/uploads/')) {
+      // Detectar ambiente automaticamente
+      const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+      
+      if (isProduction) {
+        // Produção: usar Render
+        return `https://filazero-sistema-de-gestao.onrender.com${imagePath}`;
+      } else {
+        // Desenvolvimento: usar localhost
+        return `http://localhost:3001${imagePath}`;
+      }
+    }
+    
+    // Se não for nenhum dos casos acima, retornar como está
+    return imagePath;
+  };
+
 const FormCategorias = ({ onClose, onSubmit, categoriaParaEditar = null }) => {
   const [formData, setFormData] = useState({
     nome: categoriaParaEditar?.nome || '',
@@ -14,27 +41,6 @@ const FormCategorias = ({ onClose, onSubmit, categoriaParaEditar = null }) => {
   );
   
   const isEditando = !!categoriaParaEditar;
-  
-  // Função helper para construir URL da imagem
-  const getImageUrl = (imagePath) => {
-    if (!imagePath) return null;
-    
-    // Se já é uma URL completa, retornar como está
-    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
-      return imagePath;
-    }
-    
-    // Detectar ambiente automaticamente
-    const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
-    
-    if (isProduction) {
-      // Produção: usar Render
-      return `https://filazero-sistema-de-gestao.onrender.com${imagePath}`;
-    } else {
-      // Desenvolvimento: usar localhost
-      return `http://localhost:3001${imagePath}`;
-    }
-  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -69,6 +75,11 @@ const FormCategorias = ({ onClose, onSubmit, categoriaParaEditar = null }) => {
       
       if (formData.imagem) {
         formDataToSend.append('imagem', formData.imagem);
+      }
+      
+      // Se estiver editando, incluir o ID da categoria
+      if (isEditando) {
+        formDataToSend.append('id', categoriaParaEditar.id);
       }
 
       // Log do que está sendo enviado
