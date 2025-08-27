@@ -172,8 +172,11 @@ const atualizarCategoria = async (req, res) => {
     let imagem_url = categoriaExistente.rows[0].imagem_url;
     
     if (req.file) {
-      // Em produção (Render), usar URL completa
-      const isProduction = process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'prod';
+      // Detectar ambiente de forma mais robusta
+      const isProduction = process.env.NODE_ENV === 'production' || 
+                          process.env.RENDER === 'true' ||
+                          process.env.HOSTNAME?.includes('render.com') ||
+                          req.get('host')?.includes('render.com');
       
       if (isProduction) {
         imagem_url = `https://filazero-sistema-de-gestao.onrender.com/uploads/${req.file.filename}`;

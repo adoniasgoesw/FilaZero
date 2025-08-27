@@ -21,9 +21,11 @@ const ListCategorias = ({ onRefresh, onAction }) => {
     
     // Se começa com /uploads, é um caminho relativo que precisa ser processado
     if (imagePath.startsWith('/uploads/')) {
-      // Detectar ambiente automaticamente
-      const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+      // Detectar ambiente baseado na URL atual da aplicação
+      const currentUrl = window.location.href;
+      const isProduction = currentUrl.includes('netlify.app') || currentUrl.includes('onrender.com');
       console.log('🌍 Ambiente detectado:', isProduction ? 'Produção' : 'Desenvolvimento');
+      console.log('🔗 URL atual:', currentUrl);
       
       if (isProduction) {
         // Produção: usar Render
