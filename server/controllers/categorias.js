@@ -6,6 +6,12 @@ const criarCategoria = async (req, res) => {
     console.log('📝 Iniciando criação de categoria...');
     console.log('📁 Arquivo recebido:', req.file);
     console.log('📋 Body recebido:', req.body);
+    console.log('🔍 Headers:', req.headers);
+    console.log('🌐 URL:', req.originalUrl);
+    console.log('📡 Método:', req.method);
+    console.log('🌍 Ambiente:', process.env.NODE_ENV);
+    console.log('🔑 Content-Type:', req.get('Content-Type'));
+    console.log('📦 FormData keys:', Object.keys(req.body));
     
     const {
       estabelecimento_id,
@@ -17,14 +23,28 @@ const criarCategoria = async (req, res) => {
     } = req.body;
 
     // Verificar se a imagem foi enviada
-    const imagem_url = req.file ? `/uploads/${req.file.filename}` : null;
-    console.log('🖼️ Imagem URL:', imagem_url);
+    let imagem_url = null;
+    
+    if (req.file) {
+      // Em produção (Render), usar URL completa
+      const isProduction = process.env.NODE_ENV === 'production';
+      if (isProduction) {
+        imagem_url = `https://filazero-sistema-de-gestao.onrender.com/uploads/${req.file.filename}`;
+      } else {
+        imagem_url = `/uploads/${req.file.filename}`;
+      }
+      console.log('🖼️ Imagem URL:', imagem_url);
+      console.log('🌍 Ambiente:', isProduction ? 'Produção' : 'Desenvolvimento');
+    }
 
     // Validar campos obrigatórios
     if (!estabelecimento_id || !nome) {
+      console.log('❌ Validação falhou:', { estabelecimento_id, nome });
       return res.status(400).json({
         success: false,
-        message: 'Estabelecimento ID e nome são obrigatórios'
+        message: 'Estabelecimento ID e nome são obrigatórios',
+        received: { estabelecimento_id, nome },
+        body: req.body
       });
     }
 

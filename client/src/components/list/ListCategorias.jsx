@@ -13,6 +13,11 @@ const ListCategorias = ({ onRefresh }) => {
   const getImageUrl = (imagePath) => {
     if (!imagePath) return null;
     
+    // Se já é uma URL completa, retornar como está
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+      return imagePath;
+    }
+    
     // Detectar ambiente automaticamente
     const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
     

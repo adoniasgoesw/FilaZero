@@ -68,13 +68,11 @@ app.use((req, res, next) => {
   }
 });
 
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
 // Configuração do Multer para upload de imagens
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, 'uploads/');
+    const uploadsPath = path.join(__dirname, 'uploads');
+    cb(null, uploadsPath);
   },
   filename: function (req, file, cb) {
     // Gerar nome único para o arquivo
@@ -100,16 +98,32 @@ const upload = multer({
   }
 });
 
+// Middleware de upload para categorias (DEVE VIR ANTES dos middlewares de parsing)
+app.post('/api/categorias', upload.single('imagem'), (req, res, next) => {
+  console.log('📁 Upload processado:', req.file);
+  console.log('📋 Body recebido:', req.body);
+  console.log('🔍 Headers:', req.headers);
+  console.log('🌍 Ambiente:', process.env.NODE_ENV);
+  next();
+});
+
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
 // Configurar pasta de uploads para servir arquivos estáticos
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+const uploadsPath = path.join(__dirname, 'uploads');
+app.use('/uploads', express.static(uploadsPath));
+console.log('📁 Servindo arquivos estáticos de:', uploadsPath);
 
 // Garantir que a pasta uploads existe
 import fs from 'fs';
-if (!fs.existsSync('uploads')) {
-  fs.mkdirSync('uploads');
-  console.log('✅ Pasta uploads criada');
+if (!fs.existsSync(uploadsPath)) {
+  fs.mkdirSync(uploadsPath, { recursive: true });
+  console.log('✅ Pasta uploads criada:', uploadsPath);
+} else {
+  console.log('✅ Pasta uploads já existe:', uploadsPath);
 }
 
 // Headers de segurança
@@ -144,6 +158,8 @@ const testDatabaseConnection = async () => {
 };
 
 testDatabaseConnection();
+
+
 
 // Rotas
 app.use('/api', AuthRoutes);

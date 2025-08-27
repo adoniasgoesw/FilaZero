@@ -28,6 +28,8 @@ const FormCategorias = ({ onClose, onSubmit }) => {
     try {
       // Pegar o estabelecimento ID do localStorage
       const estabelecimento = JSON.parse(localStorage.getItem('filaZero_establishment'));
+      console.log('🏪 Estabelecimento encontrado:', estabelecimento);
+      
       if (!estabelecimento || !estabelecimento.id) {
         alert('Erro: Estabelecimento não encontrado!');
         return;
@@ -40,6 +42,17 @@ const FormCategorias = ({ onClose, onSubmit }) => {
       
       if (formData.imagem) {
         formDataToSend.append('imagem', formData.imagem);
+      }
+
+      // Log do que está sendo enviado
+      console.log('📤 Dados sendo enviados:');
+      console.log('🏪 Estabelecimento ID:', estabelecimento.id);
+      console.log('📝 Nome:', formData.nome);
+      console.log('🖼️ Imagem:', formData.imagem ? 'Sim' : 'Não');
+      
+      // Log do FormData
+      for (let [key, value] of formDataToSend.entries()) {
+        console.log(`📦 ${key}:`, value);
       }
 
       const response = await api.post('/categorias', formDataToSend, {
