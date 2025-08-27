@@ -71,15 +71,6 @@ app.use((req, res, next) => {
 // Configuração do Multer movida para middleware dedicado
 // para evitar conflitos com as rotas
 
-// Middleware de upload para categorias (DEVE VIR ANTES dos middlewares de parsing)
-app.post('/api/categorias', upload.single('imagem'), (req, res, next) => {
-  console.log('📁 Upload processado:', req.file);
-  console.log('📋 Body recebido:', req.body);
-  console.log('🔍 Headers:', req.headers);
-  console.log('🌍 Ambiente:', process.env.NODE_ENV);
-  next();
-});
-
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
