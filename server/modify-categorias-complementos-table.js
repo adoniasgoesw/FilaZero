@@ -38,3 +38,4 @@ const modifyCategoriasComplementosTable = async () => {
 
 modifyCategoriasComplementosTable();
 
+
