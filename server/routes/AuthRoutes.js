@@ -27,7 +27,8 @@ import {
   listarCategoriasPorProduto, 
   atualizarCategoriaComplemento,
   atualizarStatusCategoriaComplemento,
-  deletarCategoriaComplemento
+  deletarCategoriaComplemento,
+  atualizarProdutoIdCategorias
 } from '../controllers/categoriaComplementos.js';
 import { upload, handleMulterError, validateUpload } from '../middlewares/uploadMiddleware.js';
 
@@ -60,6 +61,7 @@ router.delete('/complementos/:id', deletarComplemento);
 // Rotas de categorias de complementos
 router.post('/categorias-complementos', criarCategoriaComplemento);
 router.get('/categorias-complementos/produto/:produtoId', listarCategoriasPorProduto);
+router.put('/categorias-complementos/atualizar-produto-id', atualizarProdutoIdCategorias);
 router.put('/categorias-complementos/:id', atualizarCategoriaComplemento);
 router.put('/categorias-complementos/:id/status', atualizarStatusCategoriaComplemento);
 router.delete('/categorias-complementos/:id', deletarCategoriaComplemento);

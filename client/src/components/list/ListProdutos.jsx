@@ -38,6 +38,16 @@ const ListProdutos = ({ onRefresh, onAction }) => {
     }
   };
 
+  // Função helper para lidar com erro de imagem
+  const handleImageError = (e) => {
+    if (e.target) {
+      e.target.style.display = 'none';
+    }
+    if (e.target && e.target.nextSibling) {
+      e.target.nextSibling.style.display = 'flex';
+    }
+  };
+
   // Função para mostrar notificação
   const showNotification = (type, title, message, onConfirm = null, showConfirm = false) => {
     setNotification({
@@ -208,10 +218,7 @@ const ListProdutos = ({ onRefresh, onAction }) => {
                 src={getImageUrl(produto.imagem_url)}
                 alt={produto.nome}
                 className="w-full h-full object-cover"
-                onError={(e) => {
-                  e.target.style.display = 'none';
-                  e.target.nextSibling.style.display = 'flex';
-                }}
+                onError={handleImageError}
               />
             ) : null}
             {(!produto.imagem_url || produto.imagem_url === '') && (
@@ -299,10 +306,7 @@ const ListProdutos = ({ onRefresh, onAction }) => {
               src={getImageUrl(produto.imagem_url)}
               alt={produto.nome}
               className="w-full h-full object-cover"
-              onError={(e) => {
-                e.target.style.display = 'none';
-                e.target.nextSibling.style.display = 'flex';
-              }}
+              onError={handleImageError}
             />
           ) : null}
           {(!produto.imagem_url || produto.imagem_url === '') && (
@@ -421,10 +425,7 @@ const ListProdutos = ({ onRefresh, onAction }) => {
                             src={getImageUrl(produto.imagem_url)}
                             alt={produto.nome}
                           className="w-full h-full object-cover rounded-lg"
-                            onError={(e) => {
-                              e.target.style.display = 'none';
-                            e.target.nextSibling.style.display = 'flex';
-                          }}
+                            onError={handleImageError}
                         />
                       ) : null}
                       {(!produto.imagem_url || produto.imagem_url === '') && (

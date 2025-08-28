@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { CreditCard } from 'lucide-react';
-import AddButton from '../buttons/AddButton';
 import CancelButton from '../buttons/CancelButton';
+import SaveButton from '../buttons/SaveButton';
 
 const FormPagamentos = ({ onClose, onSubmit }) => {
   const [formData, setFormData] = useState({
@@ -34,15 +34,20 @@ const FormPagamentos = ({ onClose, onSubmit }) => {
   };
 
   return (
-    <div className="p-6">
-      <div className="flex items-center space-x-3 mb-6">
-        <div className="w-10 h-10 bg-pink-100 rounded-lg flex items-center justify-center">
-          <CreditCard className="w-5 h-5 text-pink-600" />
+    <div className="flex flex-col h-full">
+      {/* Header fixo - sempre visível */}
+      <div className="flex-shrink-0 bg-white border-b border-gray-200 p-6">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 bg-pink-100 rounded-lg flex items-center justify-center">
+            <CreditCard className="w-5 h-5 text-pink-600" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-800">Cadastrar Forma de Pagamento</h2>
         </div>
-        <h2 className="text-xl font-bold text-gray-800">Cadastrar Forma de Pagamento</h2>
       </div>
-      
-      <form onSubmit={handleSubmit} className="space-y-4">
+
+      {/* Formulário com scroll - ocupa o espaço restante */}
+      <div className="flex-1 overflow-y-auto p-6">
+        <form onSubmit={handleSubmit} className="space-y-4">
         {/* Nome */}
         <div>
           <label htmlFor="nome" className="block text-sm font-medium text-gray-700 mb-1">
@@ -113,22 +118,27 @@ const FormPagamentos = ({ onClose, onSubmit }) => {
           />
         </div>
 
-        {/* Botões */}
-        <div className="flex space-x-3 pt-4">
-          <CancelButton
-            onClick={onClose}
-            className="flex-1 bg-gray-500 hover:bg-gray-600 text-white"
-          />
-          <button
-            type="submit"
-            className="flex-1 bg-gradient-to-r from-pink-300 to-pink-400 hover:from-pink-400 hover:to-pink-500 text-white h-12 px-4 rounded-xl font-medium transition-all duration-200"
-          >
-            Cadastrar
-          </button>
-        </div>
+        {/* Espaçamento para os botões fixos */}
+        <div className="h-20"></div>
       </form>
     </div>
-  );
+
+    {/* Botões fixos na parte inferior */}
+    <div className="flex-shrink-0 bg-white border-t border-gray-200 p-4">
+      <div className="flex space-x-3">
+        <CancelButton
+          onClick={onClose}
+          className="flex-1 bg-gray-500 hover:bg-gray-600 text-white"
+        />
+        <SaveButton
+          onClick={handleSubmit}
+          text="Salvar"
+          className="flex-1"
+        />
+      </div>
+    </div>
+  </div>
+);
 };
 
 export default FormPagamentos;

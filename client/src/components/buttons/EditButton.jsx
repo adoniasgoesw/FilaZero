@@ -1,12 +1,12 @@
 import React from 'react';
-import { Info } from 'lucide-react';
+import { Edit3 } from 'lucide-react';
 
-const InfButton = ({ 
+const EditButton = ({ 
   onClick, 
   className = '', 
-  text = 'Informações', 
+  text = 'Editar', 
   size = 'default',
-  variant = 'info'
+  variant = 'primary'
 }) => {
   const sizeClasses = {
     small: 'px-3 py-1.5 text-xs',
@@ -15,7 +15,7 @@ const InfButton = ({
   };
 
   const variantClasses = {
-    info: 'bg-blue-500 hover:bg-blue-600 text-white',
+    primary: 'bg-blue-500 hover:bg-blue-600 text-white',
     secondary: 'bg-gray-500 hover:bg-gray-600 text-white',
     outline: 'border border-blue-500 text-blue-500 hover:bg-blue-50'
   };
@@ -25,12 +25,12 @@ const InfButton = ({
   return (
     <button
       onClick={onClick}
-      className={`${baseClasses} ${variantClasses[variant] || variantClasses.info} ${className}`}
+      className={`${baseClasses} ${variantClasses[variant] || variantClasses.primary} ${className}`}
     >
-      <Info className="w-4 h-4" />
+      <Edit3 className="w-4 h-4" />
       <span>{text}</span>
     </button>
   );
 };
 
-export default InfButton;
+export default EditButton;

@@ -114,12 +114,12 @@ const criarProduto = async (req, res) => {
         descricao, 
         categoria_id,
         imagem_url, 
-        valor_venda || null,
-        valor_custo || null,
+        valor_venda && valor_venda !== '' ? parseFloat(valor_venda) : null,
+        valor_custo && valor_custo !== '' ? parseFloat(valor_custo) : null,
         habilitarEstoque,
-        habilitarEstoque ? (estoque_quantidade || 0) : 0,
+        habilitarEstoque ? (parseInt(estoque_quantidade) || 0) : 0,
         habilitarTempoPreparo,
-        habilitarTempoPreparo ? (tempo_preparo || 0) : 0,
+        habilitarTempoPreparo ? (parseInt(tempo_preparo) || 0) : 0,
         statusBoolean
       ]
     );
@@ -265,12 +265,12 @@ const atualizarProduto = async (req, res) => {
       nome: nome || produtoExistente.rows[0].nome,
       descricao: descricao !== undefined ? descricao : produtoExistente.rows[0].descricao,
       categoria_id: categoria_id || produtoExistente.rows[0].categoria_id,
-      valor_venda: valor_venda !== undefined ? valor_venda : produtoExistente.rows[0].valor_venda,
-      valor_custo: valor_custo !== undefined ? valor_custo : produtoExistente.rows[0].valor_custo,
+      valor_venda: valor_venda !== undefined && valor_venda !== '' ? parseFloat(valor_venda) : produtoExistente.rows[0].valor_venda,
+      valor_custo: valor_custo !== undefined && valor_custo !== '' ? parseFloat(valor_custo) : produtoExistente.rows[0].valor_custo,
       habilita_estoque: habilitarEstoque,
-      estoque_qtd: habilitarEstoque ? (estoque_quantidade || 0) : 0,
+      estoque_qtd: habilitarEstoque ? (parseInt(estoque_quantidade) || 0) : 0,
       habilita_tempo_preparo: habilitarTempoPreparo,
-      tempo_preparo_min: habilitarTempoPreparo ? (tempo_preparo || 0) : 0,
+      tempo_preparo_min: habilitarTempoPreparo ? (parseInt(tempo_preparo) || 0) : 0,
       imagem_url: imagem_url
     };
     

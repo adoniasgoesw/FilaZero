@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Package, Tag, ChefHat, Utensils, Power, PowerOff } from 'lucide-react';
 import CancelButton from '../buttons/CancelButton';
-import AddButton from '../buttons/AddButton';
-import SalveButton from '../buttons/SalveButton';
+import SaveButton from '../buttons/SaveButton';
+
 import CopyButton from '../buttons/CopyButton';
 import ListagemCategoriaComplementos from '../list/ListagemCategoriaComplementos';
+import ListComplementos from '../list/ListComplementos.jsx';
+import ListItemsComplementos from '../list/ListItemsComplementos.jsx';
 import Notification from '../elements/Notification.jsx';
+import SearchBar from '../layout/SearchBar.jsx';
 import api from '../../services/api.js';
 
 const FormProdutos = ({ onClose, onSubmit, produtoParaEditar = null }) => {
@@ -55,6 +58,11 @@ const FormProdutos = ({ onClose, onSubmit, produtoParaEditar = null }) => {
   // Estado para categorias de complementos
   const [categoriasComplementos, setCategoriasComplementos] = useState([]);
   const [showFormCategoria, setShowFormCategoria] = useState(false);
+  const [showAdicionarComplementos, setShowAdicionarComplementos] = useState(false);
+  const [complementosSelecionados, setComplementosSelecionados] = useState([]);
+  const [complementosPorCategoria, setComplementosPorCategoria] = useState({});
+  const [complementosDisponiveis, setComplementosDisponiveis] = useState([]);
+  const [categoriaAtualParaComplementos, setCategoriaAtualParaComplementos] = useState(null);
   const [categoriasEditadas, setCategoriasEditadas] = useState({});
   const [novaCategoria, setNovaCategoria] = useState({
     nome: '',
@@ -76,49 +84,303 @@ const FormProdutos = ({ onClose, onSubmit, produtoParaEditar = null }) => {
   
   const isEditando = !!produtoParaEditar;
 
-  // Funções para gerenciar categorias de complementos
-  const handleSalvarCategoria = async () => {
-    if (!novaCategoria.nome.trim()) {
-      showNotification('error', 'Erro', 'Nome da categoria é obrigatório');
-      return;
-    }
-    
-    if (novaCategoria.quantidade_minima > novaCategoria.quantidade_maxima) {
-      showNotification('error', 'Erro', 'Quantidade mínima não pode ser maior que a máxima');
-      return;
-    }
 
+
+  // Função para salvar as categorias de complementos no banco de dados
+  const salvarCategoriasComplementosNoBanco = async (produtoId) => {
     try {
-      setLoading(true);
+      console.log('💾 Salvando categorias de complementos no banco para o produto:', produtoId);
       
       // Buscar estabelecimento do localStorage
       const estabelecimento = JSON.parse(localStorage.getItem('filaZero_establishment'));
       if (!estabelecimento || !estabelecimento.id) {
-        showNotification('error', 'Erro', 'Estabelecimento não encontrado');
+        console.warn('⚠️ Estabelecimento não encontrado');
         return;
       }
 
-      // Preparar dados para enviar
-      const categoriaData = {
-        produto_id: produtoParaEditar?.id || null, // Será definido quando o produto for salvo
-        nome: novaCategoria.nome.trim(),
-        quantidade_minima: novaCategoria.quantidade_minima,
-        quantidade_maxima: novaCategoria.quantidade_maxima,
-        preenchimento_obrigatorio: novaCategoria.preenchimento_obrigatorio,
-        status: novaCategoria.status
-      };
+      let categoriasSalvas = 0;
+      const categoriasTemporarias = [];
 
-      // Enviar para a API
-      const response = await api.post('/categorias-complementos', categoriaData);
+      // Processar categorias temporárias (novas)
+      console.log('🔍 Categorias para processar:', categoriasComplementos);
+      console.log('🔍 Categorias editadas:', categoriasEditadas);
       
-      if (response.data.success) {
-        // Adicionar à lista local com o ID retornado do backend
-        const novaCategoriaCompleta = {
-          ...response.data.data,
-          criado_em: new Date().toISOString()
-        };
+      for (const categoria of categoriasComplementos) {
+        console.log('🔍 Processando categoria:', categoria);
+        console.log('🔍 É temporária?', categoria.isTemporary);
+        console.log('🔍 ID da categoria:', categoria.id);
+        console.log('🔍 ID começa com temp_?', categoria.id.toString().startsWith('temp_'));
+        
+        if (categoria.isTemporary || categoria.id.toString().startsWith('temp_')) {
+          console.log('✅ Categoria temporária encontrada, criando no banco...');
+          // Categoria nova - criar no banco sem produto_id
+          const categoriaData = {
+            produto_id: null, // Será atualizado depois
+            nome: categoria.nome,
+            quantidade_minima: categoria.quantidade_minima,
+            quantidade_maxima: categoria.quantidade_maxima,
+            preenchimento_obrigatorio: categoria.preenchimento_obrigatorio,
+            status: categoria.status
+          };
 
-        setCategoriasComplementos(prev => [...prev, novaCategoriaCompleta]);
+          console.log('📤 Dados da categoria para enviar:', categoriaData);
+
+          try {
+            const response = await api.post('/categorias-complementos', categoriaData);
+            console.log('📥 Resposta da API:', response.data);
+            if (response.data.success) {
+              categoriasTemporarias.push(response.data.data.id);
+              categoriasSalvas++;
+              console.log('✅ Categoria temporária criada no banco:', response.data.data);
+            }
+          } catch (error) {
+            console.error('❌ Erro ao criar categoria temporária no banco:', error);
+            console.error('❌ Detalhes do erro:', error.response?.data);
+          }
+        } else if (categoriasEditadas[categoriasComplementos.indexOf(categoria)]) {
+          // Categoria existente editada - atualizar no banco apenas se não for temporária
+          const categoriaEditada = categoriasEditadas[categoriasComplementos.indexOf(categoria)];
+          
+          // Verificar se não é temporária
+          if (!categoria.isTemporary && !categoria.id.toString().startsWith('temp_')) {
+            try {
+              const response = await api.put(`/categorias-complementos/${categoria.id}`, categoriaEditada);
+              if (response.data.success) {
+                categoriasSalvas++;
+                console.log('✅ Categoria atualizada no banco:', response.data.data);
+              }
+            } catch (error) {
+              console.error('❌ Erro ao atualizar categoria no banco:', error);
+            }
+          } else {
+            // Se for temporária editada, criar no banco como nova
+            console.log('✅ Categoria temporária editada encontrada, criando no banco...');
+            const categoriaData = {
+              produto_id: null, // Será atualizado depois
+              nome: categoriaEditada.nome || categoria.nome,
+              quantidade_minima: categoriaEditada.quantidade_minima !== undefined ? categoriaEditada.quantidade_minima : categoria.quantidade_minima,
+              quantidade_maxima: categoriaEditada.quantidade_maxima !== undefined ? categoriaEditada.quantidade_maxima : categoria.quantidade_maxima,
+              preenchimento_obrigatorio: categoriaEditada.preenchimento_obrigatorio !== undefined ? categoriaEditada.preenchimento_obrigatorio : categoria.preenchimento_obrigatorio,
+              status: categoriaEditada.status !== undefined ? categoriaEditada.status : categoria.status
+            };
+
+            try {
+              const response = await api.post('/categorias-complementos', categoriaData);
+              if (response.data.success) {
+                categoriasTemporarias.push(response.data.data.id);
+                categoriasSalvas++;
+                console.log('✅ Categoria temporária editada criada no banco:', response.data.data);
+              }
+            } catch (error) {
+              console.error('❌ Erro ao criar categoria temporária editada no banco:', error);
+            }
+          }
+        }
+      }
+
+      // Se houver categorias temporárias, atualizar o produto_id delas
+      console.log('🔍 Categorias temporárias para atualizar produto_id:', categoriasTemporarias);
+      if (categoriasTemporarias.length > 0) {
+        console.log('✅ Atualizando produto_id das categorias temporárias...');
+        try {
+          const updateData = {
+            produto_id: produtoId,
+            categoria_ids: categoriasTemporarias
+          };
+          console.log('📤 Dados para atualizar produto_id:', updateData);
+          
+          const response = await api.put('/categorias-complementos/atualizar-produto-id', updateData);
+          console.log('📥 Resposta da atualização de produto_id:', response.data);
+          
+          if (response.data.success) {
+            console.log('✅ produto_id atualizado para categorias temporárias:', response.data.data);
+            
+            // AGORA salvar os complementos temporários para essas categorias
+            await salvarComplementosTemporarios(categoriasTemporarias);
+          }
+        } catch (error) {
+          console.error('❌ Erro ao atualizar produto_id das categorias:', error);
+          console.error('❌ Detalhes do erro:', error.response?.data);
+        }
+      } else {
+        console.log('⚠️ Nenhuma categoria temporária para atualizar produto_id');
+      }
+
+      // Limpar estado de edição
+      setCategoriasEditadas({});
+      
+      if (categoriasSalvas > 0) {
+        console.log(`🎉 ${categoriasSalvas} categorias salvas/atualizadas no banco de dados!`);
+      }
+    } catch (error) {
+      console.error('❌ Erro ao salvar categorias no banco:', error);
+    }
+  };
+
+  // Função para salvar complementos temporários após as categorias serem salvas
+  const salvarComplementosTemporarios = async (categoriaIds) => {
+    try {
+      console.log('💾 Salvando complementos temporários para categorias:', categoriaIds);
+      
+      for (const categoriaId of categoriaIds) {
+        // Encontrar a categoria temporária correspondente
+        const categoriaTemp = categoriasComplementos.find(cat => 
+          cat.id.toString().startsWith('temp_') && 
+          complementosPorCategoria[cat.id]
+        );
+        
+        if (categoriaTemp && complementosPorCategoria[categoriaTemp.id]) {
+          const complementosIds = complementosPorCategoria[categoriaTemp.id];
+          console.log(`📝 Salvando ${complementosIds.length} complementos para categoria ${categoriaId}`);
+          
+          try {
+            const response = await api.post('/itens-complementos/multiplos', {
+              categoria_id: categoriaId,
+              complemento_ids: complementosIds
+            });
+            
+            if (response.data.success) {
+              console.log(`✅ Complementos salvos para categoria ${categoriaId}:`, response.data.data);
+              
+              // Atualizar o estado local com o novo ID da categoria
+              setComplementosPorCategoria(prev => {
+                const newState = { ...prev };
+                // Remover entrada temporária e adicionar com ID real
+                delete newState[categoriaTemp.id];
+                newState[categoriaId] = complementosIds;
+                return newState;
+              });
+            }
+          } catch (error) {
+            console.error(`❌ Erro ao salvar complementos para categoria ${categoriaId}:`, error);
+          }
+        }
+      }
+      
+      // Também salvar complementos de novas categorias quando editando produto existente
+      if (isEditando && produtoParaEditar?.id && complementosPorCategoria.nova) {
+        console.log('💾 EDITANDO PRODUTO - Salvando complementos de nova categoria...');
+        
+        // Encontrar a categoria recém-criada (deve ser a última da lista)
+        const categoriaRecemCriada = categoriasComplementos[categoriasComplementos.length - 1];
+        
+        if (categoriaRecemCriada && !categoriaRecemCriada.id.toString().startsWith('temp_')) {
+          const complementosIds = complementosPorCategoria.nova;
+          console.log(`📝 Salvando ${complementosIds.length} complementos para nova categoria ${categoriaRecemCriada.id}`);
+          
+          try {
+            const response = await api.post('/itens-complementos/multiplos', {
+              categoria_id: categoriaRecemCriada.id,
+              complemento_ids: complementosIds
+            });
+            
+            if (response.data.success) {
+              console.log(`✅ Complementos salvos para nova categoria ${categoriaRecemCriada.id}:`, response.data.data);
+              
+              // Atualizar o estado local
+              setComplementosPorCategoria(prev => {
+                const newState = { ...prev };
+                // Remover entrada 'nova' e adicionar com ID real da categoria
+                delete newState.nova;
+                newState[categoriaRecemCriada.id] = complementosIds;
+                return newState;
+              });
+            }
+          } catch (error) {
+            console.error(`❌ Erro ao salvar complementos para nova categoria ${categoriaRecemCriada.id}:`, error);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('❌ Erro ao salvar complementos temporários:', error);
+    }
+  };
+
+  // Função para salvar TODAS as categorias (novas + editadas) - SALVA NO BANCO SE EDITANDO
+  const handleSalvarTodasCategorias = async () => {
+    try {
+      console.log('🔍 handleSalvarTodasCategorias iniciado');
+      console.log('🔍 showFormCategoria:', showFormCategoria);
+      console.log('🔍 novaCategoria:', novaCategoria);
+      console.log('🔍 isEditando:', isEditando);
+      console.log('🔍 produtoParaEditar:', produtoParaEditar);
+      
+      setLoading(true);
+      
+      // Salvar categoria nova se existir
+      if (showFormCategoria && novaCategoria.nome.trim()) {
+        console.log('✅ Categoria válida encontrada...');
+        
+        if (novaCategoria.quantidade_minima > novaCategoria.quantidade_maxima) {
+          showNotification('error', 'Erro', 'Quantidade mínima não pode ser maior que a máxima');
+          return;
+        }
+
+        if (isEditando && produtoParaEditar?.id) {
+          // EDITANDO PRODUTO EXISTENTE - Salvar categoria diretamente no banco
+          console.log('💾 EDITANDO PRODUTO - Salvando categoria diretamente no banco...');
+          
+          try {
+            const categoriaData = {
+              produto_id: produtoParaEditar.id,
+              nome: novaCategoria.nome.trim(),
+              quantidade_minima: novaCategoria.quantidade_minima,
+              quantidade_maxima: novaCategoria.quantidade_maxima,
+              preenchimento_obrigatorio: novaCategoria.preenchimento_obrigatorio,
+              status: novaCategoria.status
+            };
+
+            console.log('📤 Dados da categoria para enviar:', categoriaData);
+            
+            const response = await api.post('/categorias-complementos', categoriaData);
+            
+            if (response.data.success) {
+              const categoriaSalva = response.data.data;
+              console.log('✅ Categoria salva no banco:', categoriaSalva);
+              
+              // Adicionar ao estado local com ID real
+              setCategoriasComplementos(prev => {
+                const newState = [...prev, categoriaSalva];
+                console.log('✅ Estado atualizado com categoria do banco:', newState);
+                return newState;
+              });
+              
+              showNotification('success', 'Categoria Salva!', 'Categoria salva diretamente no banco de dados! 🎉');
+            } else {
+              showNotification('error', 'Erro', 'Erro ao salvar categoria no banco');
+            }
+          } catch (error) {
+            console.error('❌ Erro ao salvar categoria no banco:', error);
+            showNotification('error', 'Erro', 'Erro ao salvar categoria no banco. Tente novamente.');
+          }
+        } else {
+          // NOVO PRODUTO - Criar categoria temporária
+          console.log('🆕 NOVO PRODUTO - Criando categoria temporária...');
+          
+          const novaCategoriaTemp = {
+            id: `temp_${Date.now()}`, // ID temporário
+            produto_id: null, // Será definido quando o produto for salvo
+            nome: novaCategoria.nome.trim(),
+            quantidade_minima: novaCategoria.quantidade_minima,
+            quantidade_maxima: novaCategoria.quantidade_maxima,
+            preenchimento_obrigatorio: novaCategoria.preenchimento_obrigatorio,
+            status: novaCategoria.status,
+            criado_em: new Date().toISOString(),
+            isTemporary: true // Marca como temporária
+          };
+
+          console.log('✅ Categoria temporária criada:', novaCategoriaTemp);
+
+          // Adicionar ao estado local
+          setCategoriasComplementos(prev => {
+            const newState = [...prev, novaCategoriaTemp];
+            console.log('✅ Estado atualizado com categoria temporária:', newState);
+            return newState;
+          });
+          
+          showNotification('success', 'Categoria Adicionada!', 'Categoria adicionada ao produto. Salve o produto para persistir no banco de dados! 🎉');
+        }
+        
         setShowFormCategoria(false);
         setNovaCategoria({
           nome: '',
@@ -127,108 +389,16 @@ const FormProdutos = ({ onClose, onSubmit, produtoParaEditar = null }) => {
           preenchimento_obrigatorio: false,
           status: true
         });
-        
-  
       } else {
-        showNotification('error', 'Erro', response.data.message || 'Erro ao criar categoria');
-      }
-    } catch (error) {
-      console.error('Erro ao criar categoria:', error);
-      showNotification('error', 'Erro', 'Erro ao criar categoria. Tente novamente.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Função para salvar TODAS as categorias (novas + editadas)
-  const handleSalvarTodasCategorias = async () => {
-    try {
-      setLoading(true);
-      
-      let categoriasSalvas = 0;
-      
-      // Buscar estabelecimento do localStorage
-      const estabelecimento = JSON.parse(localStorage.getItem('filaZero_establishment'));
-      if (!estabelecimento || !estabelecimento.id) {
-        showNotification('error', 'Erro', 'Estabelecimento não encontrado');
-        return;
+        console.log('⚠️ Nenhuma categoria válida para salvar');
       }
 
-      // Salvar categoria nova se existir
-      if (showFormCategoria && novaCategoria.nome.trim()) {
-        if (novaCategoria.quantidade_minima > novaCategoria.quantidade_maxima) {
-          showNotification('error', 'Erro', 'Quantidade mínima não pode ser maior que a máxima');
-          return;
-        }
-
-        const categoriaData = {
-          produto_id: produtoParaEditar?.id || null,
-          nome: novaCategoria.nome.trim(),
-          quantidade_minima: novaCategoria.quantidade_minima,
-          quantidade_maxima: novaCategoria.quantidade_maxima,
-          preenchimento_obrigatorio: novaCategoria.preenchimento_obrigatorio,
-          status: novaCategoria.status
-        };
-
-        const response = await api.post('/categorias-complementos', categoriaData);
-        
-        if (response.data.success) {
-          const novaCategoriaCompleta = {
-            ...response.data.data,
-            criado_em: new Date().toISOString()
-          };
-
-          setCategoriasComplementos(prev => [...prev, novaCategoriaCompleta]);
-          setShowFormCategoria(false);
-          setNovaCategoria({
-            nome: '',
-            quantidade_minima: 0,
-            quantidade_maxima: 0,
-            preenchimento_obrigatorio: false,
-            status: true
-          });
-        } else {
-          showNotification('error', 'Erro', response.data.message || 'Erro ao criar categoria');
-          return;
-        }
-        
-        categoriasSalvas++;
-      }
-
-      // Salvar/atualizar categorias existentes que foram editadas
-      for (let i = 0; i < categoriasComplementos.length; i++) {
-        const categoria = categoriasComplementos[i];
-        const categoriaEditada = categoriasEditadas[i];
-        
-        if (categoriaEditada) {
-          try {
-            const response = await api.put(`/categorias-complementos/${categoria.id}`, categoriaEditada);
-            
-            if (response.data.success) {
-              // Atualizar na lista local
-              setCategoriasComplementos(prev => 
-                prev.map((cat, index) => 
-                  index === i ? response.data.data : cat
-                )
-              );
-              categoriasSalvas++;
-            }
-          } catch (error) {
-            console.error('Erro ao atualizar categoria:', error);
-          }
-        }
-      }
-      
       // Limpar estado de edição
       setCategoriasEditadas({});
       
-      // Mostrar notificação de sucesso
-      if (categoriasSalvas > 0) {
-        showNotification('success', 'Categorias Salvas!', 'Categorias de complementos salvas com sucesso! 🎉');
-      }
     } catch (error) {
-      console.error('Erro ao salvar categorias:', error);
-      showNotification('error', 'Erro', 'Erro ao salvar categorias. Tente novamente.');
+      console.error('Erro ao processar categorias:', error);
+      showNotification('error', 'Erro', 'Erro ao processar categorias. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -239,7 +409,26 @@ const FormProdutos = ({ onClose, onSubmit, produtoParaEditar = null }) => {
       const categoria = categoriasComplementos[index];
       const novoStatus = !categoria.status;
       
-      // Atualizar no backend
+      // Se é categoria temporária, apenas atualizar no estado local
+      if (categoria.isTemporary || categoria.id.toString().startsWith('temp_')) {
+        console.log('📝 Atualizando status de categoria temporária no estado local');
+        
+        setCategoriasComplementos(prev => 
+          prev.map((cat, i) => 
+            i === index ? { ...cat, status: novoStatus } : cat
+          )
+        );
+        
+        // Marcar como editada
+        setCategoriasEditadas(prev => ({
+          ...prev,
+          [index]: { ...prev[index], status: novoStatus }
+        }));
+        
+        return;
+      }
+      
+      // Se é categoria do banco, atualizar no backend
       const response = await api.put(`/categorias-complementos/${categoria.id}/status`, {
         status: novoStatus
       });
@@ -251,8 +440,6 @@ const FormProdutos = ({ onClose, onSubmit, produtoParaEditar = null }) => {
             i === index ? { ...cat, status: novoStatus } : cat
           )
         );
-        
-
       } else {
         showNotification('error', 'Erro', 'Erro ao atualizar status');
       }
@@ -263,40 +450,39 @@ const FormProdutos = ({ onClose, onSubmit, produtoParaEditar = null }) => {
   };
 
   const handleAdicionarComplemento = (categoria) => {
-    // TODO: Implementar adição de complementos
+    setShowAdicionarComplementos(true);
     console.log('Adicionando complemento para categoria:', categoria);
-    showNotification('info', 'Info', 'Funcionalidade de adicionar complementos será implementada em breve');
+    // Armazenar a categoria atual para salvar os complementos
+    setCategoriaAtualParaComplementos(categoria);
   };
 
-  const handleEditarCategoria = async (categoriaEditada, index) => {
-    try {
-      setLoading(true);
-      
-      const response = await api.put(`/categorias-complementos/${categoriaEditada.id}`, categoriaEditada);
-      
-      if (response.data.success) {
-        setCategoriasComplementos(prev => 
-          prev.map((cat, i) => i === index ? response.data.data : cat)
-        );
-  
-      } else {
-        showNotification('error', 'Erro', response.data.message || 'Erro ao atualizar categoria');
-      }
-    } catch (error) {
-      console.error('Erro ao atualizar categoria:', error);
-      showNotification('error', 'Erro', 'Erro ao atualizar categoria. Tente novamente.');
-    } finally {
-      setLoading(false);
-    }
-  };
+
 
   const handleDeletarCategoria = async (categoriaId, index) => {
     try {
+      const categoria = categoriasComplementos[index];
+      
+      // Se é categoria temporária, apenas remover do estado local
+      if (categoria.isTemporary || categoria.id.toString().startsWith('temp_')) {
+        console.log('📝 Removendo categoria temporária do estado local');
+        
+        setCategoriasComplementos(prev => prev.filter((_, i) => i !== index));
+        
+        // Remover das editadas também
+        setCategoriasEditadas(prev => {
+          const newEditadas = { ...prev };
+          delete newEditadas[index];
+          return newEditadas;
+        });
+        
+        return;
+      }
+      
+      // Se é categoria do banco, deletar no backend
       const response = await api.delete(`/categorias-complementos/${categoriaId}`);
       
       if (response.data.success) {
         setCategoriasComplementos(prev => prev.filter((_, i) => i !== index));
-  
       } else {
         showNotification('error', 'Erro', response.data.message || 'Erro ao deletar categoria');
       }
@@ -318,6 +504,9 @@ const FormProdutos = ({ onClose, onSubmit, produtoParaEditar = null }) => {
       if (response.data.success) {
         setCategoriasComplementos(response.data.data);
         console.log('📋 Categorias de complementos carregadas:', response.data.data);
+        
+        // Buscar itens de complementos para cada categoria
+        await buscarItensComplementosPorCategorias(response.data.data);
       }
     } catch (error) {
       console.error('❌ Erro ao buscar categorias de complementos:', error);
@@ -329,6 +518,48 @@ const FormProdutos = ({ onClose, onSubmit, produtoParaEditar = null }) => {
           status: error.response?.status
         });
       }
+    }
+  };
+
+  // Buscar itens de complementos para todas as categorias
+  const buscarItensComplementosPorCategorias = async (categorias) => {
+    try {
+      const itensPorCategoria = {};
+      
+      for (const categoria of categorias) {
+        if (categoria.id && !categoria.isTemporary) {
+          const response = await api.get(`/itens-complementos/categoria/${categoria.id}`);
+          if (response.data.success) {
+            // Extrair apenas os IDs dos complementos
+            const complementoIds = response.data.data.map(item => item.complemento_id);
+            itensPorCategoria[categoria.id] = complementoIds;
+          }
+        }
+      }
+      
+      setComplementosPorCategoria(itensPorCategoria);
+      console.log('📋 Itens de complementos carregados:', itensPorCategoria);
+    } catch (error) {
+      console.error('❌ Erro ao buscar itens de complementos:', error);
+    }
+  };
+
+  // Buscar complementos disponíveis do estabelecimento
+  const buscarComplementosDisponiveis = async () => {
+    try {
+      const estabelecimento = JSON.parse(localStorage.getItem('filaZero_establishment'));
+      
+      if (!estabelecimento || !estabelecimento.id) {
+        console.error('Estabelecimento não encontrado');
+        return;
+      }
+
+      const response = await api.get(`/complementos/estabelecimento/${estabelecimento.id}`);
+      if (response.data.success) {
+        setComplementosDisponiveis(response.data.data);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar complementos:', error);
     }
   };
 
@@ -365,6 +596,7 @@ const FormProdutos = ({ onClose, onSubmit, produtoParaEditar = null }) => {
   // Carregar categorias quando o componente montar
   useEffect(() => {
     buscarCategorias();
+    buscarComplementosDisponiveis();
     if (produtoParaEditar?.id) {
       buscarCategoriasComplementos();
     }
@@ -485,9 +717,14 @@ const FormProdutos = ({ onClose, onSubmit, produtoParaEditar = null }) => {
       }
 
       if (response.data.success) {
+        const produtoSalvo = response.data.data;
+        
+        // AGORA salvar as categorias de complementos no banco de dados
+        await salvarCategoriasComplementosNoBanco(produtoSalvo.id);
+        
         const mensagem = isEditando ? 'Produto atualizado com sucesso!' : 'Produto criado com sucesso!';
         showNotification('success', 'Sucesso', mensagem);
-        onSubmit(response.data.data);
+        onSubmit(produtoSalvo);
         onClose();
       } else {
         showNotification('error', 'Erro', 'Erro ao ' + (isEditando ? 'atualizar' : 'criar') + ' produto: ' + response.data.message);
@@ -784,19 +1021,22 @@ const FormProdutos = ({ onClose, onSubmit, produtoParaEditar = null }) => {
         {/* Área de Complementos */}
         {activeTab === 'complementos' && (
           <div className="space-y-4">
-            {/* Botões de Ação */}
-            <div className="flex space-x-3 mb-4">
-              <AddButton
-                onClick={() => setShowFormCategoria(true)}
-                text="Adicionar Categoria"
-                className="bg-gradient-to-r from-orange-400 to-orange-500 hover:from-orange-500 hover:to-orange-600 text-white"
-              />
-              <CopyButton
-                onClick={() => {/* TODO: Implementar copiar complementos */}}
-                text="Copiar Complementos"
-                className="bg-gradient-to-r from-purple-400 to-purple-500 hover:from-purple-500 hover:to-purple-600 text-white"
-              />
-            </div>
+            {/* Modo Normal - Mostrar componentes de categoria */}
+            {!showAdicionarComplementos && (
+              <>
+                {/* Botões de Ação */}
+                <div className="flex space-x-3 mb-4">
+                  <SaveButton
+                    onClick={() => setShowFormCategoria(true)}
+                    text="Adicionar Categoria"
+                    className="bg-gradient-to-r from-orange-400 to-orange-500 hover:from-orange-500 hover:to-orange-600 text-white"
+                  />
+                  <CopyButton
+                    onClick={() => {/* TODO: Implementar copiar complementos */}}
+                    text="Copiar Complementos"
+                    className="bg-gradient-to-r from-purple-400 to-purple-500 hover:from-purple-500 hover:to-purple-600 text-white"
+                  />
+                </div>
 
             {/* Formulário para Nova Categoria - Card Compacto */}
             {showFormCategoria && (
@@ -883,13 +1123,22 @@ const FormProdutos = ({ onClose, onSubmit, produtoParaEditar = null }) => {
                     </label>
                   </div>
 
+                  {/* Lista de Complementos Selecionados */}
+                  <ListItemsComplementos
+                    complementosSelecionados={complementosPorCategoria.nova || []}
+                    complementos={complementosDisponiveis}
+                    onRemoverComplemento={(complementoId) => {
+                      setComplementosPorCategoria(prev => ({
+                        ...prev,
+                        nova: (prev.nova || []).filter(id => id !== complementoId)
+                      }));
+                    }}
+                  />
+
                   {/* Botão Adicionar Complementos */}
                   <div className="flex justify-end pt-1">
-                    <AddButton
-                      onClick={() => {
-                        // TODO: Implementar adição de complementos
-                        console.log('Adicionando complementos para nova categoria');
-                      }}
+                    <SaveButton
+                      onClick={() => setShowAdicionarComplementos(true)}
                       text="Adicionar Complementos"
                       className="text-xs px-3 py-1.5 bg-gradient-to-r from-blue-400 to-blue-500 hover:from-blue-500 hover:to-blue-600 text-white"
                     />
@@ -905,17 +1154,38 @@ const FormProdutos = ({ onClose, onSubmit, produtoParaEditar = null }) => {
               setCategoriasEditadas={setCategoriasEditadas}
               onToggleStatus={handleToggleStatus}
               onAdicionarComplemento={handleAdicionarComplemento}
-              onEditarCategoria={handleEditarCategoria}
               onDeletarCategoria={handleDeletarCategoria}
+              complementosPorCategoria={complementosPorCategoria}
+              complementosDisponiveis={complementosDisponiveis}
+              onRemoverComplemento={(categoriaId, complementoId) => {
+                setComplementosPorCategoria(prev => ({
+                  ...prev,
+                  [categoriaId]: (prev[categoriaId] || []).filter(id => id !== complementoId)
+                }));
+              }}
             />
+              </>
+            )}
 
-            {/* Mensagem quando não há categorias */}
-            {!showFormCategoria && categoriasComplementos.length === 0 && (
-              <div className="text-center py-8">
-                <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <Utensils className="w-6 h-6 text-orange-600" />
+            {/* Modo Adicionar Complementos - Mostrar barra de pesquisa */}
+            {showAdicionarComplementos && (
+              <div className="space-y-4">
+                {/* Barra de Pesquisa - Livre, sem borda externa */}
+                <SearchBar placeholder="Buscar complementos..." />
+
+                {/* Cabeçalho Complementos */}
+                <div className="bg-gray-100 border border-gray-200 rounded-lg p-3 mb-3">
+                  <h3 className="text-sm font-semibold text-gray-700">Complementos</h3>
                 </div>
-                <p className="text-sm text-gray-600">Nenhuma categoria criada</p>
+
+                {/* Listagem de Complementos - Modificada para seleção */}
+                <ListComplementos 
+                  onRefresh={null}
+                  onAction={null}
+                  modoSelecao={true}
+                  complementosSelecionados={complementosSelecionados}
+                  setComplementosSelecionados={setComplementosSelecionados}
+                />
               </div>
             )}
           </div>
@@ -930,13 +1200,14 @@ const FormProdutos = ({ onClose, onSubmit, produtoParaEditar = null }) => {
               </div>
               <h3 className="text-lg font-medium text-gray-800 mb-2">Gerenciar Receita</h3>
               <p className="text-gray-600 mb-6">Configure os ingredientes e instruções de preparo</p>
-              <button
-                type="button"
-                className="bg-gradient-to-r from-green-400 to-green-500 hover:from-green-500 hover:to-green-600 text-white px-6 py-3 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 mx-auto"
-              >
-                <ChefHat className="w-5 h-5" />
-                <span>Adicionar Receita</span>
-              </button>
+              <SaveButton
+                onClick={() => {
+                  // TODO: Implementar adição de receita
+                  console.log('Adicionando receita para o produto');
+                }}
+                text="Adicionar Receita"
+                className="bg-gradient-to-r from-green-400 to-green-500 hover:from-green-500 hover:to-green-600 text-white px-6 py-3 text-base"
+              />
             </div>
           </div>
         )}
@@ -946,25 +1217,114 @@ const FormProdutos = ({ onClose, onSubmit, produtoParaEditar = null }) => {
       <div className="flex-shrink-0 bg-white border-t border-gray-200 p-4">
         <div className="flex space-x-3">
           <CancelButton
-            onClick={onClose}
+            onClick={
+              showAdicionarComplementos 
+                ? () => {
+                    setShowAdicionarComplementos(false);
+                    setComplementosSelecionados([]);
+                  }
+                : onClose
+            }
             className="flex-1 bg-gray-500 hover:bg-gray-600 text-white"
           />
-          {activeTab === 'detalhes' && (
-            <AddButton
-              onClick={handleSubmit}
-              text={loading ? 'Processando...' : (isEditando ? 'Alterar' : 'Cadastrar')}
-              disabled={loading}
-              className="flex-1 bg-gradient-to-r from-cyan-300 to-cyan-400 hover:from-cyan-400 hover:to-cyan-500 text-white h-12 px-4 rounded-xl font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-            />
-          )}
-          {activeTab === 'complementos' && (
-            <SalveButton
-              onClick={handleSalvarTodasCategorias}
-              text={loading ? 'Salvando...' : 'Salvar Categorias'}
-              disabled={loading}
-              className="flex-1 bg-gradient-to-r from-green-400 to-green-500 hover:from-green-500 hover:to-green-600 text-white h-12 px-4 rounded-xl font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-            />
-          )}
+          <SaveButton
+            onClick={
+              showAdicionarComplementos 
+                ? async () => {
+                    try {
+                      console.log('🔄 Salvando complementos selecionados:', complementosSelecionados);
+                      
+                      // Salvar complementos selecionados
+                      if (showFormCategoria) {
+                        // Nova categoria sendo criada - verificar se é novo produto ou editando
+                        if (isEditando && produtoParaEditar?.id) {
+                          // EDITANDO PRODUTO - complementos serão salvos quando a categoria for salva
+                          console.log('💾 EDITANDO PRODUTO - Complementos serão salvos com a categoria');
+                          setComplementosPorCategoria(prev => ({
+                            ...prev,
+                            nova: complementosSelecionados
+                          }));
+                        } else {
+                          // NOVO PRODUTO - salvar complementos temporariamente
+                          setComplementosPorCategoria(prev => ({
+                            ...prev,
+                            nova: complementosSelecionados
+                          }));
+                          console.log('✅ Complementos salvos temporariamente para nova categoria');
+                        }
+                      } else {
+                        // Categoria existente sendo editada - verificar se é temporária
+                        if (categoriaAtualParaComplementos && categoriaAtualParaComplementos.id) {
+                          const isTemporaryCategory = categoriaAtualParaComplementos.isTemporary || 
+                                                   categoriaAtualParaComplementos.id.toString().startsWith('temp_');
+                          
+                          if (isTemporaryCategory) {
+                            // CATEGORIA TEMPORÁRIA - salvar complementos temporariamente
+                            console.log('📝 Categoria temporária, salvando complementos temporariamente');
+                            setComplementosPorCategoria(prev => ({
+                              ...prev,
+                              [categoriaAtualParaComplementos.id]: complementosSelecionados
+                            }));
+                            
+                            showNotification('success', 'Complementos Adicionados!', 'Complementos adicionados temporariamente. Salve a categoria para persistir no banco de dados! 🎉');
+                          } else {
+                            // CATEGORIA EXISTENTE NO BANCO - salvar complementos IMEDIATAMENTE
+                            console.log('💾 Categoria existente - Salvando complementos IMEDIATAMENTE no banco para categoria ID:', categoriaAtualParaComplementos.id);
+                            
+                            try {
+                              const response = await api.post('/itens-complementos/multiplos', {
+                                categoria_id: categoriaAtualParaComplementos.id,
+                                complemento_ids: complementosSelecionados
+                              });
+                              
+                              if (response.data.success) {
+                                console.log('✅ Complementos salvos IMEDIATAMENTE no banco:', response.data.data);
+                                
+                                // Atualizar estado local
+                                setComplementosPorCategoria(prev => ({
+                                  ...prev,
+                                  [categoriaAtualParaComplementos.id]: complementosSelecionados
+                                }));
+                                
+                                showNotification('success', 'Complementos Salvos!', 'Complementos salvos diretamente no banco de dados! 🎉');
+                              } else {
+                                console.error('❌ Erro na resposta da API:', response.data);
+                                showNotification('error', 'Erro', 'Erro ao salvar complementos no banco');
+                              }
+                            } catch (error) {
+                              console.error('❌ Erro ao salvar complementos no banco:', error);
+                              showNotification('error', 'Erro', 'Erro ao salvar complementos no banco. Tente novamente.');
+                            }
+                          }
+                        } else {
+                          console.warn('⚠️ Nenhuma categoria válida encontrada para salvar');
+                          showNotification('warning', 'Atenção', 'Nenhuma categoria válida encontrada para salvar complementos');
+                        }
+                      }
+                      
+                      console.log('✅ Complementos salvos na categoria:', complementosSelecionados);
+                      setShowAdicionarComplementos(false);
+                      setComplementosSelecionados([]);
+                      setCategoriaAtualParaComplementos(null);
+                    } catch (error) {
+                      console.error('❌ Erro ao salvar complementos:', error);
+                      // TODO: Mostrar notificação de erro
+                    }
+                  }
+                : activeTab === 'detalhes' 
+                  ? handleSubmit 
+                  : handleSalvarTodasCategorias
+            }
+            text={
+              showAdicionarComplementos 
+                ? `Adicionar Complementos (${complementosSelecionados.length})` 
+                : loading 
+                  ? 'Salvando...' 
+                  : 'Salvar'
+            }
+            disabled={loading}
+            className="flex-1"
+          />
         </div>
       </div>
 

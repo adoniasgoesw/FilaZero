@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { Power, PowerOff, Plus, Trash2, Check } from 'lucide-react';
+import React from 'react';
+import { Power, PowerOff, Plus, Trash2, Check, Utensils } from 'lucide-react';
 import AddButton from '../buttons/AddButton';
+import ListItemsComplementos from './ListItemsComplementos.jsx';
 
 const ListagemCategoriaComplementos = ({ 
   categorias, 
@@ -8,8 +9,10 @@ const ListagemCategoriaComplementos = ({
   setCategoriasEditadas,
   onToggleStatus, 
   onAdicionarComplemento,
-  onEditarCategoria,
-  onDeletarCategoria 
+  onDeletarCategoria,
+  complementosPorCategoria = {},
+  complementosDisponiveis = [],
+  onRemoverComplemento
 }) => {
 
   // Função para atualizar campo editado
@@ -29,7 +32,7 @@ const ListagemCategoriaComplementos = ({
     return (
       <div className="text-center py-8">
         <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-3">
-          <Plus className="w-6 h-6 text-orange-600" />
+          <Utensils className="w-6 h-6 text-orange-600" />
         </div>
         <p className="text-sm text-gray-600">Nenhuma categoria criada</p>
       </div>
@@ -121,6 +124,17 @@ const ListagemCategoriaComplementos = ({
                    Preenchimento obrigatório
                  </span>
                </div>
+
+               {/* Lista de Complementos Selecionados */}
+               <ListItemsComplementos
+                 complementosSelecionados={complementosPorCategoria[categoria.id] || []}
+                 complementos={complementosDisponiveis}
+                 onRemoverComplemento={(complementoId) => {
+                   if (onRemoverComplemento) {
+                     onRemoverComplemento(categoria.id, complementoId);
+                   }
+                 }}
+               />
 
                              {/* Footer com Botões */}
                <div className="flex justify-between items-center pt-3 border-t border-gray-100">

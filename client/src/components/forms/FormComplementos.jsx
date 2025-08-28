@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Package, Tag } from 'lucide-react';
 import CancelButton from '../buttons/CancelButton';
-import AddButton from '../buttons/AddButton';
+import SaveButton from '../buttons/SaveButton';
 import Notification from '../elements/Notification.jsx';
 import api from '../../services/api.js';
 
@@ -293,11 +293,11 @@ const FormComplementos = ({ onClose, onSubmit, complementoParaEditar = null }) =
             onClick={onClose}
             className="flex-1 bg-gray-500 hover:bg-gray-600 text-white"
           />
-          <AddButton
+          <SaveButton
             onClick={handleSubmit}
-            text={loading ? 'Processando...' : (isEditando ? 'Alterar' : 'Cadastrar')}
+            text={loading ? 'Processando...' : 'Salvar'}
             disabled={loading}
-            className="flex-1 bg-gradient-to-r from-cyan-300 to-cyan-400 hover:from-cyan-400 hover:to-cyan-500 text-white h-12 px-4 rounded-xl font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1"
           />
         </div>
       </div>

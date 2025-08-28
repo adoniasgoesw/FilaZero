@@ -20,6 +20,9 @@ export const criarCategoriaComplemento = async (req, res) => {
       });
     }
 
+    // produto_id pode ser null (categoria temporária)
+    // Será atualizado quando o produto for salvo
+
     // Inserir no banco
     const query = `
       INSERT INTO categorias_complementos 
@@ -29,7 +32,7 @@ export const criarCategoriaComplemento = async (req, res) => {
     `;
 
     const values = [
-      produto_id,
+      produto_id || null, // Aceita null para categorias temporárias
       nome.trim(),
       quantidade_minima || 0,
       quantidade_maxima || 1,
@@ -248,6 +251,46 @@ export const deletarCategoriaComplemento = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Erro interno do servidor ao deletar categoria'
+    });
+  }
+};
+
+// Atualizar produto_id das categorias temporárias quando o produto for salvo
+export const atualizarProdutoIdCategorias = async (req, res) => {
+  try {
+    const { produto_id, categoria_ids } = req.body;
+
+    if (!produto_id || !categoria_ids || !Array.isArray(categoria_ids)) {
+      return res.status(400).json({
+        success: false,
+        message: 'produto_id e categoria_ids são obrigatórios'
+      });
+    }
+
+    // Atualizar todas as categorias especificadas com o produto_id
+    const query = `
+      UPDATE categorias_complementos 
+      SET produto_id = $1 
+      WHERE id = ANY($2) AND produto_id IS NULL
+      RETURNING *
+    `;
+
+    const result = await pool.query(query, [produto_id, categoria_ids]);
+    const categoriasAtualizadas = result.rows;
+
+    console.log(`✅ ${categoriasAtualizadas.length} categorias atualizadas com produto_id ${produto_id}`);
+
+    res.json({
+      success: true,
+      message: 'Categorias atualizadas com sucesso',
+      data: categoriasAtualizadas
+    });
+
+  } catch (error) {
+    console.error('❌ Erro ao atualizar produto_id das categorias:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro interno do servidor ao atualizar categorias'
     });
   }
 };

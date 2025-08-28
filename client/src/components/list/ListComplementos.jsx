@@ -3,7 +3,7 @@ import { Power, PowerOff, Edit, Trash2 } from 'lucide-react';
 import api from '../../services/api.js';
 import Notification from '../elements/Notification.jsx';
 
-const ListComplementos = ({ onRefresh, onAction }) => {
+const ListComplementos = ({ onRefresh, onAction, modoSelecao = false, complementosSelecionados = [], setComplementosSelecionados = null }) => {
   const [complementos, setComplementos] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -35,6 +35,16 @@ const ListComplementos = ({ onRefresh, onAction }) => {
     } else {
       // Desenvolvimento: usar localhost
       return `http://localhost:3001${imagePath}`;
+    }
+  };
+
+  // Função helper para lidar com erro de imagem
+  const handleImageError = (e) => {
+    if (e.target) {
+      e.target.style.display = 'none';
+    }
+    if (e.target && e.target.nextSibling) {
+      e.target.nextSibling.style.display = 'flex';
     }
   };
 
@@ -102,6 +112,19 @@ const ListComplementos = ({ onRefresh, onAction }) => {
     }
   };
 
+  // Função para lidar com seleção de complementos
+  const handleSelecaoComplemento = (complementoId) => {
+    if (!setComplementosSelecionados) return;
+    
+    setComplementosSelecionados(prev => {
+      if (prev.includes(complementoId)) {
+        return prev.filter(id => id !== complementoId);
+      } else {
+        return [...prev, complementoId];
+      }
+    });
+  };
+
   // Função para deletar complemento
   const deletarComplemento = async (id) => {
     const complemento = complementos.find(comp => comp.id === id);
@@ -139,101 +162,141 @@ const ListComplementos = ({ onRefresh, onAction }) => {
   };
 
   // Componente de Card Horizontal para Mobile
-  const ComplementoCardMobile = ({ complemento }) => (
-    <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-shadow duration-200">
-      {/* 👑 PAI - Card com 3 filhos alinhados horizontalmente */}
-      <div className="flex h-20">
-        
-        {/* 🖼️ FILHO 1 - Imagem (sem filhos) */}
-        <div className="w-1/5 h-full">
-          <div className="w-full h-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center">
-            {complemento.imagem_url ? (
-              <img
-                src={getImageUrl(complemento.imagem_url)}
-                alt={complemento.nome}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  e.target.style.display = 'none';
-                  e.target.nextSibling.style.display = 'flex';
-                }}
-              />
-            ) : null}
-            {(!complemento.imagem_url || complemento.imagem_url === '') && (
-              <i className="fas fa-plus text-white text-lg"></i>
-            )}
-          </div>
-        </div>
-
-        {/* 📊 FILHO 2 - Dados (com 2 filhos em coluna) */}
-        <div className="w-2/5 h-full p-3 flex flex-col justify-center space-y-1">
-          {/* Filho 2.1 - Nome */}
-          <h3 className="text-sm font-semibold text-gray-900 truncate">
-            {complemento.nome}
-          </h3>
-          
-          {/* Filho 2.2 - Preço */}
-          <div>
-            <span className="text-sm font-bold text-gray-900">
-              {formatarPreco(complemento.valor_venda)}
+  const ComplementoCardMobile = ({ complemento }) => {
+    // Modo de seleção - mostrar apenas nome e checkbox
+    if (modoSelecao) {
+      return (
+        <div className="py-2 hover:bg-gray-50 transition-colors rounded-lg px-1">
+          <div className="flex items-center space-x-3">
+            <input
+              type="checkbox"
+              checked={complementosSelecionados.includes(complemento.id)}
+              onChange={() => handleSelecaoComplemento(complemento.id)}
+              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+            />
+            <span className="text-sm font-light text-gray-600">
+              {complemento.nome}
             </span>
           </div>
         </div>
+      );
+    }
 
-        {/* ⚡ FILHO 3 - Ações + Status (com 2 filhos em coluna) */}
-        <div className="w-2/5 h-full p-3 flex flex-col justify-between">
+    // Modo normal - mostrar card completo
+    return (
+      <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-shadow duration-200">
+        {/* 👑 PAI - Card com 3 filhos alinhados horizontalmente */}
+        <div className="flex h-20">
           
-          {/* Filho 3.1 - Ações (com 3 filhos em linha) */}
-          <div className="flex items-center justify-end space-x-1">
-            {/* Filho 3.1.1 - Ativar/Desativar */}
-            <button
-              onClick={() => toggleStatusComplemento(complemento.id, !complemento.status)}
-              className={`w-7 h-7 rounded-full text-white transition-colors flex items-center justify-center ${
+          {/* 🖼️ FILHO 1 - Imagem (sem filhos) */}
+          <div className="w-1/5 h-full">
+            <div className="w-full h-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center">
+              {complemento.imagem_url ? (
+                <img
+                  src={getImageUrl(complemento.imagem_url)}
+                  alt={complemento.nome}
+                  className="w-full h-full object-cover"
+                  onError={handleImageError}
+                />
+              ) : null}
+              {(!complemento.imagem_url || complemento.imagem_url === '') && (
+                <i className="fas fa-plus text-white text-lg"></i>
+              )}
+            </div>
+          </div>
+
+          {/* 📊 FILHO 2 - Dados (com 2 filhos em coluna) */}
+          <div className="w-2/5 h-full p-3 flex flex-col justify-center space-y-1">
+            {/* Filho 2.1 - Nome */}
+            <h3 className="text-sm font-semibold text-gray-900 truncate">
+              {complemento.nome}
+            </h3>
+            
+            {/* Filho 2.2 - Preço */}
+            <div>
+              <span className="text-sm font-bold text-gray-900">
+                {formatarPreco(complemento.valor_venda)}
+              </span>
+            </div>
+          </div>
+
+          {/* ⚡ FILHO 3 - Ações + Status (com 2 filhos em coluna) */}
+          <div className="w-2/5 h-full p-3 flex flex-col justify-between">
+            
+            {/* Filho 3.1 - Ações (com 3 filhos em linha) */}
+            <div className="flex items-center justify-end space-x-1">
+              {/* Filho 3.1.1 - Ativar/Desativar */}
+              <button
+                onClick={() => toggleStatusComplemento(complemento.id, !complemento.status)}
+                className={`w-7 h-7 rounded-full text-white transition-colors flex items-center justify-center ${
+                  complemento.status
+                    ? 'bg-yellow-500 hover:bg-yellow-600'
+                    : 'bg-emerald-500 hover:bg-emerald-600'
+                }`}
+                title={complemento.status ? 'Desativar' : 'Ativar'}
+              >
+                {complemento.status ? <PowerOff className="w-3 h-3" /> : <Power className="w-3 h-3" />}
+              </button>
+
+              {/* Filho 3.1.2 - Editar */}
+              <button
+                onClick={() => editarComplemento(complemento)}
+                className="w-7 h-7 bg-blue-500 hover:bg-blue-600 rounded-full text-white transition-colors flex items-center justify-center"
+                title="Editar"
+              >
+                <Edit className="w-3 h-3" />
+              </button>
+
+              {/* Filho 3.1.3 - Deletar */}
+              <button
+                onClick={() => deletarComplemento(complemento.id)}
+                className="w-7 h-7 bg-red-500 hover:bg-red-600 rounded-full text-white transition-colors flex items-center justify-center"
+                title="Deletar"
+              >
+                <Trash2 className="w-3 h-3" />
+              </button>
+            </div>
+
+            {/* Filho 3.2 - Status */}
+            <div className="flex justify-end">
+              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                 complemento.status
-                  ? 'bg-yellow-500 hover:bg-yellow-600'
-                  : 'bg-emerald-500 hover:bg-emerald-600'
-              }`}
-              title={complemento.status ? 'Desativar' : 'Ativar'}
-            >
-              {complemento.status ? <PowerOff className="w-3 h-3" /> : <Power className="w-3 h-3" />}
-            </button>
-
-            {/* Filho 3.1.2 - Editar */}
-            <button
-              onClick={() => editarComplemento(complemento)}
-              className="w-7 h-7 bg-blue-500 hover:bg-blue-600 rounded-full text-white transition-colors flex items-center justify-center"
-              title="Editar"
-            >
-              <Edit className="w-3 h-3" />
-            </button>
-
-            {/* Filho 3.1.3 - Deletar */}
-            <button
-              onClick={() => deletarComplemento(complemento.id)}
-              className="w-7 h-7 bg-red-500 hover:bg-red-600 rounded-full text-white transition-colors flex items-center justify-center"
-              title="Deletar"
-            >
-              <Trash2 className="w-3 h-3" />
-            </button>
-          </div>
-
-          {/* Filho 3.2 - Status */}
-          <div className="flex justify-end">
-            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-              complemento.status
-                ? 'bg-green-100 text-green-800'
-                : 'bg-red-100 text-red-800'
-            }`}>
-              <i className={`fas fa-circle ${complemento.status ? 'text-green-500' : 'text-red-500'} mr-1 text-xs`}></i>
-              {complemento.status ? 'Ativo' : 'Inativo'}
-            </span>
+                  ? 'bg-green-100 text-green-800'
+                  : 'bg-red-100 text-red-800'
+              }`}>
+                <i className={`fas fa-circle ${complemento.status ? 'text-green-500' : 'text-red-500'} mr-1 text-xs`}></i>
+                {complemento.status ? 'Ativo' : 'Inativo'}
+              </span>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   // Componente de Card Vertical para Tablet
-  const ComplementoCardTablet = ({ complemento }) => (
+  const ComplementoCardTablet = ({ complemento }) => {
+    // Modo de seleção - mostrar apenas nome e checkbox
+    if (modoSelecao) {
+      return (
+        <div className="py-2 hover:bg-gray-50 transition-colors rounded-lg px-1">
+          <div className="flex items-center space-x-3">
+            <input
+              type="checkbox"
+              checked={complementosSelecionados.includes(complemento.id)}
+              onChange={() => handleSelecaoComplemento(complemento.id)}
+              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+            />
+            <span className="text-sm font-light text-gray-600">
+              {complemento.nome}
+            </span>
+          </div>
+        </div>
+      );
+    }
+
+    // Modo normal - mostrar card completo
+    return (
     <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-shadow duration-200">
       {/* Imagem e Status */}
       <div className="relative">
@@ -243,10 +306,7 @@ const ListComplementos = ({ onRefresh, onAction }) => {
               src={getImageUrl(complemento.imagem_url)}
               alt={complemento.nome}
               className="w-full h-full object-cover"
-              onError={(e) => {
-                e.target.style.display = 'none';
-                e.target.nextSibling.style.display = 'flex';
-              }}
+              onError={handleImageError}
             />
           ) : null}
           {(!complemento.imagem_url || complemento.imagem_url === '') && (
@@ -316,10 +376,34 @@ const ListComplementos = ({ onRefresh, onAction }) => {
         </div>
       </div>
     </div>
-  );
+      );
+  };
 
   // Componente de Tabela para Desktop
-  const ComplementoTable = () => (
+  const ComplementoTable = () => {
+    // Modo de seleção - mostrar apenas nome e checkbox
+    if (modoSelecao) {
+      return (
+        <div className="space-y-1">
+          {complementos.map((complemento) => (
+            <div key={complemento.id} className="flex items-center space-x-3 py-2 px-1 hover:bg-gray-50 rounded-lg transition-colors">
+              <input
+                type="checkbox"
+                checked={complementosSelecionados.includes(complemento.id)}
+                onChange={() => handleSelecaoComplemento(complemento.id)}
+                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+              />
+              <span className="text-sm font-light text-gray-600">
+                {complemento.nome}
+              </span>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // Modo normal - mostrar tabela completa
+    return (
     <div className="bg-white rounded-xl shadow-lg overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full">
@@ -430,7 +514,8 @@ const ListComplementos = ({ onRefresh, onAction }) => {
         </table>
       </div>
     </div>
-  );
+      );
+  };
 
   if (loading) {
     return (

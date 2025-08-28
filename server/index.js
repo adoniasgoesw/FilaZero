@@ -6,6 +6,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 // Multer movido para middleware dedicado
 import AuthRoutes from './routes/AuthRoutes.js';
+import itensComplementosRoutes from './routes/itensComplementos.js';
 import pool from './config/db.js';
 
 // Carregar variáveis de ambiente
@@ -62,6 +63,9 @@ testDatabaseConnection();
 
 // Rotas
 app.use('/api', AuthRoutes);
+
+// Importar e usar rotas de itens de complementos
+app.use('/api/itens-complementos', itensComplementosRoutes);
 
 // Rota de teste
 app.get('/api/health', (req, res) => {

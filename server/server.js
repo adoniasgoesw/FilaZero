@@ -128,6 +128,10 @@ testDatabaseConnection();
 // Rotas
 app.use('/api', AuthRoutes);
 
+// Importar e usar rotas de itens de complementos
+import itensComplementosRoutes from './routes/itensComplementos.js';
+app.use('/api/itens-complementos', itensComplementosRoutes);
+
 // Rota de teste de produção
 app.get('/api/health', (req, res) => {
   res.json({ 

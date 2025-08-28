@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Tag } from 'lucide-react';
 import CancelButton from '../buttons/CancelButton';
+import SaveButton from '../buttons/SaveButton';
 import Notification from '../elements/Notification.jsx';
 import api from '../../services/api.js';
 
@@ -152,9 +153,10 @@ const FormCategorias = ({ onClose, onSubmit, categoriaParaEditar = null }) => {
   };
 
   return (
-    <>
-      <div className="p-6">
-        <div className="flex items-center space-x-3 mb-6">
+    <div className="flex flex-col h-full">
+      {/* Header fixo - sempre visível */}
+      <div className="flex-shrink-0 bg-white border-b border-gray-200 p-6">
+        <div className="flex items-center space-x-3">
           <div className="w-10 h-10 bg-cyan-100 rounded-lg flex items-center justify-center">
             <Tag className="w-5 h-5 text-cyan-600" />
           </div>
@@ -162,7 +164,10 @@ const FormCategorias = ({ onClose, onSubmit, categoriaParaEditar = null }) => {
             {isEditando ? 'Alterar Categoria' : 'Cadastrar Categoria'}
           </h2>
         </div>
-        
+      </div>
+
+      {/* Formulário com scroll - ocupa o espaço restante */}
+      <div className="flex-1 overflow-y-auto p-6">
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Nome - Obrigatório */}
           <div>
@@ -235,20 +240,24 @@ const FormCategorias = ({ onClose, onSubmit, categoriaParaEditar = null }) => {
             </div>
           </div>
 
-          {/* Botões */}
-          <div className="flex space-x-3 pt-4">
-            <CancelButton
-              onClick={onClose}
-              className="flex-1 bg-gray-500 hover:bg-gray-600 text-white"
-            />
-            <button
-              type="submit"
-              className="flex-1 bg-gradient-to-r from-cyan-300 to-cyan-400 hover:from-cyan-400 hover:to-cyan-500 text-white h-12 px-4 rounded-xl font-medium transition-all duration-200"
-            >
-              {isEditando ? 'Alterar' : 'Cadastrar'}
-            </button>
-          </div>
+          {/* Espaçamento para os botões fixos */}
+          <div className="h-20"></div>
         </form>
+      </div>
+
+      {/* Botões fixos na parte inferior */}
+      <div className="flex-shrink-0 bg-white border-t border-gray-200 p-4">
+        <div className="flex space-x-3">
+          <CancelButton
+            onClick={onClose}
+            className="flex-1 bg-gray-500 hover:bg-gray-600 text-white"
+          />
+          <SaveButton
+            onClick={handleSubmit}
+            text="Salvar"
+            className="flex-1"
+          />
+        </div>
       </div>
 
       {/* Sistema de Notificação */}
@@ -263,7 +272,7 @@ const FormCategorias = ({ onClose, onSubmit, categoriaParaEditar = null }) => {
         confirmText="OK"
         cancelText="Fechar"
       />
-    </>
+    </div>
   );
 };
 
