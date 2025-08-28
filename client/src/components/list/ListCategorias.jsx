@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Edit, Trash2 } from 'lucide-react';
+import { Power, PowerOff, Edit, Trash2 } from 'lucide-react';
 import api from '../../services/api.js';
 import Notification from '../elements/Notification.jsx';
-import StatusToggleButton from '../buttons/StatusToggleButton';
-import ActionButton from '../buttons/ActionButton';
-import useDataCache from '../../hooks/useDataCache.js';
 
 const ListCategorias = ({ onRefresh, onAction }) => {
+  const [categorias, setCategorias] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [activeCard, setActiveCard] = useState(null);
   
   // Estados para notificações
@@ -17,38 +16,6 @@ const ListCategorias = ({ onRefresh, onAction }) => {
     message: '',
     onConfirm: null,
     showConfirm: false
-  });
-
-  // Função para buscar categorias da API
-  const buscarCategoriasDaAPI = async () => {
-    try {
-      const estabelecimento = JSON.parse(localStorage.getItem('filaZero_establishment'));
-      
-      if (!estabelecimento || !estabelecimento.id) {
-        throw new Error('Estabelecimento não encontrado');
-      }
-
-      const response = await api.get(`/categorias/estabelecimento/${estabelecimento.id}`);
-      if (response.data.success) {
-        return response.data.data;
-      } else {
-        throw new Error(response.data.message || 'Erro ao buscar categorias');
-      }
-    } catch (error) {
-      console.error('Erro ao buscar categorias da API:', error);
-      throw error;
-    }
-  };
-
-  // Sistema de cache para categorias
-  const {
-    data: categorias,
-    loading,
-    refresh: refreshCategorias
-  } = useDataCache('categorias', buscarCategoriasDaAPI, {
-    ttl: 15 * 60 * 1000, // 15 minutos
-    autoRefresh: true,
-    refreshInterval: 10 * 60 * 1000, // 10 minutos
   });
 
   // Função helper para construir URL da imagem
@@ -97,19 +64,39 @@ const ListCategorias = ({ onRefresh, onAction }) => {
     setNotification(prev => ({ ...prev, isOpen: false }));
   };
 
-  // Atualizar categorias quando onRefresh mudar
-  useEffect(() => {
-    if (onRefresh > 0) {
-      refreshCategorias();
+  // Buscar categorias do banco de dados
+  const buscarCategorias = async () => {
+    try {
+      setLoading(true);
+      const estabelecimento = JSON.parse(localStorage.getItem('filaZero_establishment'));
+      
+      if (!estabelecimento || !estabelecimento.id) {
+        console.error('Estabelecimento não encontrado');
+        return;
+      }
+
+      const response = await api.get(`/categorias/estabelecimento/${estabelecimento.id}`);
+      if (response.data.success) {
+        setCategorias(response.data.data);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar categorias:', error);
+    } finally {
+      setLoading(false);
     }
-  }, [onRefresh, refreshCategorias]);
+  };
+
+  // Carregar categorias quando o componente montar
+  useEffect(() => {
+    buscarCategorias();
+  }, [onRefresh]);
 
   // Função para ativar/desativar categoria
   const toggleStatusCategoria = async (id, novoStatus) => {
     try {
       const response = await api.put(`/categorias/${id}/status`, { status: novoStatus });
       if (response.data.success) {
-        refreshCategorias(); // Recarregar lista
+        buscarCategorias(); // Recarregar lista
         setActiveCard(null); // Fechar botões
       }
     } catch (error) {
@@ -128,8 +115,6 @@ const ListCategorias = ({ onRefresh, onAction }) => {
 
   // Função para deletar categoria
   const deletarCategoria = async (id) => {
-    if (!categorias) return;
-    
     const categoria = categorias.find(cat => cat.id === id);
     if (categoria) {
       showNotification(
@@ -148,7 +133,7 @@ const ListCategorias = ({ onRefresh, onAction }) => {
     try {
       const response = await api.delete(`/categorias/${id}`);
       if (response.data.success) {
-        refreshCategorias();
+        buscarCategorias();
       }
     } catch (error) {
       console.error('Erro ao deletar categoria:', error);
@@ -163,7 +148,7 @@ const ListCategorias = ({ onRefresh, onAction }) => {
     );
   }
 
-  if (!categorias || categorias.length === 0) {
+  if (categorias.length === 0) {
     return (
       <div className="text-center text-gray-500 py-8">
         <p className="text-lg">Nenhuma categoria encontrada</p>
@@ -190,43 +175,44 @@ const ListCategorias = ({ onRefresh, onAction }) => {
                 activeCard === categoria.id ? 'opacity-100' : 'opacity-0'
               }`}>
                 {/* Ativar/Desativar */}
-                <StatusToggleButton
-                  isActive={categoria.status}
+                <button
                   onClick={(e) => {
                     e.stopPropagation();
                     toggleStatusCategoria(categoria.id, !categoria.status);
                   }}
-                  size="sm"
-                  className="w-6 h-6"
-                />
+                  className={`w-6 h-6 rounded-full text-white transition-colors flex items-center justify-center ${
+                    categoria.status
+                      ? 'bg-yellow-500 hover:bg-yellow-600'
+                      : 'bg-emerald-500 hover:bg-emerald-600'
+                  }`}
+                  title={categoria.status ? 'Desativar' : 'Ativar'}
+                >
+                  {categoria.status ? <PowerOff className="w-3 h-3" /> : <Power className="w-3 h-3" />}
+                </button>
 
                 {/* Editar */}
-                <ActionButton
+                <button
                   onClick={(e) => {
                     e.stopPropagation();
                     editarCategoria(categoria);
                   }}
-                  variant="primary"
-                  size="sm"
-                  className="w-6 h-6"
+                  className="w-6 h-6 bg-blue-500 hover:bg-blue-600 rounded-full text-white transition-colors flex items-center justify-center"
                   title="Editar"
                 >
                   <Edit className="w-3 h-3" />
-                </ActionButton>
+                </button>
 
                 {/* Deletar */}
-                <ActionButton
+                <button
                   onClick={(e) => {
                     e.stopPropagation();
                     deletarCategoria(categoria.id);
                   }}
-                  variant="danger"
-                  size="sm"
-                  className="w-6 h-6"
+                  className="w-6 h-6 bg-red-500 hover:bg-red-600 rounded-full text-white transition-colors flex items-center justify-center"
                   title="Deletar"
                 >
                   <Trash2 className="w-3 h-3" />
-                </ActionButton>
+                </button>
               </div>
 
               {/* Imagem */}

@@ -525,7 +525,7 @@ const ListComplementos = ({ onRefresh, onAction, modoSelecao = false, complement
     );
   }
 
-  if (complementos.length === 0) {
+  if (!complementos || complementos.length === 0) {
     return (
       <div className="text-center text-gray-500 py-8">
         <p className="text-lg">Nenhum complemento encontrado</p>
