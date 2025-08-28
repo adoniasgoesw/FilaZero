@@ -4,10 +4,9 @@ import api from '../../services/api.js';
 import Notification from '../elements/Notification.jsx';
 import StatusToggleButton from '../buttons/StatusToggleButton';
 import ActionButton from '../buttons/ActionButton';
+import useDataCache from '../../hooks/useDataCache.js';
 
 const ListCategorias = ({ onRefresh, onAction }) => {
-  const [categorias, setCategorias] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [activeCard, setActiveCard] = useState(null);
   
   // Estados para notificações
@@ -18,6 +17,38 @@ const ListCategorias = ({ onRefresh, onAction }) => {
     message: '',
     onConfirm: null,
     showConfirm: false
+  });
+
+  // Função para buscar categorias da API
+  const buscarCategoriasDaAPI = async () => {
+    try {
+      const estabelecimento = JSON.parse(localStorage.getItem('filaZero_establishment'));
+      
+      if (!estabelecimento || !estabelecimento.id) {
+        throw new Error('Estabelecimento não encontrado');
+      }
+
+      const response = await api.get(`/categorias/estabelecimento/${estabelecimento.id}`);
+      if (response.data.success) {
+        return response.data.data;
+      } else {
+        throw new Error(response.data.message || 'Erro ao buscar categorias');
+      }
+    } catch (error) {
+      console.error('Erro ao buscar categorias da API:', error);
+      throw error;
+    }
+  };
+
+  // Sistema de cache para categorias
+  const {
+    data: categorias,
+    loading,
+    refresh: refreshCategorias
+  } = useDataCache('categorias', buscarCategoriasDaAPI, {
+    ttl: 15 * 60 * 1000, // 15 minutos
+    autoRefresh: true,
+    refreshInterval: 10 * 60 * 1000, // 10 minutos
   });
 
   // Função helper para construir URL da imagem
@@ -66,39 +97,19 @@ const ListCategorias = ({ onRefresh, onAction }) => {
     setNotification(prev => ({ ...prev, isOpen: false }));
   };
 
-  // Buscar categorias do banco de dados
-  const buscarCategorias = async () => {
-    try {
-      setLoading(true);
-      const estabelecimento = JSON.parse(localStorage.getItem('filaZero_establishment'));
-      
-      if (!estabelecimento || !estabelecimento.id) {
-        console.error('Estabelecimento não encontrado');
-        return;
-      }
-
-      const response = await api.get(`/categorias/estabelecimento/${estabelecimento.id}`);
-      if (response.data.success) {
-        setCategorias(response.data.data);
-      }
-    } catch (error) {
-      console.error('Erro ao buscar categorias:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Carregar categorias quando o componente montar
+  // Atualizar categorias quando onRefresh mudar
   useEffect(() => {
-    buscarCategorias();
-  }, [onRefresh]);
+    if (onRefresh > 0) {
+      refreshCategorias();
+    }
+  }, [onRefresh, refreshCategorias]);
 
   // Função para ativar/desativar categoria
   const toggleStatusCategoria = async (id, novoStatus) => {
     try {
       const response = await api.put(`/categorias/${id}/status`, { status: novoStatus });
       if (response.data.success) {
-        buscarCategorias(); // Recarregar lista
+        refreshCategorias(); // Recarregar lista
         setActiveCard(null); // Fechar botões
       }
     } catch (error) {
@@ -117,6 +128,8 @@ const ListCategorias = ({ onRefresh, onAction }) => {
 
   // Função para deletar categoria
   const deletarCategoria = async (id) => {
+    if (!categorias) return;
+    
     const categoria = categorias.find(cat => cat.id === id);
     if (categoria) {
       showNotification(
@@ -135,7 +148,7 @@ const ListCategorias = ({ onRefresh, onAction }) => {
     try {
       const response = await api.delete(`/categorias/${id}`);
       if (response.data.success) {
-        buscarCategorias();
+        refreshCategorias();
       }
     } catch (error) {
       console.error('Erro ao deletar categoria:', error);
@@ -150,7 +163,7 @@ const ListCategorias = ({ onRefresh, onAction }) => {
     );
   }
 
-  if (categorias.length === 0) {
+  if (!categorias || categorias.length === 0) {
     return (
       <div className="text-center text-gray-500 py-8">
         <p className="text-lg">Nenhuma categoria encontrada</p>

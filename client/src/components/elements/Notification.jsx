@@ -1,6 +1,6 @@
 import React from 'react';
 import { AlertTriangle, X } from 'lucide-react';
-import CancelButton from '../buttons/CancelButton';
+import Canceln from '../buttons/CancelButton';
 
 const Notification = ({ 
   isOpen, 

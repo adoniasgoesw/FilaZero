@@ -116,6 +116,8 @@ const ListProdutos = ({ onRefresh, onAction }) => {
 
   // Função para deletar produto
   const deletarProduto = async (id) => {
+    if (!produtos) return;
+    
     const produto = produtos.find(prod => prod.id === id);
     if (produto) {
       showNotification(
@@ -495,7 +497,7 @@ const ListProdutos = ({ onRefresh, onAction }) => {
                         title="Deletar"
                       >
                         <Trash2 className="w-4 h-4" />
-                      </button>
+                      </ActionButton>
                     </div>
                   </td>
                 </tr>
@@ -514,7 +516,7 @@ const ListProdutos = ({ onRefresh, onAction }) => {
     );
   }
 
-  if (produtos.length === 0) {
+  if (!produtos || produtos.length === 0) {
     return (
       <div className="text-center text-gray-500 py-8">
         <p className="text-lg">Nenhum produto encontrado</p>
