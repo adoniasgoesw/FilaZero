@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Power, PowerOff, Edit, Trash2 } from 'lucide-react';
+import { Edit, Trash2 } from 'lucide-react';
 import api from '../../services/api.js';
 import Notification from '../elements/Notification.jsx';
+import StatusToggleButton from '../buttons/StatusToggleButton';
+import ActionButton from '../buttons/ActionButton';
 
 const ListCategorias = ({ onRefresh, onAction }) => {
   const [categorias, setCategorias] = useState([]);
@@ -175,44 +177,43 @@ const ListCategorias = ({ onRefresh, onAction }) => {
                 activeCard === categoria.id ? 'opacity-100' : 'opacity-0'
               }`}>
                 {/* Ativar/Desativar */}
-                <button
+                <StatusToggleButton
+                  isActive={categoria.status}
                   onClick={(e) => {
                     e.stopPropagation();
                     toggleStatusCategoria(categoria.id, !categoria.status);
                   }}
-                  className={`w-6 h-6 rounded-full text-white transition-colors flex items-center justify-center ${
-                    categoria.status
-                      ? 'bg-yellow-500 hover:bg-yellow-600'
-                      : 'bg-emerald-500 hover:bg-emerald-600'
-                  }`}
-                  title={categoria.status ? 'Desativar' : 'Ativar'}
-                >
-                  {categoria.status ? <PowerOff className="w-3 h-3" /> : <Power className="w-3 h-3" />}
-                </button>
+                  size="sm"
+                  className="w-6 h-6"
+                />
 
                 {/* Editar */}
-                <button
+                <ActionButton
                   onClick={(e) => {
                     e.stopPropagation();
                     editarCategoria(categoria);
                   }}
-                  className="w-6 h-6 bg-blue-500 hover:bg-blue-600 rounded-full text-white transition-colors flex items-center justify-center"
+                  variant="primary"
+                  size="sm"
+                  className="w-6 h-6"
                   title="Editar"
                 >
                   <Edit className="w-3 h-3" />
-                </button>
+                </ActionButton>
 
                 {/* Deletar */}
-                <button
+                <ActionButton
                   onClick={(e) => {
                     e.stopPropagation();
                     deletarCategoria(categoria.id);
                   }}
-                  className="w-6 h-6 bg-red-500 hover:bg-red-600 rounded-full text-white transition-colors flex items-center justify-center"
+                  variant="danger"
+                  size="sm"
+                  className="w-6 h-6"
                   title="Deletar"
                 >
                   <Trash2 className="w-3 h-3" />
-                </button>
+                </ActionButton>
               </div>
 
               {/* Imagem */}

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Tag, ChefHat, Utensils, Power, PowerOff } from 'lucide-react';
+import { Package, Tag, ChefHat, Utensils } from 'lucide-react';
 import CancelButton from '../buttons/CancelButton';
 import SaveButton from '../buttons/SaveButton';
-
+import TabButton from '../buttons/TabButton';
+import StatusToggleButton from '../buttons/StatusToggleButton';
 import CopyButton from '../buttons/CopyButton';
 import ListagemCategoriaComplementos from '../list/ListagemCategoriaComplementos';
 import ListComplementos from '../list/ListComplementos.jsx';
@@ -759,36 +760,33 @@ const FormProdutos = ({ onClose, onSubmit, produtoParaEditar = null }) => {
       <div className="flex-shrink-0 bg-white border-b border-gray-100">
         <div className="flex justify-start px-6 py-2">
           <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
-            <button
+            <TabButton
+              isActive={activeTab === 'detalhes'}
               onClick={() => setActiveTab('detalhes')}
-              className={`px-4 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                activeTab === 'detalhes'
-                  ? 'bg-white text-cyan-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-800'
-              }`}
+              activeColor="text-cyan-600"
+              inactiveColor="text-gray-600"
+              hoverColor="hover:text-gray-800"
             >
               Detalhes
-            </button>
-            <button
+            </TabButton>
+            <TabButton
+              isActive={activeTab === 'complementos'}
               onClick={() => setActiveTab('complementos')}
-              className={`px-4 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                activeTab === 'complementos'
-                  ? 'bg-white text-orange-600 shadow-sm'
-                  : 'text-orange-600 hover:text-orange-700'
-              }`}
+              activeColor="text-orange-600"
+              inactiveColor="text-orange-600"
+              hoverColor="hover:text-orange-700"
             >
               Complementos
-            </button>
-            <button
+            </TabButton>
+            <TabButton
+              isActive={activeTab === 'receita'}
               onClick={() => setActiveTab('receita')}
-              className={`px-4 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                activeTab === 'receita'
-                  ? 'bg-white text-green-600 shadow-sm'
-                  : 'text-green-600 hover:text-green-700'
-              }`}
+              activeColor="text-green-600"
+              inactiveColor="text-green-600"
+              hoverColor="hover:text-green-700"
             >
               Receita
-            </button>
+            </TabButton>
           </div>
         </div>
       </div>
@@ -1043,23 +1041,13 @@ const FormProdutos = ({ onClose, onSubmit, produtoParaEditar = null }) => {
               <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
                 {/* Botão de Status no canto superior direito */}
                 <div className="flex justify-end mb-2">
-                  <button
+                  <StatusToggleButton
+                    isActive={novaCategoria.status}
                     onClick={() => setNovaCategoria(prev => ({ ...prev, status: !prev.status }))}
-                    className="flex items-center space-x-2 px-2 py-1 text-xs font-medium rounded-md transition-colors hover:bg-gray-50"
-                    title={novaCategoria.status ? 'Desativar' : 'Ativar'}
-                  >
-                    {novaCategoria.status ? (
-                      <>
-                        <Power className="w-3 h-3 text-green-600" />
-                        <span className="text-green-600">Ativo</span>
-                      </>
-                    ) : (
-                      <>
-                        <PowerOff className="w-3 h-3 text-gray-400" />
-                        <span className="text-gray-400">Inativo</span>
-                      </>
-                    )}
-                  </button>
+                    size="sm"
+                    showText={true}
+                    className="px-2 py-1 text-xs font-medium rounded-md hover:bg-gray-50"
+                  />
                 </div>
 
                 <div className="space-y-2">

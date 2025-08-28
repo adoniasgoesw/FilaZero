@@ -1,10 +1,12 @@
 // src/components/forms/LoginForm.jsx
 import React, { useState } from 'react';
-import { User, Lock, Eye, EyeOff } from 'lucide-react';
+import { User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext.jsx';
 import API from '../../services/api.js';
 import Loading from '../elements/Loading.jsx';
+import PasswordToggleButton from '../buttons/PasswordToggleButton';
+import SubmitButton from '../buttons/SubmitButton';
 
 const LoginForm = () => {
   const navigate = useNavigate();
@@ -110,13 +112,11 @@ const LoginForm = () => {
               className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
               required
             />
-            <button
-              type="button"
+            <PasswordToggleButton
+              isVisible={showSenha}
               onClick={() => setShowSenha(!showSenha)}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-            >
-              {showSenha ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-            </button>
+              size="md"
+            />
           </div>
         </div>
 
@@ -129,13 +129,13 @@ const LoginForm = () => {
 
         {/* Botão de Acessar */}
         <div className="pt-4">
-          <button
-            type="submit"
-            disabled={loadingStatus === 'loading'}
-            className="w-full bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 shadow-md hover:shadow-lg disabled:cursor-not-allowed"
+          <SubmitButton
+            isLoading={loadingStatus === 'loading'}
+            variant="primary"
+            size="md"
           >
-            {loadingStatus === 'loading' ? 'Acessando...' : 'Acessar'}
-          </button>
+            Acessar
+          </SubmitButton>
         </div>
 
         {/* Divisor */}

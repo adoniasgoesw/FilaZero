@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Power, PowerOff, Edit, Trash2 } from 'lucide-react';
+import { Edit, Trash2 } from 'lucide-react';
 import api from '../../services/api.js';
 import Notification from '../elements/Notification.jsx';
+import StatusToggleButton from '../buttons/StatusToggleButton';
+import ActionButton from '../buttons/ActionButton';
 
 const ListProdutos = ({ onRefresh, onAction }) => {
   const [produtos, setProdutos] = useState([]);
@@ -248,35 +250,34 @@ const ListProdutos = ({ onRefresh, onAction }) => {
           {/* Filho 3.1 - Ações (com 3 filhos em linha) */}
           <div className="flex items-center justify-end space-x-1">
             {/* Filho 3.1.1 - Ativar/Desativar */}
-            <button
+            <StatusToggleButton
+              isActive={produto.status}
               onClick={() => toggleStatusProduto(produto.id, !produto.status)}
-              className={`w-7 h-7 rounded-full text-white transition-colors flex items-center justify-center ${
-                produto.status
-                  ? 'bg-yellow-500 hover:bg-yellow-600'
-                  : 'bg-emerald-500 hover:bg-emerald-600'
-              }`}
-              title={produto.status ? 'Desativar' : 'Ativar'}
-            >
-              {produto.status ? <PowerOff className="w-3 h-3" /> : <Power className="w-3 h-3" />}
-            </button>
+              size="sm"
+              className="w-7 h-7"
+            />
 
             {/* Filho 3.1.2 - Editar */}
-            <button
+            <ActionButton
               onClick={() => editarProduto(produto)}
-              className="w-7 h-7 bg-blue-500 hover:bg-blue-600 rounded-full text-white transition-colors flex items-center justify-center"
+              variant="primary"
+              size="sm"
+              className="w-7 h-7"
               title="Editar"
             >
               <Edit className="w-3 h-3" />
-            </button>
+            </ActionButton>
 
             {/* Filho 3.1.3 - Deletar */}
-            <button
+            <ActionButton
               onClick={() => deletarProduto(produto.id)}
-              className="w-7 h-7 bg-red-500 hover:bg-red-600 rounded-full text-white transition-colors flex items-center justify-center"
+              variant="danger"
+              size="sm"
+              className="w-7 h-7"
               title="Deletar"
             >
               <Trash2 className="w-3 h-3" />
-            </button>
+            </ActionButton>
           </div>
 
           {/* Filho 3.2 - Status */}
@@ -351,35 +352,34 @@ const ListProdutos = ({ onRefresh, onAction }) => {
         {/* Botões de Ação */}
         <div className="flex items-center justify-center space-x-2">
           {/* Ativar/Desativar */}
-          <button
+          <StatusToggleButton
+            isActive={produto.status}
             onClick={() => toggleStatusProduto(produto.id, !produto.status)}
-            className={`w-8 h-8 rounded-full text-white transition-colors flex items-center justify-center ${
-              produto.status
-                ? 'bg-yellow-500 hover:bg-yellow-600'
-                : 'bg-emerald-500 hover:bg-emerald-600'
-            }`}
-            title={produto.status ? 'Desativar' : 'Ativar'}
-          >
-            {produto.status ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
-          </button>
+            size="md"
+            className="w-8 h-8"
+          />
 
           {/* Editar */}
-          <button
+          <ActionButton
             onClick={() => editarProduto(produto)}
-            className="w-8 h-8 bg-blue-500 hover:bg-blue-600 rounded-full text-white transition-colors flex items-center justify-center"
+            variant="primary"
+            size="md"
+            className="w-8 h-8"
             title="Editar"
           >
             <Edit className="w-4 h-4" />
-          </button>
+          </ActionButton>
 
           {/* Deletar */}
-          <button
+          <ActionButton
             onClick={() => deletarProduto(produto.id)}
-            className="w-8 h-8 bg-red-500 hover:bg-red-600 rounded-full text-white transition-colors flex items-center justify-center"
+            variant="danger"
+            size="md"
+            className="w-8 h-8"
             title="Deletar"
           >
             <Trash2 className="w-4 h-4" />
-          </button>
+          </ActionButton>
         </div>
       </div>
       </div>
@@ -468,31 +468,30 @@ const ListProdutos = ({ onRefresh, onAction }) => {
                 <td className="px-6 py-4">
                     <div className="flex items-center space-x-2">
                       {/* Ativar/Desativar */}
-                      <button
+                      <StatusToggleButton
+                        isActive={produto.status}
                         onClick={() => toggleStatusProduto(produto.id, !produto.status)}
-                        className={`w-8 h-8 rounded-full text-white transition-colors flex items-center justify-center ${
-                          produto.status
-                            ? 'bg-yellow-500 hover:bg-yellow-600'
-                            : 'bg-emerald-500 hover:bg-emerald-600'
-                        }`}
-                        title={produto.status ? 'Desativar' : 'Ativar'}
-                      >
-                        {produto.status ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
-                      </button>
+                        size="md"
+                        className="w-8 h-8"
+                      />
 
                       {/* Editar */}
-                      <button
+                      <ActionButton
                         onClick={() => editarProduto(produto)}
-                        className="w-8 h-8 bg-blue-500 hover:bg-blue-600 rounded-full text-white transition-colors flex items-center justify-center"
+                        variant="primary"
+                        size="md"
+                        className="w-8 h-8"
                         title="Editar"
                       >
                         <Edit className="w-4 h-4" />
-                      </button>
+                      </ActionButton>
 
                       {/* Deletar */}
-                      <button
+                      <ActionButton
                         onClick={() => deletarProduto(produto.id)}
-                        className="w-8 h-8 bg-red-500 hover:bg-red-600 rounded-full text-white transition-colors flex items-center justify-center"
+                        variant="danger"
+                        size="md"
+                        className="w-8 h-8"
                         title="Deletar"
                       >
                         <Trash2 className="w-4 h-4" />

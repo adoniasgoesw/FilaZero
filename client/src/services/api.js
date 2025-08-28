@@ -1,14 +1,15 @@
 // src/services/api.js
 import axios from "axios";
+import logger from '../utils/logger.js';
 
 // URL da API - usar localhost:3001 como padrão se não estiver definida
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
-console.log('🔧 Configuração da API:');
-console.log('🌍 VITE_API_URL:', import.meta.env.VITE_API_URL);
-console.log('🔗 API_URL final:', API_URL);
-console.log('🌐 Ambiente:', import.meta.env.MODE);
-console.log('📦 Todas as variáveis de ambiente:', import.meta.env);
+logger.info('Configuração da API carregada', {
+  VITE_API_URL: import.meta.env.VITE_API_URL,
+  API_URL: API_URL,
+  MODE: import.meta.env.MODE
+});
 
 const API = axios.create({
   baseURL: API_URL,
@@ -19,7 +20,7 @@ const API = axios.create({
 // Interceptor para debug
 API.interceptors.request.use(
   (config) => {
-    console.log('🚀 Requisição sendo enviada:', {
+    logger.debug('Requisição sendo enviada', {
       url: config.url,
       method: config.method,
       baseURL: config.baseURL,
@@ -29,7 +30,7 @@ API.interceptors.request.use(
     return config;
   },
   (error) => {
-    console.error('❌ Erro na requisição:', error);
+    logger.error('Erro na requisição', error);
     return Promise.reject(error);
   }
 );
@@ -37,7 +38,7 @@ API.interceptors.request.use(
 // Interceptor para resposta
 API.interceptors.response.use(
   (response) => {
-    console.log('✅ Resposta recebida:', {
+    logger.debug('Resposta recebida', {
       status: response.status,
       url: response.config.url,
       data: response.data
@@ -45,7 +46,7 @@ API.interceptors.response.use(
     return response;
   },
   (error) => {
-    console.error('❌ Erro na resposta:', {
+    logger.error('Erro na resposta', {
       status: error.response?.status,
       message: error.message,
       url: error.config?.url,

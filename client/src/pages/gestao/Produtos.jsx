@@ -3,6 +3,7 @@ import Sidebar from '../../components/layout/Sidebar';
 import SearchBar from '../../components/layout/SearchBar';
 import AddButton from '../../components/buttons/AddButton';
 import BackButton from '../../components/buttons/BackButton';
+import TabButton from '../../components/buttons/TabButton';
 import BaseModal from '../../components/modals/Base';
 import FormProdutos from '../../components/forms/FormProdutos';
 import FormComplementos from '../../components/forms/FormComplementos';
@@ -120,26 +121,26 @@ const Produtos = () => {
         <div className="bg-white px-4 sm:px-6 py-3 border-b border-gray-100">
           <div className="flex justify-start">
             <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
-              <button
+              <TabButton
+                isActive={viewMode === 'produtos'}
                 onClick={() => setViewMode('produtos')}
-                className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
-                  viewMode === 'produtos'
-                    ? 'bg-white text-cyan-600 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-800'
-                }`}
+                activeColor="text-cyan-600"
+                inactiveColor="text-gray-600"
+                hoverColor="hover:text-gray-800"
+                className="px-6 py-2 text-sm"
               >
                 Produtos
-              </button>
-              <button
+              </TabButton>
+              <TabButton
+                isActive={viewMode === 'complementos'}
                 onClick={() => setViewMode('complementos')}
-                className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
-                  viewMode === 'complementos'
-                    ? 'bg-white text-orange-600 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-800'
-                }`}
+                activeColor="text-orange-600"
+                inactiveColor="text-orange-600"
+                hoverColor="hover:text-orange-700"
+                className="px-6 py-2 text-sm"
               >
                 Complementos
-              </button>
+              </TabButton>
             </div>
           </div>
         </div>
