@@ -7,7 +7,17 @@ export const criarComplemento = async (req, res) => {
   
   try {
     const { nome, valor_venda, valor_custo, estabelecimento_id } = req.body;
-    const imagem_url = req.file ? `/uploads/${req.file.filename}` : null;
+    
+    // Verificar se a imagem foi enviada
+    let imagem_url = null;
+    
+    if (req.file && req.file.cloudinary) {
+      // Usar URL do Cloudinary
+      imagem_url = req.file.cloudinary.url;
+      console.log('☁️ Imagem URL do Cloudinary:', imagem_url);
+    } else if (req.file) {
+      console.log('⚠️ Arquivo recebido mas sem informações do Cloudinary');
+    }
     
     // Validações básicas
     if (!nome || !estabelecimento_id) {
@@ -84,7 +94,17 @@ export const atualizarComplemento = async (req, res) => {
   try {
     const { id } = req.params;
     const { nome, valor_venda, valor_custo } = req.body;
-    const imagem_url = req.file ? `/uploads/${req.file.filename}` : null;
+    
+    // Verificar se a imagem foi enviada
+    let imagem_url = null;
+    
+    if (req.file && req.file.cloudinary) {
+      // Usar URL do Cloudinary
+      imagem_url = req.file.cloudinary.url;
+      console.log('☁️ Imagem URL do Cloudinary:', imagem_url);
+    } else if (req.file) {
+      console.log('⚠️ Arquivo recebido mas sem informações do Cloudinary');
+    }
     
     // Validações básicas
     if (!nome) {

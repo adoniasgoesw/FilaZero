@@ -1,45 +1,101 @@
-# FilaZero Server
+# 🚀 FilaZero - Backend
 
-Backend do sistema FilaZero com autenticação e conexão ao PostgreSQL.
+## 📋 **Sistema Completo com Cache e Cloudinary**
 
-## 🚀 Como executar
+Este backend resolve **dois problemas principais**:
 
-1. **Instalar dependências:**
+1. **☁️ Imagens não carregam** (erro 404) - Solucionado com Cloudinary
+2. **⚡ Páginas carregam lentas** (2+ segundos) - Solucionado com Cache
+
+## 🎯 **O que foi implementado**
+
+### **Sistema de Cache:**
+- ✅ **Cache em memória** - Resposta instantânea
+- ✅ **Redis opcional** - Persistência entre deploys
+- ✅ **Cache automático** para todas as listagens
+- ✅ **Invalidação inteligente** quando dados mudam
+- ✅ **Fallback automático** para o banco
+
+### **Sistema de Imagens:**
+- ✅ **Cloudinary** - Hospedagem persistente de imagens
+- ✅ **Upload automático** para serviço externo
+- ✅ **URLs que nunca expiram** - Mesmo após deploy
+
+## 🚀 **Como usar**
+
+### **1. Instalar dependências:**
 ```bash
 npm install
 ```
 
-2. **Configurar variáveis de ambiente:**
-Crie um arquivo `.env` na raiz do servidor com:
-```
-DATABASE_URL=postgresql://neondb_owner:npg_KxuMZeiFGN08@ep-cold-breeze-acd9y85u-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
-PORT=3001
-NODE_ENV=development
+### **2. Configurar variáveis de ambiente:**
+```bash
+# Obrigatório
+NODE_ENV=production
+DATABASE_URL=postgresql://...
+
+# Cloudinary (OBRIGATÓRIO)
+CLOUDINARY_CLOUD_NAME=seu_cloud_name
+CLOUDINARY_API_KEY=sua_api_key
+CLOUDINARY_API_SECRET=sua_api_secret
+
+# Redis (OPCIONAL - para cache persistente)
+REDIS_URL=redis://username:password@host:port
 ```
 
-3. **Executar em desenvolvimento:**
+### **3. Executar:**
 ```bash
+# Desenvolvimento
 npm run dev
-```
 
-4. **Executar em produção:**
-```bash
+# Produção
 npm start
 ```
 
-## 📡 Endpoints
+## 📊 **Performance Esperada**
 
-- `POST /api/auth/login` - Autenticação de usuário
-- `GET /api/health` - Status da API
+### **Antes:**
+- **Imagens**: Erro 404 (não carregam)
+- **Páginas**: 2-3 segundos de loading
+- **Experiência**: Lenta e frustrante
 
-## 🗄️ Banco de Dados
+### **Depois:**
+- **Imagens**: Carregam instantaneamente
+- **Páginas**: Primeira vez 2s, depois instantâneo
+- **Experiência**: Rápida e fluida
 
-O sistema conecta ao PostgreSQL via Neon.tech com as tabelas:
-- `estabelecimentos` - Dados dos estabelecimentos
-- `usuarios` - Usuários do sistema
+## 🔧 **Endpoints de Cache**
 
-## 🔐 Autenticação
+```bash
+# Ver estatísticas do cache
+GET /api/cache/stats
 
-- Valida CPF e senha
-- Verifica se usuário está ativo
-- Retorna dados do usuário e estabelecimento
+# Limpar todo o cache
+POST /api/cache/clear
+```
+
+## 📚 **Documentação Completa**
+
+- **Cloudinary**: [CLOUDINARY-SETUP.md](./CLOUDINARY-SETUP.md)
+- **Cache**: [CACHE-SYSTEM.md](./CACHE-SYSTEM.md)
+- **Deploy**: [RENDER-DEPLOY.md](./RENDER-DEPLOY.md)
+
+## 🧪 **Testar o Sistema**
+
+```bash
+# Testar cache
+node test-cache.js
+
+# Testar banco
+node test-db.js
+```
+
+## 🚨 **Importante**
+
+- **Cloudinary é OBRIGATÓRIO** para imagens funcionarem
+- **Cache funciona automaticamente** (mesmo sem Redis)
+- **Sistema é transparente** - não precisa alterar frontend
+
+---
+
+**✅ Com este sistema, suas páginas carregarão instantaneamente e as imagens sempre funcionarão!**

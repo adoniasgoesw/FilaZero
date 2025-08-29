@@ -1,18 +1,10 @@
 // server/middlewares/uploadMiddleware.js
 import multer from 'multer';
 import path from 'path';
+import { uploadImage } from '../config/cloudinary.js';
 
-// Configuração do Multer para upload de imagens
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads/');
-  },
-  filename: function (req, file, cb) {
-    // Gerar nome único para o arquivo
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'categoria-' + uniqueSuffix + path.extname(file.originalname));
-  }
-});
+// Configuração do Multer para upload de imagens (apenas para processar o arquivo)
+const storage = multer.memoryStorage(); // Usar memory storage para enviar para Cloudinary
 
 const fileFilter = (req, file, cb) => {
   // Aceitar apenas imagens
@@ -32,6 +24,48 @@ export const upload = multer({
     files: 1 // Máximo 1 arquivo
   }
 });
+
+// Middleware para fazer upload para Cloudinary
+export const uploadToCloudinary = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return next(); // Se não há arquivo, continuar
+    }
+    
+    console.log('☁️ Processando arquivo para Cloudinary...');
+    
+    // Fazer upload para Cloudinary
+    const result = await uploadImage(req.file.buffer, {
+      mimetype: req.file.mimetype,
+      filename: req.file.originalname
+    });
+    
+    if (result.success) {
+      // Substituir informações do arquivo local pelas do Cloudinary
+      req.file.cloudinary = {
+        url: result.url,
+        public_id: result.public_id,
+        format: result.format,
+        size: result.size
+      };
+      
+      console.log('✅ Arquivo processado para Cloudinary:', req.file.cloudinary);
+      next();
+    } else {
+      console.error('❌ Falha no upload para Cloudinary:', result.error);
+      return res.status(500).json({
+        success: false,
+        message: 'Erro ao fazer upload da imagem para o servidor'
+      });
+    }
+  } catch (error) {
+    console.error('❌ Erro no middleware uploadToCloudinary:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erro interno ao processar imagem'
+    });
+  }
+};
 
 // Middleware para capturar erros do Multer
 export const handleMulterError = (err, req, res, next) => {
@@ -98,25 +132,26 @@ export const handleMulterError = (err, req, res, next) => {
     });
   }
   
-  // Para outros erros não tratados
-  console.error('❌ Erro não tratado do Multer:', err);
-  next(err);
+  // Para outros erros
+  console.error('❌ Erro não tratado no Multer:', err);
+  return res.status(500).json({
+    success: false,
+    message: 'Erro interno no servidor'
+  });
 };
 
-// Middleware para validar se o upload foi bem-sucedido
+// Middleware para validar upload
 export const validateUpload = (req, res, next) => {
+  // Se não há arquivo, continuar (upload é opcional)
   if (!req.file) {
-    console.log('⚠️ Nenhum arquivo enviado');
-    // Não é erro, apenas log
-  } else {
-    console.log('✅ Arquivo recebido com sucesso:', req.file.filename);
+    return next();
   }
   
-  // Verificar se o body tem os campos necessários
-  if (!req.body || Object.keys(req.body).length === 0) {
-    return res.status(400).json({
+  // Verificar se o upload para Cloudinary foi bem-sucedido
+  if (!req.file.cloudinary || !req.file.cloudinary.url) {
+    return res.status(500).json({
       success: false,
-      message: 'Dados do formulário não recebidos corretamente'
+      message: 'Erro no processamento da imagem'
     });
   }
   

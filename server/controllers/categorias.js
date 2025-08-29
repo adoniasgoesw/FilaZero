@@ -34,27 +34,12 @@ const criarCategoria = async (req, res) => {
     // Verificar se a imagem foi enviada
     let imagem_url = null;
     
-    if (req.file) {
-      // Em produção (Render), usar URL completa
-      const isProduction = process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'prod';
-      console.log('🌍 Ambiente detectado no backend:', isProduction ? 'Produção' : 'Desenvolvimento');
-      console.log('🔑 NODE_ENV:', process.env.NODE_ENV);
-      console.log('📁 Arquivo recebido:', req.file.filename);
-      
-      if (isProduction) {
-        imagem_url = `https://filazero-sistema-de-gestao.onrender.com/uploads/${req.file.filename}`;
-      } else {
-        imagem_url = `/uploads/${req.file.filename}`;
-      }
-      
-      // Verificar se a URL não está duplicada
-      if (imagem_url.includes('https://filazero-sistema-de-gestao.onrender.comhttps://')) {
-        console.error('❌ ERRO: URL duplicada detectada!');
-        imagem_url = imagem_url.replace('https://filazero-sistema-de-gestao.onrender.comhttps://', 'https://');
-        console.log('🔧 URL corrigida:', imagem_url);
-      }
-      
-      console.log('🖼️ Imagem URL salva:', imagem_url);
+    if (req.file && req.file.cloudinary) {
+      // Usar URL do Cloudinary
+      imagem_url = req.file.cloudinary.url;
+      console.log('☁️ Imagem URL do Cloudinary:', imagem_url);
+    } else if (req.file) {
+      console.log('⚠️ Arquivo recebido mas sem informações do Cloudinary');
     }
 
     // Validar campos obrigatórios
@@ -100,25 +85,16 @@ const criarCategoria = async (req, res) => {
     
     res.status(201).json({
       success: true,
-      message: 'Categoria criada com sucesso',
+      message: 'Categoria criada com sucesso!',
       data: novaCategoria.rows[0]
     });
-
+    
   } catch (error) {
     console.error('❌ Erro ao criar categoria:', error);
-    
-    // Log detalhado para debug
-    console.error('🔍 Detalhes do erro:', {
-      message: error.message,
-      stack: error.stack,
-      code: error.code,
-      name: error.name
-    });
-    
     res.status(500).json({
       success: false,
-      message: 'Erro interno do servidor',
-      error: error.message
+      message: 'Erro interno do servidor ao criar categoria',
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Erro interno'
     });
   }
 };
@@ -189,17 +165,11 @@ const atualizarCategoria = async (req, res) => {
     // Preparar dados para atualização
     let imagem_url = categoriaExistente.rows[0].imagem_url;
     
-    if (req.file) {
-      // Em produção (Render), usar URL completa
-      const isProduction = process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'prod';
-      
-      if (isProduction) {
-        imagem_url = `https://filazero-sistema-de-gestao.onrender.com/uploads/${req.file.filename}`;
-      } else {
-        imagem_url = `/uploads/${req.file.filename}`;
-      }
-      
-      console.log('🖼️ Nova imagem URL:', imagem_url);
+    if (req.file && req.file.cloudinary) {
+      imagem_url = req.file.cloudinary.url;
+      console.log('☁️ Nova imagem URL do Cloudinary:', imagem_url);
+    } else if (req.file) {
+      console.log('⚠️ Arquivo recebido mas sem informações do Cloudinary para atualização');
     }
     
     // Preparar campos para atualização

@@ -39,27 +39,12 @@ const criarProduto = async (req, res) => {
     // Verificar se a imagem foi enviada
     let imagem_url = null;
     
-    if (req.file) {
-      // Em produção (Render), usar URL completa
-      const isProduction = process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'prod';
-      console.log('🌍 Ambiente detectado no backend:', isProduction ? 'Produção' : 'Desenvolvimento');
-      console.log('🔑 NODE_ENV:', process.env.NODE_ENV);
-      console.log('📁 Arquivo recebido:', req.file.filename);
-      
-      if (isProduction) {
-        imagem_url = `https://filazero-sistema-de-gestao.onrender.com/uploads/${req.file.filename}`;
-      } else {
-        imagem_url = `/uploads/${req.file.filename}`;
-      }
-      
-      // Verificar se a URL não está duplicada
-      if (imagem_url.includes('https://filazero-sistema-de-gestao.onrender.comhttps://')) {
-        console.error('❌ ERRO: URL duplicada detectada!');
-        imagem_url = imagem_url.replace('https://filazero-sistema-de-gestao.onrender.comhttps://', 'https://');
-        console.log('🔧 URL corrigida:', imagem_url);
-      }
-      
-      console.log('🖼️ Imagem URL salva:', imagem_url);
+    if (req.file && req.file.cloudinary) {
+      // Usar URL do Cloudinary
+      imagem_url = req.file.cloudinary.url;
+      console.log('☁️ Imagem URL do Cloudinary:', imagem_url);
+    } else if (req.file) {
+      console.log('⚠️ Arquivo recebido mas sem informações do Cloudinary');
     }
 
     // Validar campos obrigatórios
@@ -243,17 +228,12 @@ const atualizarProduto = async (req, res) => {
     // Preparar dados para atualização
     let imagem_url = produtoExistente.rows[0].imagem_url;
     
-    if (req.file) {
-      // Em produção (Render), usar URL completa
-      const isProduction = process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'prod';
-      
-      if (isProduction) {
-        imagem_url = `https://filazero-sistema-de-gestao.onrender.com/uploads/${req.file.filename}`;
-      } else {
-        imagem_url = `/uploads/${req.file.filename}`;
-      }
-      
-      console.log('🖼️ Nova imagem URL:', imagem_url);
+    if (req.file && req.file.cloudinary) {
+      // Usar URL do Cloudinary
+      imagem_url = req.file.cloudinary.url;
+      console.log('☁️ Nova imagem URL do Cloudinary:', imagem_url);
+    } else if (req.file) {
+      console.log('⚠️ Arquivo recebido mas sem informações do Cloudinary para atualização');
     }
     
     // Converter valores booleanos
