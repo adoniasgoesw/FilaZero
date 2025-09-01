@@ -267,7 +267,7 @@ const FormProduct = ({ onCancel, onSave }) => {
       <div className="border-t border-gray-200 pt-4 mt-6">
         <div className="grid grid-cols-2 gap-4">
           <CancelButton onClick={onCancel} />
-          <SaveButton onClick={handleSubmit} />
+          <SaveButton onClick={() => {}} type="submit" />
         </div>
       </div>
     </form>

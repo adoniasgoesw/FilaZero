@@ -101,6 +101,118 @@ const categoriasController = {
         message: 'Erro interno do servidor'
       });
     }
+  },
+
+  // Editar categoria
+  async editar(req, res) {
+    try {
+      const { id } = req.params;
+      const { nome } = req.body;
+      const imagemUrl = req.file ? req.file.path : null;
+
+      // Validação dos campos obrigatórios
+      if (!nome) {
+        return res.status(400).json({
+          success: false,
+          message: 'Nome é obrigatório'
+        });
+      }
+
+      // Verificar se a categoria existe
+      const categoriaCheck = await pool.query(
+        'SELECT id, nome, imagem_url FROM categorias WHERE id = $1',
+        [id]
+      );
+
+      if (categoriaCheck.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'Categoria não encontrada'
+        });
+      }
+
+      // Preparar query de atualização
+      let query, values;
+      
+      if (imagemUrl) {
+        // Atualizar nome e imagem
+        query = `
+          UPDATE categorias 
+          SET nome = $1, imagem_url = $2, updated_at = CURRENT_TIMESTAMP
+          WHERE id = $3
+          RETURNING id, nome, imagem_url, status, updated_at
+        `;
+        values = [nome.trim(), imagemUrl, id];
+      } else {
+        // Atualizar apenas o nome
+        query = `
+          UPDATE categorias 
+          SET nome = $1, updated_at = CURRENT_TIMESTAMP
+          WHERE id = $2
+          RETURNING id, nome, imagem_url, status, updated_at
+        `;
+        values = [nome.trim(), id];
+      }
+
+      const result = await pool.query(query, values);
+      const categoriaAtualizada = result.rows[0];
+
+      res.status(200).json({
+        success: true,
+        message: 'Categoria atualizada com sucesso',
+        data: categoriaAtualizada
+      });
+
+    } catch (error) {
+      console.error('Erro ao editar categoria:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Erro interno do servidor',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  },
+
+  // Deletar categoria
+  async deletar(req, res) {
+    try {
+      const { id } = req.params;
+
+      // Verificar se a categoria existe
+      const categoriaCheck = await pool.query(
+        'SELECT id, nome, imagem_url FROM categorias WHERE id = $1',
+        [id]
+      );
+
+      if (categoriaCheck.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'Categoria não encontrada'
+        });
+      }
+
+      const categoria = categoriaCheck.rows[0];
+
+      // Deletar a categoria do banco
+      await pool.query('DELETE FROM categorias WHERE id = $1', [id]);
+
+      res.status(200).json({
+        success: true,
+        message: 'Categoria deletada com sucesso',
+        data: {
+          id: categoria.id,
+          nome: categoria.nome
+        }
+      });
+
+    } catch (error) {
+      console.error('Erro ao deletar categoria:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Erro interno do servidor',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
   }
 };
 

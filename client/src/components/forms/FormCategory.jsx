@@ -4,7 +4,7 @@ import CancelButton from '../buttons/Cancel';
 import SaveButton from '../buttons/Save';
 import api from '../../services/api';
 
-const FormCategory = ({ onCancel, onSave }) => {
+const FormCategory = ({ onCancel, onSave, categoria = null }) => {
   const [formData, setFormData] = useState({
     nome: '',
     imagem: null
@@ -13,6 +13,24 @@ const FormCategory = ({ onCancel, onSave }) => {
   const [imagePreview, setImagePreview] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Detectar se é modo de edição
+  const isEditMode = !!categoria;
+
+  // Preencher formulário com dados da categoria (modo edição)
+  React.useEffect(() => {
+    if (categoria) {
+      setFormData({
+        nome: categoria.nome || '',
+        imagem: null // Nova imagem (se selecionada)
+      });
+      
+      // Se a categoria tem imagem, mostrar preview
+      if (categoria.imagem_url) {
+        setImagePreview(categoria.imagem_url);
+      }
+    }
+  }, [categoria]);
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
@@ -58,8 +76,41 @@ const FormCategory = ({ onCancel, onSave }) => {
       ...prev,
       imagem: null
     }));
-    setImagePreview(null);
+    // Se for modo de edição, voltar para a imagem original
+    if (isEditMode && categoria?.imagem_url) {
+      setImagePreview(categoria.imagem_url);
+    } else {
+      setImagePreview(null);
+    }
     setError('');
+  };
+
+  const getImageUrl = (imagemUrl) => {
+    if (!imagemUrl) return null;
+    
+    // Se a URL já é completa (começa com http), retorna como está
+    if (imagemUrl.startsWith('http')) {
+      return imagemUrl;
+    }
+    
+    // Normalizar separadores de caminho (Windows usa \, Unix usa /)
+    const normalizedUrl = imagemUrl.replace(/\\/g, '/');
+    
+    // Determinar a base URL baseada no ambiente
+    let baseUrl;
+    if (import.meta.env.VITE_API_URL) {
+      // Remove /api do final se existir, pois vamos adicionar apenas o caminho da imagem
+      baseUrl = import.meta.env.VITE_API_URL.replace(/\/api$/, '');
+    } else {
+      // Fallback para desenvolvimento
+      baseUrl = 'http://localhost:3001';
+    }
+    
+    // Garantir que não há dupla barra
+    const cleanBaseUrl = baseUrl.replace(/\/$/, '');
+    const cleanImageUrl = normalizedUrl.replace(/^\//, '');
+    
+    return `${cleanBaseUrl}/${cleanImageUrl}`;
   };
 
   const handleSubmit = async (e) => {
@@ -71,7 +122,8 @@ const FormCategory = ({ onCancel, onSave }) => {
       return;
     }
 
-    if (!formData.imagem) {
+    // Imagem é obrigatória apenas no modo de criação
+    if (!isEditMode && !formData.imagem) {
       setError('Imagem é obrigatória!');
       return;
     }
@@ -80,32 +132,47 @@ const FormCategory = ({ onCancel, onSave }) => {
     setError('');
 
     try {
-      // Obter ID do estabelecimento do localStorage
-      const estabelecimentoId = localStorage.getItem('estabelecimentoId');
-      
-      if (!estabelecimentoId) {
-        throw new Error('Estabelecimento não identificado!');
-      }
-
-      // Criar FormData para envio de arquivo
+      // Criar FormData para envio
       const formDataToSend = new FormData();
       formDataToSend.append('nome', formData.nome.trim());
-      formDataToSend.append('estabelecimento_id', estabelecimentoId);
-      formDataToSend.append('imagem', formData.imagem);
-
-      // Enviar para a API
-      const response = await api.post('/categorias', formDataToSend);
-
-      if (response.success) {
-        // Limpar formulário
-        setFormData({ nome: '', imagem: null });
-        setImagePreview(null);
+      
+      if (isEditMode) {
+        // Modo de edição
+        if (formData.imagem) {
+          formDataToSend.append('imagem', formData.imagem);
+        }
         
-        // Chamar callback de sucesso (que deve fechar o modal)
-        onSave(response.data);
+        const response = await api.put(`/categorias/${categoria.id}`, formDataToSend);
+        
+        if (response.success) {
+          console.log('✅ Categoria editada com sucesso');
+          onSave(response.data);
+        }
+      } else {
+        // Modo de criação
+        const estabelecimentoId = localStorage.getItem('estabelecimentoId');
+        
+        if (!estabelecimentoId) {
+          throw new Error('Estabelecimento não identificado!');
+        }
+
+        formDataToSend.append('estabelecimento_id', estabelecimentoId);
+        formDataToSend.append('imagem', formData.imagem);
+
+        const response = await api.post('/categorias', formDataToSend);
+        
+        if (response.success) {
+          // Limpar formulário apenas no modo de criação
+          setFormData({ nome: '', imagem: null });
+          setImagePreview(null);
+          
+          console.log('✅ Categoria criada com sucesso');
+          onSave(response.data);
+        }
       }
     } catch (error) {
-      setError('Erro ao cadastrar categoria: ' + error.message);
+      const errorMessage = isEditMode ? 'Erro ao atualizar categoria: ' : 'Erro ao cadastrar categoria: ';
+      setError(errorMessage + error.message);
     } finally {
       setIsLoading(false);
     }
@@ -133,10 +200,10 @@ const FormCategory = ({ onCancel, onSave }) => {
             />
           </div>
 
-          {/* Imagem - Obrigatório */}
+          {/* Imagem - Obrigatório apenas no modo de criação */}
           <div className="flex flex-col items-center">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Imagem <span className="text-red-500">*</span>
+              Imagem {!isEditMode && <span className="text-red-500">*</span>}
             </label>
             
             {/* Input de imagem personalizado */}
@@ -157,10 +224,20 @@ const FormCategory = ({ onCancel, onSave }) => {
                 {imagePreview ? (
                   <div className="relative w-full h-full">
                     <img
-                      src={imagePreview}
+                      src={getImageUrl(imagePreview)}
                       alt="Preview da categoria"
                       className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'flex';
+                      }}
                     />
+                    <div 
+                      className="w-full h-full flex items-center justify-center text-gray-400"
+                      style={{ display: 'none' }}
+                    >
+                      <ImageIcon size={20} />
+                    </div>
                     {/* Overlay com ícone de upload no hover */}
                     <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-200 flex items-center justify-center">
                       <Upload className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
@@ -189,7 +266,7 @@ const FormCategory = ({ onCancel, onSave }) => {
               
               {/* Texto de ajuda abaixo da imagem */}
               <p className="text-xs text-gray-500 mt-2 text-center max-w-32">
-                Clique para alterar a imagem
+                {isEditMode && categoria?.imagem_url ? 'Clique para alterar a imagem' : 'Clique para adicionar uma imagem'}
               </p>
             </div>
           </div>
@@ -203,7 +280,7 @@ const FormCategory = ({ onCancel, onSave }) => {
         )}
         
         <p className="text-xs text-gray-500">
-          Selecione uma imagem para representar a categoria
+          {isEditMode && categoria?.imagem_url ? 'Deixe em branco para manter a imagem atual' : 'Selecione uma imagem para representar a categoria'}
         </p>
       </div>
 
@@ -211,7 +288,7 @@ const FormCategory = ({ onCancel, onSave }) => {
       <div className="border-t border-gray-200 pt-4 mt-6">
         <div className="grid grid-cols-2 gap-4">
           <CancelButton onClick={onCancel} disabled={isLoading} />
-          <SaveButton onClick={handleSubmit} disabled={isLoading}>
+          <SaveButton disabled={isLoading} type="submit">
             {isLoading ? 'Salvando...' : 'Salvar'}
           </SaveButton>
         </div>

@@ -6,11 +6,15 @@ import AddButton from '../../components/buttons/Add';
 import BaseModal from '../../components/modals/Base';
 import FormCategory from '../../components/forms/FormCategory';
 import ListCategory from '../../components/list/ListCategory';
+import Notification from '../../components/elements/Notification';
 
 function Categorias() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [categoriaToEdit, setCategoriaToEdit] = useState(null);
   const [estabelecimentoId, setEstabelecimentoId] = useState(null);
   const [refreshList, setRefreshList] = useState(0);
+  const [notification, setNotification] = useState({ isOpen: false, type: 'success', title: '', message: '' });
 
   useEffect(() => {
     // Buscar o ID do estabelecimento do localStorage
@@ -31,15 +35,51 @@ function Categorias() {
     }
   }, []);
 
+  const showNotification = (type, title, message) => {
+    setNotification({ isOpen: true, type, title, message });
+  };
+
+  const hideNotification = () => {
+    setNotification(prev => ({ ...prev, isOpen: false }));
+  };
+
   const handleCategorySave = (data) => {
     console.log('Categoria salva:', data);
     setIsAddModalOpen(false);
     // Forçar atualização da lista
     setRefreshList(prev => prev + 1);
+    // Mostrar notificação de sucesso
+    showNotification('success', 'Sucesso!', 'Categoria cadastrada com sucesso!');
   };
 
   const handleCategoryCancel = () => {
     setIsAddModalOpen(false);
+  };
+
+  const handleCategoryDelete = (categoria) => {
+    // Mostrar notificação de sucesso após deletar
+    showNotification('success', 'Excluído!', `Categoria "${categoria.nome}" foi excluída com sucesso!`);
+  };
+
+  const handleCategoryEdit = (categoria) => {
+    console.log('Editando categoria:', categoria);
+    setCategoriaToEdit(categoria);
+    setIsEditModalOpen(true);
+  };
+
+  const handleCategoryEditSave = (data) => {
+    console.log('Categoria editada:', data);
+    setIsEditModalOpen(false);
+    setCategoriaToEdit(null);
+    // Forçar atualização da lista
+    setRefreshList(prev => prev + 1);
+    // Mostrar notificação de sucesso
+    showNotification('success', 'Atualizado!', 'Categoria atualizada com sucesso!');
+  };
+
+  const handleCategoryEditCancel = () => {
+    setIsEditModalOpen(false);
+    setCategoriaToEdit(null);
   };
 
   return (
@@ -77,7 +117,9 @@ function Categorias() {
         {estabelecimentoId ? (
           <ListCategory 
             key={refreshList} 
-            estabelecimentoId={estabelecimentoId} 
+            estabelecimentoId={estabelecimentoId}
+            onCategoryDelete={handleCategoryDelete}
+            onCategoryEdit={handleCategoryEdit}
           />
         ) : (
           <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
@@ -100,6 +142,31 @@ function Categorias() {
           onSave={handleCategorySave}
         />
       </BaseModal>
+
+      {/* Modal de Editar Categoria */}
+      <BaseModal
+        isOpen={isEditModalOpen}
+        onClose={handleCategoryEditCancel}
+        title="Editar Categoria"
+        icon={Tag}
+        iconBgColor="bg-blue-500"
+        iconColor="text-white"
+      >
+        <FormCategory
+          categoria={categoriaToEdit}
+          onCancel={handleCategoryEditCancel}
+          onSave={handleCategoryEditSave}
+        />
+      </BaseModal>
+
+      {/* Notification */}
+      <Notification
+        isOpen={notification.isOpen}
+        onClose={hideNotification}
+        type={notification.type}
+        title={notification.title}
+        message={notification.message}
+      />
     </div>
   );
 }

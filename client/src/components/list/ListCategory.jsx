@@ -4,11 +4,14 @@ import api from '../../services/api';
 import EditButton from '../buttons/Edit';
 import DeleteButton from '../buttons/Delete';
 import StatusButton from '../buttons/Status';
+import ConfirmDelete from '../elements/ConfirmDelete';
 
-const ListCategory = ({ estabelecimentoId }) => {
+const ListCategory = ({ estabelecimentoId, onCategoryDelete, onCategoryEdit }) => {
   const [categorias, setCategorias] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [deleteModal, setDeleteModal] = useState({ isOpen: false, categoria: null });
+  const [deleting, setDeleting] = useState(false);
 
   const fetchCategorias = useCallback(async () => {
     try {
@@ -45,12 +48,52 @@ const ListCategory = ({ estabelecimentoId }) => {
 
   const handleEdit = (categoria) => {
     console.log('Editar categoria:', categoria);
-    // TODO: Implementar modal de edição
+    if (onCategoryEdit) {
+      onCategoryEdit(categoria);
+    }
   };
 
   const handleDelete = (categoria) => {
-    console.log('Deletar categoria:', categoria);
-    // TODO: Implementar confirmação e exclusão
+    console.log('Abrir modal de exclusão para:', categoria);
+    setDeleteModal({ isOpen: true, categoria });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteModal.categoria) return;
+
+    setDeleting(true);
+    try {
+      console.log('Deletando categoria:', deleteModal.categoria);
+      
+      const response = await api.delete(`/categorias/${deleteModal.categoria.id}`);
+      
+      if (response.success) {
+        console.log('✅ Categoria deletada com sucesso:', response.data);
+        
+        // Remover a categoria da lista local
+        setCategorias(prev => prev.filter(cat => cat.id !== deleteModal.categoria.id));
+        
+        // Fechar modal
+        setDeleteModal({ isOpen: false, categoria: null });
+        
+        // Chamar callback para mostrar notificação
+        if (onCategoryDelete) {
+          onCategoryDelete(deleteModal.categoria);
+        }
+      } else {
+        console.error('❌ Erro ao deletar categoria:', response.message);
+        setError('Erro ao deletar categoria: ' + response.message);
+      }
+    } catch (err) {
+      console.error('❌ Erro ao deletar categoria:', err);
+      setError('Erro ao deletar categoria: ' + err.message);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setDeleteModal({ isOpen: false, categoria: null });
   };
 
   const handleToggleStatus = (categoria) => {
@@ -210,6 +253,17 @@ const ListCategory = ({ estabelecimentoId }) => {
           </div>
         </div>
       ))}
+      
+      {/* Modal de confirmação de exclusão */}
+      <ConfirmDelete
+        isOpen={deleteModal.isOpen}
+        onClose={handleCancelDelete}
+        onConfirm={handleConfirmDelete}
+        title="Excluir Categoria"
+        message="Tem certeza que deseja excluir esta categoria?"
+        itemName={deleteModal.categoria?.nome}
+        isLoading={deleting}
+      />
     </div>
   );
 };
