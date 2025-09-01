@@ -18,9 +18,9 @@ function Historic() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header com ícone, barra de pesquisa e botão Open */}
-      <div className="pt-6 px-4 md:px-6">
+    <div className="h-screen bg-gray-50 flex flex-col md:min-h-screen">
+      {/* Header - fixo apenas em mobile */}
+      <div className="fixed md:relative top-0 left-0 right-0 md:left-auto md:right-auto z-50 md:z-auto bg-white px-4 md:px-6 py-4">
         <div className="flex items-center gap-3 w-full">
           {/* Ícone da página */}
           <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg flex-shrink-0">
@@ -37,8 +37,8 @@ function Historic() {
         </div>
       </div>
 
-      {/* Conteúdo da página */}
-      <div className="px-4 md:px-6 mt-8">
+      {/* Área de conteúdo com rolagem */}
+      <div className="flex-1 overflow-y-auto px-4 md:px-6 py-6 mt-16 md:mt-8">
         <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
           <p className="text-gray-600">Histórico será exibido aqui...</p>
         </div>

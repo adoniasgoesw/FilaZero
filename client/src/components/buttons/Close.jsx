@@ -14,3 +14,4 @@ const CloseButton = ({ onClick, className = "" }) => {
 };
 
 export default CloseButton;
+

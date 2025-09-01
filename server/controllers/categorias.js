@@ -75,11 +75,15 @@ const categoriasController = {
         SELECT 
           id, 
           nome, 
+          descricao,
           imagem_url, 
+          cor,
+          icone,
           status, 
-          criado_em
+          criado_em,
+          updated_at
         FROM categorias 
-        WHERE estabelecimento_id = $1 AND status = true
+        WHERE estabelecimento_id = $1
         ORDER BY nome ASC
       `;
 
@@ -101,3 +105,4 @@ const categoriasController = {
 };
 
 export default categoriasController;
+

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Tag, Image as ImageIcon, Upload, X } from 'lucide-react';
 import CancelButton from '../buttons/Cancel';
 import SaveButton from '../buttons/Save';
-import apiRequest from '../../services/api';
+import api from '../../services/api';
 
 const FormCategory = ({ onCancel, onSave }) => {
   const [formData, setFormData] = useState({
@@ -94,10 +94,7 @@ const FormCategory = ({ onCancel, onSave }) => {
       formDataToSend.append('imagem', formData.imagem);
 
       // Enviar para a API
-      const response = await apiRequest('/categorias', {
-        method: 'POST',
-        body: formDataToSend
-      });
+      const response = await api.post('/categorias', formDataToSend);
 
       if (response.success) {
         // Limpar formulário

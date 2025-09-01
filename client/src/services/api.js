@@ -38,6 +38,31 @@ const apiRequest = async (endpoint, options = {}) => {
   }
 };
 
+// Métodos HTTP padrão
+const api = {
+  get: async (endpoint) => {
+    return apiRequest(endpoint, { method: 'GET' });
+  },
+  
+  post: async (endpoint, data) => {
+    return apiRequest(endpoint, {
+      method: 'POST',
+      body: data instanceof FormData ? data : JSON.stringify(data),
+    });
+  },
+  
+  put: async (endpoint, data) => {
+    return apiRequest(endpoint, {
+      method: 'PUT',
+      body: data instanceof FormData ? data : JSON.stringify(data),
+    });
+  },
+  
+  delete: async (endpoint) => {
+    return apiRequest(endpoint, { method: 'DELETE' });
+  }
+};
+
 // Função de login
 export const login = async (credentials) => {
   return apiRequest('/login', {
@@ -52,4 +77,4 @@ export const setAuthData = (token, usuario) => {
   localStorage.setItem('usuario', JSON.stringify(usuario));
 };
 
-export default apiRequest;
+export default api;

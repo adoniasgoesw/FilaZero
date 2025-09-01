@@ -192,3 +192,4 @@ const FormCaixa = ({ onCancel, onSave }) => {
 };
 
 export default FormCaixa;
+

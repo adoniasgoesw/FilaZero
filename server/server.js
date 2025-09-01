@@ -24,6 +24,7 @@ const corsOptions = {
       'https://filazero.netlify.app',
       'https://filazero-sistema-de-gestao.onrender.com',
       'http://localhost:5173',
+      'http://localhost:5174',
       'http://localhost:3000'
     ];
     
@@ -53,20 +54,8 @@ const corsOptions = {
 // Middlewares
 app.use(cors(corsOptions));
 
-// Middleware adicional para CORS (backup)
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', 'https://filazero.netlify.app');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  
-  // Responder a requisições OPTIONS
-  if (req.method === 'OPTIONS') {
-    res.sendStatus(200);
-  } else {
-    next();
-  }
-});
+// Middleware adicional para CORS (backup) - Removido para evitar conflito
+// O CORS já está configurado acima com corsOptions
 
 // Configuração do Multer movida para middleware dedicado
 // para evitar conflitos com as rotas
