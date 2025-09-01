@@ -61,13 +61,38 @@ const ListCategory = ({ estabelecimentoId }) => {
   const getImageUrl = (imagemUrl) => {
     if (!imagemUrl) return null;
     
+    console.log('🔍 URL original da imagem:', imagemUrl);
+    
     // Se a URL já é completa (começa com http), retorna como está
     if (imagemUrl.startsWith('http')) {
+      console.log('✅ URL completa encontrada:', imagemUrl);
       return imagemUrl;
     }
     
-    // Se é um caminho relativo, adiciona a base URL do servidor
-    return `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/${imagemUrl}`;
+    // Normalizar separadores de caminho (Windows usa \, Unix usa /)
+    const normalizedUrl = imagemUrl.replace(/\\/g, '/');
+    console.log('🔧 URL normalizada:', normalizedUrl);
+    
+    // Determinar a base URL baseada no ambiente
+    let baseUrl;
+    if (import.meta.env.VITE_API_URL) {
+      // Remove /api do final se existir, pois vamos adicionar apenas o caminho da imagem
+      baseUrl = import.meta.env.VITE_API_URL.replace(/\/api$/, '');
+    } else {
+      // Fallback para desenvolvimento
+      baseUrl = 'http://localhost:3001';
+    }
+    
+    console.log('🌐 Base URL:', baseUrl);
+    
+    // Garantir que não há dupla barra
+    const cleanBaseUrl = baseUrl.replace(/\/$/, '');
+    const cleanImageUrl = normalizedUrl.replace(/^\//, '');
+    
+    const finalUrl = `${cleanBaseUrl}/${cleanImageUrl}`;
+    console.log('🎯 URL final:', finalUrl);
+    
+    return finalUrl;
   };
 
   if (loading) {
