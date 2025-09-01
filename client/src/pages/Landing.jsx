@@ -1,39 +1,77 @@
-// src/pages/LandingPage.jsx
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext.jsx';
-import Header from '../components/layout/Header.jsx';
-import BaseModal from '../components/modals/Base.jsx';
-import LoginForm from '../components/forms/LoginForm.jsx';
+import { Rocket } from 'lucide-react';
+import Header from '../components/layout/Header';
+import BaseModal from '../components/modals/Base';
+import FormLogin from '../components/forms/FormLogin';
+import FormRegister from '../components/forms/FormRegister';
+import { User, UserPlus } from 'lucide-react';
 
-const LandingPage = () => {
-  const navigate = useNavigate();
-  const { isAuthenticated, loading } = useAuth();
-  
-  // Estado para controlar o modal
+function Landing() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLoginMode, setIsLoginMode] = useState(true);
 
-  const openModal = () => setIsModalOpen(true);
-  const closeModal = () => setIsModalOpen(false);
+  const handleAccessClick = () => {
+    setIsLoginMode(true);
+    setIsModalOpen(true);
+  };
 
-  // Redirecionar usuários já logados para Home
+
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+  };
+
+  const switchToRegister = () => {
+    setIsLoginMode(false);
+  };
+
+  const switchToLogin = () => {
+    setIsLoginMode(true);
+  };
+
   useEffect(() => {
-    if (!loading && isAuthenticated) {
-      navigate('/home');
-    }
-  }, [isAuthenticated, loading, navigate]);
+    const handleSwitchToRegister = () => switchToRegister();
+    const handleSwitchToLogin = () => switchToLogin();
+
+    window.addEventListener('switchToRegister', handleSwitchToRegister);
+    window.addEventListener('switchToLogin', handleSwitchToLogin);
+
+    return () => {
+      window.removeEventListener('switchToRegister', handleSwitchToRegister);
+      window.removeEventListener('switchToLogin', handleSwitchToLogin);
+    };
+  }, []);
 
   return (
-    <div className="w-full h-screen bg-gray-50">
-      {/* Header com logo e botão */}
-      <Header onAcesseClick={openModal} />
+    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-purple-600">
+      {/* Header com Logo e Botão Access */}
+      <Header onAccessClick={handleAccessClick} />
+      
+      {/* Conteúdo principal */}
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center text-white">
+          <h1 className="text-6xl font-bold mb-6">FilaZero</h1>
+          <p className="text-xl mb-8">Sistema de gerenciamento de filas e entregas</p>
+          <div className="space-y-4">
+            <p className="text-lg">Bem-vindo ao sistema</p>
+            <p className="text-lg">Faça login para continuar</p>
+          </div>
+        </div>
+      </div>
 
-      {/* Modal Base com LoginForm */}
-      <BaseModal isOpen={isModalOpen} onClose={closeModal}>
-        <LoginForm />
+      {/* Modal de Login/Registro */}
+      <BaseModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        title={isLoginMode ? "Login" : "Cadastro"}
+        icon={isLoginMode ? User : UserPlus}
+        iconBgColor="bg-blue-500"
+        iconColor="text-white"
+      >
+        {isLoginMode ? <FormLogin /> : <FormRegister />}
       </BaseModal>
     </div>
   );
-};
+}
 
-export default LandingPage;
+export default Landing;

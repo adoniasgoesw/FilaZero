@@ -1,121 +1,59 @@
-// src/routes/AppRoute.jsx
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { AuthProvider } from '../contexts/AuthContext.jsx';
-import { CacheProvider } from '../contexts/CacheContext.jsx';
-import ProtectedRoute from '../components/auth/ProtectedRoute.jsx';
-import LandingPage from '../pages/Landing.jsx';
-import Home from '../pages/Home.jsx';
-import Historico from '../pages/Historico.jsx';
-import Delivery from '../pages/Delivery.jsx';
-import Ajuste from '../pages/Ajuste.jsx';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import Sidebar from '../components/layout/Sidebar';
+import Home from '../pages/Home';
+import Landing from '../pages/Landing';
+import Config from '../pages/Config';
+import Historic from '../pages/Historic';
+import Delivery from '../pages/Delivery';
+import Clientes from '../pages/gestao/Clientes';
+import Pagamentos from '../pages/gestao/Pagamentos';
+import Usuarios from '../pages/gestao/Usuarios';
+import Categorias from '../pages/gestao/Categorias';
+import Produtos from '../pages/gestao/Produtos';
 
-// Importar páginas de Gestão
-import Usuarios from '../pages/gestao/Usuarios.jsx';
-import Clientes from '../pages/gestao/Clientes.jsx';
-import Pagamentos from '../pages/gestao/Pagamentos.jsx';
-import Categorias from '../pages/gestao/Categorias.jsx';
-import Produtos from '../pages/gestao/Produtos.jsx';
+// Componente wrapper para gerenciar o Sidebar
+function AppContent() {
+  const location = useLocation();
+  const isLandingPage = location.pathname === '/' || location.pathname === '/landing';
 
-const AppRoute = () => {
+  if (isLandingPage) {
+    return (
+      <div className="min-h-screen">
+        <Routes>
+          <Route path="/" element={<Landing />} />
+          <Route path="/landing" element={<Landing />} />
+        </Routes>
+      </div>
+    );
+  }
+
   return (
-    <CacheProvider>
-      <AuthProvider>
-        <Router>
-          <Routes>
-            {/* Rota raiz - sempre acessível */}
-            <Route path="/" element={<LandingPage />} />
-            
-            {/* Rota Home - protegida, só acessível após login */}
-            <Route 
-              path="/home" 
-              element={
-                <ProtectedRoute>
-                  <Home />
-                </ProtectedRoute>
-              } 
-            />
-            
-            {/* Rota Histórico - protegida */}
-            <Route 
-              path="/historico" 
-              element={
-                <ProtectedRoute>
-                  <Historico />
-                </ProtectedRoute>
-              } 
-            />
-            
-            {/* Rota Delivery - protegida */}
-            <Route 
-              path="/delivery" 
-              element={
-                <ProtectedRoute>
-                  <Delivery />
-                </ProtectedRoute>
-              } 
-            />
-            
-            {/* Rota Ajuste - protegida */}
-            <Route 
-              path="/ajuste" 
-              element={
-                <ProtectedRoute>
-                  <Ajuste />
-                </ProtectedRoute>
-              } 
-            />
-
-            {/* Rotas de Gestão - protegidas */}
-            <Route 
-              path="/gestao/usuarios" 
-              element={
-                <ProtectedRoute>
-                  <Usuarios />
-                </ProtectedRoute>
-              } 
-            />
-            
-            <Route 
-              path="/gestao/clientes" 
-              element={
-                <ProtectedRoute>
-                  <Clientes />
-                </ProtectedRoute>
-              } 
-            />
-            
-            <Route 
-              path="/gestao/pagamentos" 
-              element={
-                <ProtectedRoute>
-                  <Pagamentos />
-                </ProtectedRoute>
-              } 
-            />
-            
-            <Route 
-              path="/gestao/categorias" 
-              element={
-                <ProtectedRoute>
-                  <Categorias />
-                </ProtectedRoute>
-              } 
-            />
-            
-            <Route 
-              path="/gestao/produtos" 
-              element={
-                <ProtectedRoute>
-                  <Produtos />
-                </ProtectedRoute>
-              } 
-            />
-          </Routes>
-        </Router>
-      </AuthProvider>
-    </CacheProvider>
+    <div className="min-h-screen bg-gray-50">
+      <Sidebar />
+      <main className="md:ml-20 pb-20 md:pb-0">
+        <Routes>
+          <Route path="/home" element={<Home />} />
+          <Route path="/config" element={<Config />} />
+          <Route path="/historic" element={<Historic />} />
+          <Route path="/delivery" element={<Delivery />} />
+          <Route path="/gestao/clientes" element={<Clientes />} />
+          <Route path="/gestao/pagamentos" element={<Pagamentos />} />
+          <Route path="/gestao/usuarios" element={<Usuarios />} />
+          <Route path="/gestao/categorias" element={<Categorias />} />
+          <Route path="/gestao/produtos" element={<Produtos />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </main>
+    </div>
   );
-};
+}
+
+function AppRoute() {
+  return (
+    <Router>
+      <AppContent />
+    </Router>
+  );
+}
 
 export default AppRoute;

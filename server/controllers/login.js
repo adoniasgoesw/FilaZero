@@ -1,88 +1,179 @@
-// server/controllers/login.js
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 import pool from '../config/db.js';
-import bcrypt from 'bcryptjs';
 
-export const login = async (req, res) => {
-  try {
-    const { cpf, senha } = req.body;
+const loginController = {
+  // Login do usuário
+  async login(req, res) {
+    try {
+      const { cpf, senha } = req.body;
 
-    // Validação dos campos obrigatórios
-    if (!cpf || !senha) {
-      return res.status(400).json({
-        success: false,
-        message: 'CPF e senha são obrigatórios'
-      });
-    }
+      // Validação dos campos obrigatórios
+      if (!cpf || !senha) {
+        return res.status(400).json({
+          success: false,
+          message: 'CPF e senha são obrigatórios'
+        });
+      }
 
-    // Remover formatação do CPF (pontos e traços)
-    const cpfLimpo = cpf.replace(/\D/g, '');
-    
-    // Validar se o CPF tem 11 dígitos
-    if (cpfLimpo.length !== 11) {
-      return res.status(400).json({
-        success: false,
-        message: 'CPF deve ter 11 dígitos'
-      });
-    }
+      // Buscar usuário pelo CPF
+      const query = `
+        SELECT 
+          u.id,
+          u.estabelecimento_id,
+          u.nome_completo,
+          u.email,
+          u.whatsapp,
+          u.cpf,
+          u.senha,
+          u.cargo,
+          u.status,
+          e.nome as nome_estabelecimento,
+          e.setor as setor_estabelecimento
+        FROM usuarios u
+        LEFT JOIN estabelecimentos e ON u.estabelecimento_id = e.id
+        WHERE u.cpf = $1 AND u.status = true
+      `;
 
-    // Buscar usuário pelo CPF
-    const query = `
-      SELECT u.id, u.nome_completo, u.email, u.cpf, u.senha, u.cargo, u.status,
-             e.id as estabelecimento_id, e.nome as estabelecimento_nome, e.cnpj
-      FROM usuarios u
-      INNER JOIN estabelecimentos e ON u.estabelecimento_id = e.id
-      WHERE u.cpf = $1 AND u.status = true
-    `;
+      const result = await pool.query(query, [cpf]);
 
-    console.log('🔍 Buscando usuário com CPF:', cpfLimpo);
-    console.log('🔍 CPF original recebido:', cpf);
+      if (result.rows.length === 0) {
+        return res.status(401).json({
+          success: false,
+          message: 'CPF não encontrado ou usuário inativo'
+        });
+      }
 
-    const result = await pool.query(query, [cpfLimpo]);
+      const usuario = result.rows[0];
 
-    if (result.rows.length === 0) {
-      return res.status(401).json({
-        success: false,
-        message: 'CPF não encontrado ou usuário inativo'
-      });
-    }
+      // Verificar se a senha está correta
+      const senhaValida = await bcrypt.compare(senha, usuario.senha);
 
-    const usuario = result.rows[0];
+      if (!senhaValida) {
+        return res.status(401).json({
+          success: false,
+          message: 'Senha incorreta'
+        });
+      }
 
-    // Verificar se a senha está correta
-    const senhaValida = await bcrypt.compare(senha, usuario.senha);
-
-    if (!senhaValida) {
-      return res.status(401).json({
-        success: false,
-        message: 'Senha incorreta'
-      });
-    }
-
-    // Login bem-sucedido
-    res.status(200).json({
-      success: true,
-      message: 'Acesso permitido',
-      data: {
-        usuario: {
+      // Gerar token JWT
+      const token = jwt.sign(
+        {
           id: usuario.id,
-          nome_completo: usuario.nome_completo,
-          email: usuario.email,
           cpf: usuario.cpf,
+          estabelecimento_id: usuario.estabelecimento_id,
           cargo: usuario.cargo
         },
-        estabelecimento: {
-          id: usuario.estabelecimento_id,
-          nome: usuario.estabelecimento_nome,
-          cnpj: usuario.cnpj
-        }
-      }
-    });
+        process.env.JWT_SECRET || 'sua_chave_secreta_aqui',
+        { expiresIn: '24h' }
+      );
 
-  } catch (error) {
-    console.error('Erro no login:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Erro interno do servidor'
-    });
+      // Remover senha do objeto de resposta
+      delete usuario.senha;
+
+      // Retornar sucesso com dados do usuário e token
+      res.status(200).json({
+        success: true,
+        message: 'Login realizado com sucesso',
+        data: {
+          usuario,
+          token
+        }
+      });
+
+    } catch (error) {
+      console.error('Erro no login:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Erro interno do servidor',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  },
+
+  // Verificar token (middleware)
+  async verificarToken(req, res, next) {
+    try {
+      const token = req.headers.authorization?.replace('Bearer ', '');
+
+      if (!token) {
+        return res.status(401).json({
+          success: false,
+          message: 'Token não fornecido'
+        });
+      }
+
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'sua_chave_secreta_aqui');
+      req.usuario = decoded;
+      next();
+
+    } catch (error) {
+      if (error.name === 'TokenExpiredError') {
+        return res.status(401).json({
+          success: false,
+          message: 'Token expirado'
+        });
+      }
+
+      if (error.name === 'JsonWebTokenError') {
+        return res.status(401).json({
+          success: false,
+          message: 'Token inválido'
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        message: 'Erro ao verificar token'
+      });
+    }
+  },
+
+  // Obter dados do usuário logado
+  async getUsuarioLogado(req, res) {
+    try {
+      const { id } = req.usuario;
+
+      const query = `
+        SELECT 
+          u.id,
+          u.estabelecimento_id,
+          u.nome_completo,
+          u.email,
+          u.whatsapp,
+          u.cpf,
+          u.cargo,
+          u.status,
+          u.criado_em,
+          e.nome as nome_estabelecimento,
+          e.setor as setor_estabelecimento
+        FROM usuarios u
+        LEFT JOIN estabelecimentos e ON u.estabelecimento_id = e.id
+        WHERE u.id = $1
+      `;
+
+      const result = await pool.query(query, [id]);
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'Usuário não encontrado'
+        });
+      }
+
+      res.status(200).json({
+        success: true,
+        data: result.rows[0]
+      });
+
+    } catch (error) {
+      console.error('Erro ao buscar usuário:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Erro interno do servidor'
+      });
+    }
   }
 };
+
+export default loginController;

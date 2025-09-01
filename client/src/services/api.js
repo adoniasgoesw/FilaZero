@@ -1,58 +1,55 @@
-// src/services/api.js
-import axios from "axios";
+// Configuração base da API
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
-// URL da API - usar localhost:3001 como padrão se não estiver definida
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+// Função para fazer requisições HTTP
+const apiRequest = async (endpoint, options = {}) => {
+  const url = `${API_BASE_URL}${endpoint}`;
+  
+  const config = {
+    headers: {
+      ...options.headers,
+    },
+    ...options,
+  };
 
-console.log('🔧 Configuração da API:');
-console.log('🌍 VITE_API_URL:', import.meta.env.VITE_API_URL);
-console.log('🔗 API_URL final:', API_URL);
-console.log('🌐 Ambiente:', import.meta.env.MODE);
-console.log('📦 Todas as variáveis de ambiente:', import.meta.env);
-
-const API = axios.create({
-  baseURL: API_URL,
-  // Não definir Content-Type padrão para permitir multipart/form-data
-  timeout: 30000, // Timeout de 30 segundos
-});
-
-// Interceptor para debug
-API.interceptors.request.use(
-  (config) => {
-    console.log('🚀 Requisição sendo enviada:', {
-      url: config.url,
-      method: config.method,
-      baseURL: config.baseURL,
-      headers: config.headers,
-      data: config.data
-    });
-    return config;
-  },
-  (error) => {
-    console.error('❌ Erro na requisição:', error);
-    return Promise.reject(error);
+  // Adicionar Content-Type apenas se não for FormData
+  if (!(options.body instanceof FormData)) {
+    config.headers['Content-Type'] = 'application/json';
   }
-);
 
-// Interceptor para resposta
-API.interceptors.response.use(
-  (response) => {
-    console.log('✅ Resposta recebida:', {
-      status: response.status,
-      url: response.config.url,
-      data: response.data
-    });
-    return response;
-  },
-  (error) => {
-    console.error('❌ Erro na resposta:', {
-      status: error.response?.status,
-      message: error.message,
-      url: error.config?.url,
-      data: error.response?.data
-    });
-    return Promise.reject(error);
+  // Adicionar token de autenticação se existir
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
-);
 
-export default API;
+  try {
+    const response = await fetch(url, config);
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Erro na requisição');
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Erro na API:', error);
+    throw error;
+  }
+};
+
+// Função de login
+export const login = async (credentials) => {
+  return apiRequest('/login', {
+    method: 'POST',
+    body: JSON.stringify(credentials),
+  });
+};
+
+// Função para salvar dados de autenticação
+export const setAuthData = (token, usuario) => {
+  localStorage.setItem('token', token);
+  localStorage.setItem('usuario', JSON.stringify(usuario));
+};
+
+export default apiRequest;

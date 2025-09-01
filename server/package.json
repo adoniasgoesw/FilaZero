@@ -1,36 +1,36 @@
 {
-  "name": "fila-zero-server",
+  "name": "filazero-backend",
   "version": "1.0.0",
+  "description": "Backend do sistema FilaZero - Sistema de Gestão",
+  "main": "server.js",
   "type": "module",
-  "description": "Backend do sistema FilaZero",
-  "main": "index.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon index.js",
-    "prod": "node server.js",
-    "build": "echo 'No build step required for Node.js'",
+    "dev": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "keywords": [
+    "filazero",
+    "gestao",
+    "restaurant",
+    "backend",
+    "api"
+  ],
+  "author": "FilaZero Team",
+  "license": "MIT",
   "dependencies": {
-    "bcryptjs": "^2.4.3",
-    "cloudinary": "^2.7.0",
+    "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
-    "form-data": "^4.0.4",
+    "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.2",
-    "node-fetch": "^3.3.2",
     "pg": "^8.11.3"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
   },
-  "keywords": [
-    "node",
-    "express",
-    "postgresql",
-    "api"
-  ],
-  "author": "FilaZero",
-  "license": "MIT"
+  "engines": {
+    "node": ">=18.0.0"
+  }
 }
