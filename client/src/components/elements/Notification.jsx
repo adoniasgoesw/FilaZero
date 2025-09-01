@@ -71,23 +71,23 @@ const Notification = ({
   const IconComponent = config.icon;
 
   return (
-    <div className="fixed top-4 right-4 z-50 max-w-sm w-full mx-4">
-      <div className={`${config.bgColor} ${config.borderColor} border rounded-xl shadow-lg p-4 transform transition-all duration-300 ease-in-out`}>
-        <div className="flex items-start gap-3">
+    <div className="fixed top-4 left-4 z-50 w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg">
+      <div className={`${config.bgColor} ${config.borderColor} border rounded-xl shadow-lg p-3 sm:p-4 transform transition-all duration-300 ease-in-out`}>
+        <div className="flex items-start gap-2 sm:gap-3">
           {/* Icon */}
-          <div className={`w-8 h-8 ${config.iconBg} rounded-full flex items-center justify-center flex-shrink-0`}>
-            <IconComponent className={`w-5 h-5 ${config.iconColor}`} />
+          <div className={`w-6 h-6 sm:w-8 sm:h-8 ${config.iconBg} rounded-full flex items-center justify-center flex-shrink-0`}>
+            <IconComponent className={`w-4 h-4 sm:w-5 sm:h-5 ${config.iconColor}`} />
           </div>
           
           {/* Content */}
           <div className="flex-1 min-w-0">
             {title && (
-              <h4 className="text-sm font-semibold text-gray-900 mb-1">
+              <h4 className="text-xs sm:text-sm font-semibold text-gray-900 mb-1">
                 {title}
               </h4>
             )}
             {message && (
-              <p className="text-sm text-gray-700">
+              <p className="text-xs sm:text-sm text-gray-700 leading-relaxed">
                 {message}
               </p>
             )}
@@ -98,7 +98,7 @@ const Notification = ({
             onClick={onClose}
             className="p-1 hover:bg-gray-200 rounded-full transition-colors flex-shrink-0"
           >
-            <X className="w-4 h-4 text-gray-500" />
+            <X className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500" />
           </button>
         </div>
       </div>
