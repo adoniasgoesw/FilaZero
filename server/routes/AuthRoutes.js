@@ -1,22 +1,44 @@
 import express from 'express';
-import loginController from '../controllers/login.js';
-import categoriasController from '../controllers/categorias.js';
-import upload from '../middlewares/upload.js';
 
 const router = express.Router();
 
 // ===== ROTAS DE AUTENTICAÇÃO =====
-// Rota de login
-router.post('/login', loginController.login);
+// Rota de login (placeholder)
+router.post('/login', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Login endpoint - Implementação pendente',
+    timestamp: new Date().toISOString()
+  });
+});
 
-// Rota para obter dados do usuário logado (requer autenticação)
-router.get('/usuario', loginController.verificarToken, loginController.getUsuarioLogado);
+// Rota para obter dados do usuário logado (placeholder)
+router.get('/usuario', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Usuario endpoint - Implementação pendente',
+    timestamp: new Date().toISOString()
+  });
+});
 
 // ===== ROTAS DE CATEGORIAS =====
-// Rota para cadastrar categoria (requer autenticação)
-router.post('/categorias', loginController.verificarToken, upload.single('imagem'), categoriasController.cadastrar);
+// Rota para cadastrar categoria (placeholder)
+router.post('/categorias', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Categorias endpoint - Implementação pendente',
+    timestamp: new Date().toISOString()
+  });
+});
 
-// Rota para listar categorias por estabelecimento
-router.get('/categorias/:estabelecimento_id', categoriasController.listarPorEstabelecimento);
+// Rota para listar categorias por estabelecimento (placeholder)
+router.get('/categorias/:estabelecimento_id', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Listar categorias endpoint - Implementação pendente',
+    timestamp: new Date().toISOString(),
+    estabelecimento_id: req.params.estabelecimento_id
+  });
+});
 
 export default router;

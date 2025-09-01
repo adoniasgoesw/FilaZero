@@ -1,7 +1,6 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { testConnection } from './config/db.js';
 import authRoutes from './routes/authroutes.js';
 
 // Carrega variáveis de ambiente para produção
@@ -28,39 +27,6 @@ app.use('/uploads', express.static('uploads'));
 
 // Todas as rotas (auth + categorias) em um único arquivo
 app.use('/api', authRoutes);
-
-// Middleware de logging para produção
-app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
-  next();
-});
-
-// Rota de teste de conexão com o banco
-app.get('/api/test-db', async (req, res) => {
-  try {
-    const isConnected = await testConnection();
-    if (isConnected) {
-      res.json({ 
-        success: true, 
-        message: 'Conexão com banco de dados estabelecida com sucesso!',
-        timestamp: new Date().toISOString(),
-        environment: 'production',
-        database: 'Neon Database'
-      });
-    } else {
-      res.status(500).json({ 
-        success: false, 
-        message: 'Falha na conexão com banco de dados' 
-      });
-    }
-  } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      message: 'Erro ao testar conexão', 
-      error: process.env.NODE_ENV === 'production' ? 'Erro interno' : error.message 
-    });
-  }
-});
 
 // Rota de status da API
 app.get('/api/status', (req, res) => {
@@ -104,14 +70,11 @@ app.use('*', (req, res) => {
 });
 
 // Inicialização do servidor
-app.listen(PORT, async () => {
+app.listen(PORT, () => {
   console.log(`🚀 Servidor de produção rodando na porta ${PORT}`);
   console.log(`🌍 Ambiente: Produção`);
   console.log(`🌐 Frontend: https://filazero.netlify.app`);
-  console.log(`📊 Testando conexão com banco de dados...`);
-  
-  // Testa conexão com banco ao iniciar
-  await testConnection();
+  console.log(`✅ Servidor iniciado com sucesso!`);
 });
 
 export default app;

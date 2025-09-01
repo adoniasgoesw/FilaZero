@@ -6,7 +6,9 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
+    "start:simple": "node server-simple.js",
     "dev": "node index.js",
+    "build": "echo 'No build step required'",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
