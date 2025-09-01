@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { testConnection } from './config/db.js';
-import authRoutes from './routes/authroutes.js';
+import authRoutes from './routes/AuthRoute.js';
 
 // Carrega variáveis de ambiente para desenvolvimento
 dotenv.config({ path: '.env.dev' });
