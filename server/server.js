@@ -3,7 +3,6 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { testConnection } from './config/db.js';
 import authRoutes from './routes/authroutes.js';
-import categoriasRoutes from './routes/categoriasroutes.js';
 
 // Carrega variáveis de ambiente para produção
 dotenv.config({ path: '.env.prod' });
@@ -27,11 +26,8 @@ app.use(express.urlencoded({ extended: true }));
 // Servir arquivos estáticos (uploads)
 app.use('/uploads', express.static('uploads'));
 
-// Rotas de autenticação
+// Todas as rotas (auth + categorias) em um único arquivo
 app.use('/api', authRoutes);
-
-// Rotas de categorias
-app.use('/api', categoriasRoutes);
 
 // Middleware de logging para produção
 app.use((req, res, next) => {
