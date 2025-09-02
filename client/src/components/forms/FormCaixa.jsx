@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Calculator } from 'lucide-react'; // Icon for modal title
-import CancelButton from '../buttons/Cancel';
-import SaveButton from '../buttons/Save';
 
-const FormCaixa = ({ onCancel, onSave }) => {
+
+const FormCaixa = () => {
   const [formData, setFormData] = useState({
     valorAbertura: '',
     valorTotal: '',
@@ -80,11 +79,12 @@ const FormCaixa = ({ onCancel, onSave }) => {
       alert('Valor de abertura é obrigatório e deve ser maior que zero!');
       return;
     }
-    onSave(formData);
+    // Disparar evento para o BaseModal fechar
+    window.dispatchEvent(new CustomEvent('modalSaveSuccess', { detail: formData }));
   };
 
   return (
-    <form onSubmit={handleSubmit} className="h-full flex flex-col">
+    <form onSubmit={handleSubmit} className="h-full flex flex-col modal-form">
       {/* Conteúdo do formulário */}
       <div className="flex-1 space-y-6">
         {/* Valores principais */}
@@ -178,15 +178,7 @@ const FormCaixa = ({ onCancel, onSave }) => {
         </div>
       </div>
 
-      {/* Footer com botões */}
-      <div className="border-t border-gray-200 pt-4 mt-6">
-        <div className="grid grid-cols-2 gap-4">
-          <CancelButton onClick={onCancel} />
-          <SaveButton onClick={() => {}} type="submit">
-            Abrir Caixa
-          </SaveButton>
-        </div>
-      </div>
+
     </form>
   );
 };

@@ -82,3 +82,4 @@ Agora suas imagens de categorias:
 - ✅ **Têm backup automático na nuvem**
 
 **Problema resolvido!** 🚀
+

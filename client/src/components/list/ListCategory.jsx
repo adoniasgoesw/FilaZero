@@ -96,9 +96,33 @@ const ListCategory = ({ estabelecimentoId, onCategoryDelete, onCategoryEdit }) =
     setDeleteModal({ isOpen: false, categoria: null });
   };
 
-  const handleToggleStatus = (categoria) => {
+  const handleToggleStatus = async (categoria) => {
     console.log('Alterar status da categoria:', categoria);
-    // TODO: Implementar alteração de status
+    
+    try {
+      const response = await api.put(`/categorias/${categoria.id}/status`);
+      
+      if (response.success) {
+        console.log('✅ Status da categoria alterado com sucesso:', response.data);
+        
+        // Atualizar a categoria na lista local
+        setCategorias(prev => prev.map(cat => 
+          cat.id === categoria.id 
+            ? { ...cat, status: response.data.status }
+            : cat
+        ));
+        
+        // Mostrar notificação de sucesso
+        const statusText = response.data.status ? 'ativada' : 'desativada';
+        console.log(`✅ Categoria "${categoria.nome}" foi ${statusText}`);
+      } else {
+        console.error('❌ Erro ao alterar status da categoria:', response.message);
+        setError('Erro ao alterar status: ' + response.message);
+      }
+    } catch (err) {
+      console.error('❌ Erro ao alterar status da categoria:', err);
+      setError('Erro ao alterar status: ' + err.message);
+    }
   };
 
   const getImageUrl = (imagemUrl) => {
@@ -227,8 +251,8 @@ const ListCategory = ({ estabelecimentoId, onCategoryDelete, onCategoryEdit }) =
                 isActive={categoria.status}
                 className={`rounded-full p-1 shadow-sm w-6 h-6 flex items-center justify-center ${
                   categoria.status
-                    ? 'bg-green-500 hover:bg-green-600 text-white'
-                    : 'bg-gray-400 hover:bg-gray-500 text-white'
+                    ? 'bg-orange-500 hover:bg-orange-600 text-white'
+                    : 'bg-green-500 hover:bg-green-600 text-white'
                 }`}
               />
             </div>

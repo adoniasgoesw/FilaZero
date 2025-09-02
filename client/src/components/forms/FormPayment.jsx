@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { CreditCard } from 'lucide-react';
-import CancelButton from '../buttons/Cancel';
-import SaveButton from '../buttons/Save';
 
-const FormPayment = ({ onCancel, onSave }) => {
+
+const FormPayment = () => {
   const [formData, setFormData] = useState({
     nome: '',
     tipo: '',
@@ -98,13 +97,7 @@ const FormPayment = ({ onCancel, onSave }) => {
         </div>
       </div>
 
-      {/* Footer com botões */}
-      <div className="border-t border-gray-200 pt-4 mt-6">
-        <div className="grid grid-cols-2 gap-4">
-          <CancelButton onClick={onCancel} />
-          <SaveButton onClick={() => {}} type="submit" />
-        </div>
-      </div>
+
     </form>
   );
 };

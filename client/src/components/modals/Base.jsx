@@ -1,8 +1,30 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import CloseButton from '../buttons/Close';
+import CancelButton from '../buttons/Cancel';
+import SaveButton from '../buttons/Save';
 
-const BaseModal = ({ isOpen, onClose, children, title = "Modal", icon: Icon, iconBgColor = "bg-blue-500", iconColor = "text-white" }) => {
+const BaseModal = ({ 
+  isOpen, 
+  onClose, 
+  children, 
+  title = "Modal", 
+  icon: Icon, 
+  iconBgColor = "bg-blue-500", 
+  iconColor = "text-white",
+  showButtons = true,
+  onSave,
+  saveText = "Salvar",
+  cancelText = "Cancelar",
+  isLoading = false
+}) => {
   const [isAnimating, setIsAnimating] = useState(false);
+
+  const handleClose = useCallback(() => {
+    setIsAnimating(false);
+    setTimeout(() => {
+      onClose();
+    }, 300); // Tempo da animação
+  }, [onClose]);
 
   useEffect(() => {
     if (isOpen) {
@@ -10,12 +32,24 @@ const BaseModal = ({ isOpen, onClose, children, title = "Modal", icon: Icon, ico
     }
   }, [isOpen]);
 
-  const handleClose = () => {
-    setIsAnimating(false);
-    setTimeout(() => {
-      onClose();
-    }, 300); // Tempo da animação
-  };
+  // Escutar evento de sucesso do formulário
+  useEffect(() => {
+    const handleSaveSuccess = (event) => {
+      if (onSave) {
+        onSave(event.detail);
+      }
+      // Fechar modal após salvar com sucesso
+      handleClose();
+    };
+
+    if (isOpen) {
+      window.addEventListener('modalSaveSuccess', handleSaveSuccess);
+    }
+
+    return () => {
+      window.removeEventListener('modalSaveSuccess', handleSaveSuccess);
+    };
+  }, [isOpen, onSave, handleClose]);
 
   if (!isOpen && !isAnimating) return null;
 
@@ -51,6 +85,29 @@ const BaseModal = ({ isOpen, onClose, children, title = "Modal", icon: Icon, ico
           <div className="flex-1 p-6 overflow-y-auto">
             {children}
           </div>
+
+          {/* Footer com botões (se showButtons for true) */}
+          {showButtons && (
+            <div className="border-t border-gray-200 p-6">
+              <div className="grid grid-cols-2 gap-4">
+                <CancelButton onClick={handleClose} disabled={isLoading}>
+                  {cancelText}
+                </CancelButton>
+                <SaveButton 
+                  onClick={() => {
+                    // Encontrar o formulário dentro do modal e submeter
+                    const form = document.querySelector('.modal-form');
+                    if (form) {
+                      form.requestSubmit();
+                    }
+                  }} 
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Salvando...' : saveText}
+                </SaveButton>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </>

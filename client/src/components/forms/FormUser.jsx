@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { User } from 'lucide-react';
-import CancelButton from '../buttons/Cancel';
-import SaveButton from '../buttons/Save';
 
-const FormUser = ({ onCancel, onSave }) => {
+
+const FormUser = () => {
   const [formData, setFormData] = useState({
     nome: '',
     cpf: '',
@@ -124,13 +123,7 @@ const FormUser = ({ onCancel, onSave }) => {
         </div>
       </div>
 
-      {/* Footer com botões */}
-      <div className="border-t border-gray-200 pt-4 mt-6">
-        <div className="grid grid-cols-2 gap-4">
-          <CancelButton onClick={onCancel} />
-          <SaveButton onClick={() => {}} type="submit" />
-        </div>
-      </div>
+
     </form>
   );
 };

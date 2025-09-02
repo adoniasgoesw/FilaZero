@@ -215,6 +215,54 @@ const categoriasController = {
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
+  },
+
+  // Alterar status da categoria
+  async alterarStatus(req, res) {
+    try {
+      const { id } = req.params;
+
+      // Verificar se a categoria existe
+      const categoriaCheck = await pool.query(
+        'SELECT id, nome, status FROM categorias WHERE id = $1',
+        [id]
+      );
+
+      if (categoriaCheck.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'Categoria não encontrada'
+        });
+      }
+
+      const categoria = categoriaCheck.rows[0];
+      const novoStatus = !categoria.status;
+
+      // Atualizar status da categoria
+      const query = `
+        UPDATE categorias 
+        SET status = $1, updated_at = CURRENT_TIMESTAMP
+        WHERE id = $2
+        RETURNING id, nome, status, updated_at
+      `;
+
+      const result = await pool.query(query, [novoStatus, id]);
+      const categoriaAtualizada = result.rows[0];
+
+      res.status(200).json({
+        success: true,
+        message: `Categoria ${novoStatus ? 'ativada' : 'desativada'} com sucesso`,
+        data: categoriaAtualizada
+      });
+
+    } catch (error) {
+      console.error('Erro ao alterar status da categoria:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Erro interno do servidor',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
   }
 };
 
