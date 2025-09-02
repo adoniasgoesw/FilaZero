@@ -107,11 +107,13 @@ const ListCategory = ({ estabelecimentoId, onCategoryDelete, onCategoryEdit }) =
     console.log('🔍 URL original da imagem:', imagemUrl);
     
     // Se a URL já é completa (começa com http), retorna como está
+    // Isso funciona tanto para URLs locais quanto para URLs do Cloudinary
     if (imagemUrl.startsWith('http')) {
       console.log('✅ URL completa encontrada:', imagemUrl);
       return imagemUrl;
     }
     
+    // Fallback para URLs locais (desenvolvimento)
     // Normalizar separadores de caminho (Windows usa \, Unix usa /)
     const normalizedUrl = imagemUrl.replace(/\\/g, '/');
     console.log('🔧 URL normalizada:', normalizedUrl);

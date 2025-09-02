@@ -89,10 +89,12 @@ const FormCategory = ({ onCancel, onSave, categoria = null }) => {
     if (!imagemUrl) return null;
     
     // Se a URL já é completa (começa com http), retorna como está
+    // Isso funciona tanto para URLs locais quanto para URLs do Cloudinary
     if (imagemUrl.startsWith('http')) {
       return imagemUrl;
     }
     
+    // Fallback para URLs locais (desenvolvimento)
     // Normalizar separadores de caminho (Windows usa \, Unix usa /)
     const normalizedUrl = imagemUrl.replace(/\\/g, '/');
     
