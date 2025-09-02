@@ -45,6 +45,7 @@ function Categorias() {
 
   const handleCategorySave = (data) => {
     console.log('Categoria salva:', data);
+    // Fechar modal primeiro
     setIsAddModalOpen(false);
     // Forçar atualização da lista
     setRefreshList(prev => prev + 1);
@@ -53,6 +54,7 @@ function Categorias() {
   };
 
   const handleCategoryCancel = () => {
+    console.log('handleCategoryCancel executado!');
     setIsAddModalOpen(false);
   };
 
@@ -69,6 +71,7 @@ function Categorias() {
 
   const handleCategoryEditSave = (data) => {
     console.log('Categoria editada:', data);
+    // Fechar modal primeiro
     setIsEditModalOpen(false);
     setCategoriaToEdit(null);
     // Forçar atualização da lista
@@ -131,16 +134,16 @@ function Categorias() {
       {/* Modal de Adicionar Categoria */}
       <BaseModal
         isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
+        onClose={handleCategoryCancel}
         title="Cadastrar Categoria"
         icon={Tag}
         iconBgColor="bg-orange-500"
         iconColor="text-white"
+
+        onSave={handleCategorySave}
+        showButtons={true}
       >
-        <FormCategory
-          onCancel={handleCategoryCancel}
-          onSave={handleCategorySave}
-        />
+        <FormCategory />
       </BaseModal>
 
       {/* Modal de Editar Categoria */}
@@ -151,12 +154,11 @@ function Categorias() {
         icon={Tag}
         iconBgColor="bg-blue-500"
         iconColor="text-white"
+
+        onSave={handleCategoryEditSave}
+        showButtons={true}
       >
-        <FormCategory
-          categoria={categoriaToEdit}
-          onCancel={handleCategoryEditCancel}
-          onSave={handleCategoryEditSave}
-        />
+        <FormCategory categoria={categoriaToEdit} />
       </BaseModal>
 
       {/* Notification */}

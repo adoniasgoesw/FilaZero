@@ -77,4 +77,15 @@ export const setAuthData = (token, usuario) => {
   localStorage.setItem('usuario', JSON.stringify(usuario));
 };
 
+// Função para buscar sugestões de imagens
+export const buscarImagens = async (query) => {
+  if (!query || query.trim().length < 2) {
+    return { success: true, imagens: [] };
+  }
+  
+  return apiRequest(`/buscar-imagens?q=${encodeURIComponent(query.trim())}`, {
+    method: 'GET',
+  });
+};
+
 export default api;
