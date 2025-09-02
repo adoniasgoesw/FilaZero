@@ -1,0 +1,39 @@
+# Environment variables
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+*.env
+config.env
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory
+coverage/
+
+# Dependency directories
+node_modules/
+
+# Uploads (local files)
+uploads/
+
+# Test files
+test-cloudinary.js
+
+# OS generated files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini

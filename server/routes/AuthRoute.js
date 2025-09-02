@@ -1,7 +1,7 @@
 import express from 'express';
 import loginController from '../controllers/login.js';
 import categoriasController from '../controllers/categorias.js';
-import upload from '../middlewares/upload.js';
+import upload from '../middlewares/cloudinaryUpload.js';
 
 const router = express.Router();
 

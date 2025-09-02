@@ -6,6 +6,7 @@ const categoriasController = {
     try {
       const { nome } = req.body;
       const estabelecimentoId = req.body.estabelecimento_id;
+      // Cloudinary retorna a URL completa em req.file.path
       const imagemUrl = req.file ? req.file.path : null;
 
       // Validação dos campos obrigatórios
@@ -108,6 +109,7 @@ const categoriasController = {
     try {
       const { id } = req.params;
       const { nome } = req.body;
+      // Cloudinary retorna a URL completa em req.file.path
       const imagemUrl = req.file ? req.file.path : null;
 
       // Validação dos campos obrigatórios
