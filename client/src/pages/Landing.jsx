@@ -67,6 +67,7 @@ function Landing() {
         icon={isLoginMode ? User : UserPlus}
         iconBgColor="bg-blue-500"
         iconColor="text-white"
+        hideDefaultButtons={true}
       >
         {isLoginMode ? <FormLogin /> : <FormRegister />}
       </BaseModal>

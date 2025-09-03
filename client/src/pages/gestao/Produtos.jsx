@@ -5,7 +5,9 @@ import BackButton from '../../components/buttons/Back';
 import AddButton from '../../components/buttons/Add';
 import BaseModal from '../../components/modals/Base';
 import FormProduct from '../../components/forms/FormProduct';
+import FormComplementos from '../../components/forms/FormComplementos';
 import ListProduct from '../../components/list/ListProduct';
+import ListComplementos from '../../components/list/ListComplementos';
 import Notification from '../../components/elements/Notification';
 
 function Produtos() {
@@ -15,6 +17,18 @@ function Produtos() {
   const [estabelecimentoId, setEstabelecimentoId] = useState(null);
   const [refreshList, setRefreshList] = useState(0);
   const [notification, setNotification] = useState({ isOpen: false, type: 'success', title: '', message: '' });
+  const [activeTab, setActiveTab] = useState('produtos'); // 'produtos' ou 'complementos'
+  
+  // Estados para complementos
+  const [isAddComplementoModalOpen, setIsAddComplementoModalOpen] = useState(false);
+  const [isEditComplementoModalOpen, setIsEditComplementoModalOpen] = useState(false);
+  const [complementoToEdit, setComplementoToEdit] = useState(null);
+  const [refreshComplementosList, setRefreshComplementosList] = useState(0);
+  const [formProductState, setFormProductState] = useState({
+    showComplementoForm: false,
+    complementosSelecionados: [],
+    activeFormTab: 'detalhes'
+  });
 
   useEffect(() => {
     // Buscar o ID do estabelecimento do localStorage
@@ -85,6 +99,41 @@ function Produtos() {
     setProdutoToEdit(null);
   };
 
+  // Funções para complementos
+  const handleComplementoSave = (data) => {
+    console.log('Complemento salvo:', data);
+    setIsAddComplementoModalOpen(false);
+    setRefreshComplementosList(prev => prev + 1);
+    showNotification('success', 'Sucesso!', 'Complemento cadastrado com sucesso!');
+  };
+
+  const handleComplementoCancel = () => {
+    setIsAddComplementoModalOpen(false);
+  };
+
+  const handleComplementoDelete = (complemento) => {
+    showNotification('success', 'Excluído!', `Complemento "${complemento.nome}" foi excluído com sucesso!`);
+  };
+
+  const handleComplementoEdit = (complemento) => {
+    console.log('Editando complemento:', complemento);
+    setComplementoToEdit(complemento);
+    setIsEditComplementoModalOpen(true);
+  };
+
+  const handleComplementoEditSave = (data) => {
+    console.log('Complemento editado:', data);
+    setIsEditComplementoModalOpen(false);
+    setComplementoToEdit(null);
+    setRefreshComplementosList(prev => prev + 1);
+    showNotification('success', 'Atualizado!', 'Complemento atualizado com sucesso!');
+  };
+
+  const handleComplementoEditCancel = () => {
+    setIsEditComplementoModalOpen(false);
+    setComplementoToEdit(null);
+  };
+
   return (
     <div className="h-screen bg-gray-50 flex flex-col md:min-h-screen">
       {/* Header - fixo apenas em mobile */}
@@ -95,14 +144,20 @@ function Produtos() {
           
           {/* Barra de pesquisa */}
           <div className="flex-1 min-w-0">
-            <SearchBar placeholder="Pesquisar produtos..." />
+            <SearchBar placeholder={activeTab === 'produtos' ? 'Pesquisar produtos...' : 'Pesquisar complementos...'} />
           </div>
           
           {/* Botão adicionar */}
           <AddButton 
-            text="Produtos"
+            text={activeTab === 'produtos' ? 'Produtos' : 'Complementos'}
             color="red"
-            onClick={() => setIsAddModalOpen(true)}
+            onClick={() => {
+              if (activeTab === 'produtos') {
+                setIsAddModalOpen(true);
+              } else {
+                setIsAddComplementoModalOpen(true);
+              }
+            }}
           />
         </div>
       </div>
@@ -111,19 +166,60 @@ function Produtos() {
       <div className="fixed md:relative top-16 md:top-auto left-0 right-0 md:left-auto md:right-auto z-40 md:z-auto bg-white px-4 md:px-6 py-4">
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
           <Package className="w-6 h-6 text-red-500" />
-          Produtos
+          {activeTab === 'produtos' ? 'Produtos' : 'Complementos'}
         </h1>
       </div>
 
+
+
+      {/* Header de navegação */}
+      <div className="px-4 py-2 border-b border-gray-200">
+        <div className="flex bg-gray-100 w-64">
+          <button
+            onClick={() => setActiveTab('produtos')}
+            className={`flex-1 px-4 py-3 text-sm font-medium transition-all duration-200 rounded-tl-lg ${
+              activeTab === 'produtos'
+                ? 'bg-gray-400 text-white shadow-sm'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Produtos
+          </button>
+          <button
+            onClick={() => setActiveTab('complementos')}
+            className={`flex-1 px-4 py-3 text-sm font-medium transition-all duration-200 rounded-tr-lg ${
+              activeTab === 'complementos'
+                ? 'bg-gray-400 text-white shadow-sm'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Complementos
+          </button>
+        </div>
+      </div>
+
       {/* Área de conteúdo com rolagem */}
-      <div className="flex-1 overflow-y-auto px-4 md:px-6 py-6 mt-32 md:mt-8">
+      <div className="flex-1 overflow-y-auto px-4 md:px-6 py-6">
+
+        {/* Conteúdo baseado na aba ativa */}
         {estabelecimentoId ? (
-          <ListProduct 
-            key={refreshList} 
-            estabelecimentoId={estabelecimentoId}
-            onProductDelete={handleProductDelete}
-            onProductEdit={handleProductEdit}
-          />
+          activeTab === 'produtos' ? (
+            <ListProduct 
+              key={refreshList} 
+              estabelecimentoId={estabelecimentoId}
+              onProductDelete={handleProductDelete}
+              onProductEdit={handleProductEdit}
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+            />
+          ) : (
+            <ListComplementos 
+              key={refreshComplementosList} 
+              estabelecimentoId={estabelecimentoId}
+              onComplementoDelete={handleComplementoDelete}
+              onComplementoEdit={handleComplementoEdit}
+            />
+          )
         ) : (
           <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
             <p className="text-gray-600">Carregando dados do estabelecimento...</p>
@@ -141,8 +237,14 @@ function Produtos() {
         iconColor="text-white"
         onSave={handleProductSave}
         showButtons={true}
+        saveText={formProductState.activeFormTab === 'complementos' && formProductState.showComplementoForm 
+          ? `Salvar (${formProductState.complementosSelecionados.length})` 
+          : 'Salvar'
+        }
       >
-        <FormProduct />
+        <FormProduct 
+          onStateChange={setFormProductState}
+        />
       </BaseModal>
 
       {/* Modal de Editar Produto */}
@@ -155,8 +257,40 @@ function Produtos() {
         iconColor="text-white"
         onSave={handleProductEditSave}
         showButtons={true}
+        saveText={formProductState.activeFormTab === 'complementos' && formProductState.showComplementoForm 
+          ? `Salvar (${formProductState.complementosSelecionados.length})` 
+          : 'Salvar'
+        }
       >
-        <FormProduct produto={produtoToEdit} />
+        <FormProduct produto={produtoToEdit} onStateChange={setFormProductState} />
+      </BaseModal>
+
+      {/* Modal de Adicionar Complemento */}
+      <BaseModal
+        isOpen={isAddComplementoModalOpen}
+        onClose={handleComplementoCancel}
+        title="Cadastrar Complemento"
+        icon={Package}
+        iconBgColor="bg-red-500"
+        iconColor="text-white"
+        onSave={handleComplementoSave}
+        showButtons={true}
+      >
+        <FormComplementos />
+      </BaseModal>
+
+      {/* Modal de Editar Complemento */}
+      <BaseModal
+        isOpen={isEditComplementoModalOpen}
+        onClose={handleComplementoEditCancel}
+        title="Editar Complemento"
+        icon={Package}
+        iconBgColor="bg-blue-500"
+        iconColor="text-white"
+        onSave={handleComplementoEditSave}
+        showButtons={true}
+      >
+        <FormComplementos complemento={complementoToEdit} />
       </BaseModal>
 
       {/* Notification */}

@@ -21,7 +21,7 @@ const DeleteButton = ({ onClick, className = '', disabled = false, children, siz
       className={`
         inline-flex items-center justify-center
         bg-red-600 hover:bg-red-700 disabled:bg-red-300
-        text-white font-medium rounded-lg 
+        text-white font-medium rounded-full 
         transition-colors duration-200 
         focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2
         disabled:cursor-not-allowed
