@@ -23,6 +23,11 @@ const StatusButton = ({ onClick, className = '', disabled = false, isActive = fa
         transition-colors duration-200 
         focus:outline-none focus:ring-2 focus:ring-offset-2
         disabled:cursor-not-allowed
+        rounded-full
+        ${isActive 
+          ? 'bg-orange-500 text-white hover:bg-orange-600' 
+          : 'bg-green-600 text-white hover:bg-green-700'
+        }
         ${sizeClasses[size]}
         ${className}
       `}

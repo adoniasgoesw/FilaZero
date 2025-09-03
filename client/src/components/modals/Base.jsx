@@ -12,6 +12,7 @@ const BaseModal = ({
   iconBgColor = "bg-blue-500", 
   iconColor = "text-white",
   showButtons = true,
+  hideDefaultButtons = false,
   onSave,
   saveText = "Salvar",
   cancelText = "Cancelar",
@@ -20,6 +21,20 @@ const BaseModal = ({
   const [isAnimating, setIsAnimating] = useState(false);
 
   const handleClose = useCallback(() => {
+    // Disparar evento para permitir interceptação
+    const cancelEvent = new CustomEvent('modalCancel', { 
+      detail: { canClose: true },
+      cancelable: true 
+    });
+    
+    // Verificar se algum listener cancelou o evento
+    const wasCancelled = !window.dispatchEvent(cancelEvent);
+    
+    // Se o evento foi cancelado, não fechar o modal
+    if (wasCancelled || cancelEvent.defaultPrevented) {
+      return;
+    }
+    
     setIsAnimating(false);
     setTimeout(() => {
       onClose();
@@ -86,8 +101,8 @@ const BaseModal = ({
             {children}
           </div>
 
-          {/* Footer com botões (se showButtons for true) */}
-          {showButtons && (
+          {/* Footer com botões (se showButtons for true e hideDefaultButtons for false) */}
+          {showButtons && !hideDefaultButtons && (
             <div className="border-t border-gray-200 p-6">
               <div className="grid grid-cols-2 gap-4">
                 <CancelButton onClick={handleClose} disabled={isLoading}>

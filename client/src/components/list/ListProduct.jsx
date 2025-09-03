@@ -6,7 +6,7 @@ import DeleteButton from '../buttons/Delete';
 import StatusButton from '../buttons/Status';
 import ConfirmDelete from '../elements/ConfirmDelete';
 
-const ListProduct = ({ estabelecimentoId, onProductDelete, onProductEdit }) => {
+const ListProduct = ({ estabelecimentoId, onProductDelete, onProductEdit, activeTab, setActiveTab }) => {
   const [produtos, setProdutos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -17,7 +17,7 @@ const ListProduct = ({ estabelecimentoId, onProductDelete, onProductEdit }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [totalPages, setTotalPages] = useState(1);
+
   const itemsPerPage = 10;
 
   const fetchProdutos = useCallback(async (page = 1, append = false) => {
@@ -39,7 +39,7 @@ const ListProduct = ({ estabelecimentoId, onProductDelete, onProductEdit }) => {
       if (response.success) {
         const newProdutos = response.data.produtos || response.data;
         const total = response.data.total || newProdutos.length;
-        const totalPages = Math.ceil(total / itemsPerPage);
+
         
         if (append) {
           setProdutos(prev => [...prev, ...newProdutos]);
@@ -47,18 +47,17 @@ const ListProduct = ({ estabelecimentoId, onProductDelete, onProductEdit }) => {
           setProdutos(newProdutos);
         }
         
-        setTotalPages(totalPages);
-        setHasMore(page < totalPages);
+
         setCurrentPage(page);
+        setHasMore(page < Math.ceil(total / itemsPerPage));
         
-        console.log('✅ Produtos carregados:', newProdutos.length, 'Total:', total, 'Páginas:', totalPages);
+        console.log('✅ Produtos carregados:', newProdutos.length, 'Total:', total, 'Páginas:', Math.ceil(total / itemsPerPage));
       } else {
-        setError('Erro ao carregar produtos');
+        throw new Error(response.message || 'Erro ao carregar produtos');
       }
-    } catch (err) {
-      console.error('❌ Erro ao buscar produtos:', err);
-      console.error('❌ Detalhes do erro:', err.message);
-      setError(`Erro ao carregar produtos: ${err.message}`);
+    } catch (error) {
+      console.error('❌ Erro ao buscar produtos:', error);
+      setError(error.message || 'Erro ao carregar produtos');
     } finally {
       setLoading(false);
       setLoadingMore(false);
@@ -67,126 +66,97 @@ const ListProduct = ({ estabelecimentoId, onProductDelete, onProductEdit }) => {
 
   useEffect(() => {
     if (estabelecimentoId) {
-      // Reset states when estabelecimentoId changes
-      setProdutos([]);
-      setCurrentPage(1);
-      setHasMore(true);
-      fetchProdutos(1, false);
+      fetchProdutos(1);
     }
   }, [estabelecimentoId, fetchProdutos]);
 
   // Função para carregar mais produtos
-  const loadMoreProducts = useCallback(() => {
-    if (!loadingMore && hasMore) {
+  const loadMore = useCallback(() => {
+    if (hasMore && !loadingMore && !loading) {
       fetchProdutos(currentPage + 1, true);
     }
-  }, [loadingMore, hasMore, currentPage, fetchProdutos]);
+  }, [hasMore, loadingMore, loading, currentPage, fetchProdutos]);
 
-  // Detectar rolagem para carregar mais produtos
-  useEffect(() => {
-    const handleScroll = () => {
-      if (window.innerHeight + document.documentElement.scrollTop >= document.documentElement.offsetHeight - 1000) {
-        loadMoreProducts();
+  // Função para recarregar a lista
+  const refreshList = useCallback(() => {
+    if (estabelecimentoId) {
+      fetchProdutos(1);
+    }
+  }, [estabelecimentoId, fetchProdutos]);
+
+  // Função para alternar status do produto
+  const toggleStatus = async (produto) => {
+    try {
+      const response = await api.put(`/produtos/${produto.id}/status`);
+      
+      if (response.success) {
+        // Atualizar o produto na lista
+        setProdutos(prev => prev.map(p => 
+          p.id === produto.id 
+            ? { ...p, status: !p.status }
+            : p
+        ));
+        
+        console.log('✅ Status do produto alterado:', produto.nome, 'Novo status:', !produto.status);
+      } else {
+        throw new Error(response.message || 'Erro ao alterar status');
       }
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [loadMoreProducts]);
-
-  const handleEdit = (produto) => {
-    console.log('Editar produto:', produto);
-    if (onProductEdit) {
-      onProductEdit(produto);
+    } catch (error) {
+      console.error('❌ Erro ao alterar status:', error);
+      setError(error.message || 'Erro ao alterar status do produto');
     }
   };
 
-  const handleDelete = (produto) => {
-    console.log('Abrir modal de exclusão para:', produto);
-    setDeleteModal({ isOpen: true, produto });
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!deleteModal.produto) return;
-
-    setDeleting(true);
+  // Função para deletar produto
+  const handleDelete = async (produto) => {
     try {
-      console.log('Deletando produto:', deleteModal.produto);
-      
-      const response = await api.delete(`/produtos/${deleteModal.produto.id}`);
+      setDeleting(true);
+      const response = await api.delete(`/produtos/${produto.id}`);
       
       if (response.success) {
-        console.log('✅ Produto deletado com sucesso:', response.data);
-        
-        // Remover o produto da lista local
-        setProdutos(prev => prev.filter(prod => prod.id !== deleteModal.produto.id));
+        // Remover produto da lista
+        setProdutos(prev => prev.filter(p => p.id !== produto.id));
         
         // Fechar modal
         setDeleteModal({ isOpen: false, produto: null });
         
-        // Chamar callback para mostrar notificação
+        // Chamar callback para notificação
         if (onProductDelete) {
-          onProductDelete(deleteModal.produto);
+          onProductDelete(produto);
         }
+        
+        console.log('✅ Produto deletado:', produto.nome);
       } else {
-        console.error('❌ Erro ao deletar produto:', response.message);
-        setError('Erro ao deletar produto: ' + response.message);
+        throw new Error(response.message || 'Erro ao deletar produto');
       }
-    } catch (err) {
-      console.error('❌ Erro ao deletar produto:', err);
-      setError('Erro ao deletar produto: ' + err.message);
+    } catch (error) {
+      console.error('❌ Erro ao deletar produto:', error);
+      setError(error.message || 'Erro ao deletar produto');
     } finally {
       setDeleting(false);
     }
   };
 
-  const handleCancelDelete = () => {
-    setDeleteModal({ isOpen: false, produto: null });
+  // Função para formatar moeda
+  const formatCurrency = (value) => {
+    if (!value) return 'R$ 0,00';
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value);
   };
 
-  const handleToggleStatus = async (produto) => {
-    console.log('Alterar status do produto:', produto);
-    
-    try {
-      const response = await api.put(`/produtos/${produto.id}/status`);
-      
-      if (response.success) {
-        console.log('✅ Status do produto alterado com sucesso:', response.data);
-        
-        // Atualizar o produto na lista local
-        setProdutos(prev => prev.map(prod => 
-          prod.id === produto.id 
-            ? { ...prod, status: response.data.status }
-            : prod
-        ));
-        
-        // Mostrar notificação de sucesso
-        const statusText = response.data.status ? 'ativado' : 'desativado';
-        console.log(`✅ Produto "${produto.nome}" foi ${statusText}`);
-      } else {
-        console.error('❌ Erro ao alterar status do produto:', response.message);
-        setError('Erro ao alterar status: ' + response.message);
-      }
-    } catch (err) {
-      console.error('❌ Erro ao alterar status do produto:', err);
-      setError('Erro ao alterar status: ' + err.message);
-    }
-  };
-
+  // Função para obter URL da imagem
   const getImageUrl = (imagemUrl) => {
     if (!imagemUrl) return null;
     
-    console.log('🔍 URL original da imagem:', imagemUrl);
-    
     // Se a URL já é completa (começa com http), retorna como está
     if (imagemUrl.startsWith('http')) {
-      console.log('✅ URL completa encontrada:', imagemUrl);
       return imagemUrl;
     }
     
     // Fallback para URLs locais (desenvolvimento)
     const normalizedUrl = imagemUrl.replace(/\\/g, '/');
-    console.log('🔧 URL normalizada:', normalizedUrl);
     
     // Determinar a base URL baseada no ambiente
     let baseUrl;
@@ -196,83 +166,117 @@ const ListProduct = ({ estabelecimentoId, onProductDelete, onProductEdit }) => {
       baseUrl = 'http://localhost:3001';
     }
     
-    console.log('🌐 Base URL:', baseUrl);
-    
     // Garantir que não há dupla barra
     const cleanBaseUrl = baseUrl.replace(/\/$/, '');
     const cleanImageUrl = normalizedUrl.replace(/^\//, '');
     
-    const finalUrl = `${cleanBaseUrl}/${cleanImageUrl}`;
-    console.log('🎯 URL final:', finalUrl);
-    
-    return finalUrl;
+    return `${cleanBaseUrl}/${cleanImageUrl}`;
   };
 
-  const formatCurrency = (value) => {
-    if (!value) return 'R$ 0,00';
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value);
-  };
+  // Efeito para rolagem infinita
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.innerHeight + document.documentElement.scrollTop >= document.documentElement.offsetHeight - 1000) {
+        loadMore();
+      }
+    };
 
-  if (loading) {
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [loadMore]);
+
+  if (loading && produtos.length === 0) {
     return (
-      <div className="flex justify-center items-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
-        <span className="ml-2 text-gray-600">Carregando produtos...</span>
+      <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
+        <div className="flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500"></div>
+          <span className="ml-3 text-gray-600">Carregando produtos...</span>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="text-center py-12">
-        <div className="text-red-500 mb-4">
-          <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-          </svg>
+      <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
+        <div className="text-center">
+          <div className="text-red-500 mb-4">
+            <Package className="w-12 h-12 mx-auto" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Erro ao carregar produtos</h3>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button
+            onClick={refreshList}
+            className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+          >
+            Tentar novamente
+          </button>
         </div>
-        <p className="text-gray-600 mb-4">{error}</p>
-        <button
-          onClick={fetchProdutos}
-          className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
-        >
-          Tentar novamente
-        </button>
       </div>
     );
   }
 
   if (produtos.length === 0) {
     return (
-      <div className="text-center py-12">
-        <div className="text-gray-400 mb-4">
-          <Package className="mx-auto h-12 w-12" />
+      <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
+        <div className="text-center">
+          <div className="text-gray-400 mb-4">
+            <Package className="w-12 h-12 mx-auto" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Nenhum produto encontrado</h3>
+          <p className="text-gray-600">Comece adicionando seu primeiro produto.</p>
         </div>
-        <p className="text-gray-600">Nenhum produto encontrado</p>
-        <p className="text-gray-500 text-sm">Adicione um novo produto para começar</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden mb-8">
-      {/* Layout responsivo: Cards para mobile/tablet, Tabela para desktop */}
-      
-      {/* Cards para mobile e tablet */}
-      <div className="block lg:hidden">
+    <div className="mt-10">
+      {/* Header para mobile - FORA do container principal */}
+      <div className="block lg:hidden mb-4">
+        <div className="">
+          <div className="flex">
+            <button
+              onClick={() => setActiveTab('produtos')}
+              className={`flex-1 px-4 py-3 text-sm font-medium transition-all duration-200 rounded-tl-lg ${
+                activeTab === 'produtos'
+                  ? 'bg-gray-400 text-white shadow-sm'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Produtos
+            </button>
+            <button
+              onClick={() => setActiveTab('complementos')}
+              className={`flex-1 px-4 py-3 text-sm font-medium transition-all duration-200 rounded-tr-lg ${
+                activeTab === 'complementos'
+                  ? 'bg-gray-400 text-white shadow-sm'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Complementos
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl overflow-hidden">
+        {/* Layout responsivo: Cards para mobile/tablet, Tabela para desktop */}
+        
+        {/* Cards para mobile e tablet */}
+        <div className="block lg:hidden">
+        
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
           {produtos.map((produto) => (
             <div
               key={produto.id}
-              className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow duration-200"
+              className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow duration-200 h-20"
             >
-              {/* Header do card: Imagem + Nome + Ações */}
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center space-x-3 flex-1 min-w-0">
-                  {/* Imagem do produto */}
-                  <div className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-gray-100">
+              {/* Layout: Imagem (20%) + Conteúdo (80%) */}
+              <div className="flex h-full">
+                {/* Imagem - 20% da largura, com padding e bordas arredondadas */}
+                <div className="w-1/5 h-full flex items-center justify-center p-2">
+                  <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 shadow-sm">
                     {getImageUrl(produto.imagem_url) ? (
                       <img
                         src={getImageUrl(produto.imagem_url)}
@@ -291,82 +295,43 @@ const ListProduct = ({ estabelecimentoId, onProductDelete, onProductEdit }) => {
                       <ImageIcon size={16} />
                     </div>
                   </div>
-                  
-                  {/* Nome do produto */}
-                  <div className="min-w-0 flex-1">
+                </div>
+                
+                {/* Conteúdo - 80% da largura */}
+                <div className="flex-1 p-3 relative">
+                  {/* Nome e Preço alinhados */}
+                  <div className="mb-2">
                     <h3 className="text-sm font-medium text-gray-900 truncate">
                       {produto.nome}
                     </h3>
-                    {produto.descricao && (
-                      <p className="text-xs text-gray-500 truncate mt-1">
-                        {produto.descricao}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Botões de ação */}
-                <div className="flex items-center space-x-1 ml-2">
-                  <EditButton
-                    onClick={() => handleEdit(produto)}
-                    size="sm"
-                    className="bg-blue-500 hover:bg-blue-600 text-white rounded-full p-1 shadow-sm w-6 h-6 flex items-center justify-center"
-                  />
-                  <DeleteButton
-                    onClick={() => handleDelete(produto)}
-                    size="sm"
-                    className="bg-red-500 hover:bg-red-600 text-white rounded-full p-1 shadow-sm w-6 h-6 flex items-center justify-center"
-                  />
-                  <StatusButton
-                    onClick={() => handleToggleStatus(produto)}
-                    size="sm"
-                    isActive={produto.status}
-                    className={`rounded-full p-1 shadow-sm w-6 h-6 flex items-center justify-center ${
-                      produto.status
-                        ? 'bg-orange-500 hover:bg-orange-600 text-white'
-                        : 'bg-green-500 hover:bg-green-600 text-white'
-                    }`}
-                  />
-                </div>
-              </div>
-
-              {/* Conteúdo do card */}
-              <div className="space-y-2">
-                {/* Categoria */}
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-500">Categoria:</span>
-                  <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">
-                    {produto.categoria_nome || 'Sem categoria'}
-                  </span>
-                </div>
-
-                {/* Preço */}
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-500">Preço:</span>
-                  <div className="text-right">
                     <div className="text-sm font-medium text-gray-900">
                       {formatCurrency(produto.valor_venda)}
                     </div>
-                    {produto.valor_custo && (
-                      <div className="text-xs text-gray-500">
-                        Custo: {formatCurrency(produto.valor_custo)}
-                      </div>
-                    )}
                   </div>
-                </div>
-
-                {/* Status */}
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-500">Status:</span>
-                  <span
-                    className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${
-                      produto.status
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-red-100 text-red-800'
-                    }`}
-                  >
-                    {produto.status ? 'Ativo' : 'Inativo'}
-                  </span>
+                  
+                  {/* Status no canto superior direito */}
+                  <div className="absolute top-2 right-2">
+                    <span
+                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        produto.status
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-red-100 text-red-800'
+                      }`}
+                    >
+                      {produto.status ? 'Ativo' : 'Inativo'}
+                    </span>
+                  </div>
+                  
+                  {/* Botões no canto inferior direito */}
+                  <div className="absolute bottom-2 right-2 flex items-center gap-1">
+                    <StatusButton
+                      isActive={produto.status}
+                      onClick={() => toggleStatus(produto)}
+                      size="sm"
+                    />
+                    <EditButton onClick={() => onProductEdit(produto)} size="sm" />
+                    <DeleteButton onClick={() => setDeleteModal({ isOpen: true, produto })} size="sm" />
+                  </div>
                 </div>
               </div>
             </div>
@@ -374,162 +339,150 @@ const ListProduct = ({ estabelecimentoId, onProductDelete, onProductEdit }) => {
         </div>
       </div>
 
-      {/* Tabela para desktop */}
-      <div className="hidden lg:block overflow-x-auto">
-        <table className="w-full">
-          {/* Cabeçalho da tabela */}
-          <thead className="bg-gray-50 border-b border-gray-200">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Produto
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Categoria
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Preço
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
-              </th>
-              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Ações
-              </th>
-            </tr>
-          </thead>
+      {/* Tabela para desktop com cabeçalho fixo */}
+      <div className="hidden lg:block">
+        <div className="overflow-x-auto">
+          {/* Cabeçalho fixo da tabela */}
+          <div className="sticky top-0 z-10 bg-gray-50 border-b border-gray-200">
+            <table className="w-full">
+              <thead>
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/3">
+                    Produto
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
+                    Categoria
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
+                    Preço
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
+                    Status
+                  </th>
+                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
+                    Ações
+                  </th>
+                </tr>
+              </thead>
+            </table>
+          </div>
           
-          {/* Corpo da tabela */}
-          <tbody className="bg-white divide-y divide-gray-200">
-            {produtos.map((produto) => (
-              <tr key={produto.id} className="hover:bg-gray-50 transition-colors duration-150">
-                {/* Coluna Produto (Imagem + Nome) */}
-                <td className="px-4 py-4">
-                  <div className="flex items-center space-x-3">
-                    {/* Imagem do produto */}
-                    <div className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-gray-100">
-                      {getImageUrl(produto.imagem_url) ? (
-                        <img
-                          src={getImageUrl(produto.imagem_url)}
-                          alt={produto.nome}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            e.target.style.display = 'none';
-                            e.target.nextSibling.style.display = 'flex';
-                          }}
-                        />
-                      ) : null}
-                      <div 
-                        className="w-full h-full flex items-center justify-center text-gray-400"
-                        style={{ display: getImageUrl(produto.imagem_url) ? 'none' : 'flex' }}
+          {/* Corpo da tabela com scroll */}
+          <div className="max-h-96 overflow-y-auto">
+            <table className="w-full">
+              <tbody className="bg-white divide-y divide-gray-200">
+                {produtos.map((produto) => (
+                  <tr key={produto.id} className="hover:bg-gray-50 transition-colors duration-150">
+                    {/* Coluna Produto (Imagem + Nome) */}
+                    <td className="px-4 py-4 w-1/3">
+                      <div className="flex items-center space-x-3">
+                        {/* Imagem do produto */}
+                        <div className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-gray-100">
+                          {getImageUrl(produto.imagem_url) ? (
+                            <img
+                              src={getImageUrl(produto.imagem_url)}
+                              alt={produto.nome}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                                e.target.nextSibling.style.display = 'flex';
+                              }}
+                            />
+                          ) : null}
+                          <div 
+                            className="w-full h-full flex items-center justify-center text-gray-400"
+                            style={{ display: getImageUrl(produto.imagem_url) ? 'none' : 'flex' }}
+                          >
+                            <ImageIcon size={16} />
+                          </div>
+                        </div>
+                        
+                        {/* Nome do produto */}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {produto.nome}
+                          </p>
+                          {produto.descricao && (
+                            <p className="text-xs text-gray-500 truncate">
+                              {produto.descricao}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* Coluna Categoria */}
+                    <td className="px-4 py-4 w-1/6">
+                      <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">
+                        {produto.categoria_nome || 'Sem categoria'}
+                      </span>
+                    </td>
+
+                    {/* Coluna Preço */}
+                    <td className="px-4 py-4 w-1/6">
+                      <div className="text-sm text-gray-900">
+                        <div className="font-medium">
+                          {formatCurrency(produto.valor_venda)}
+                        </div>
+                        {produto.valor_custo && (
+                          <div className="text-xs text-gray-500">
+                            Custo: {formatCurrency(produto.valor_custo)}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+
+                    {/* Coluna Status */}
+                    <td className="px-4 py-4 w-1/6">
+                      <span
+                        className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${
+                          produto.status
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-red-100 text-red-800'
+                        }`}
                       >
-                        <ImageIcon size={16} />
+                        {produto.status ? 'Ativo' : 'Inativo'}
+                      </span>
+                    </td>
+
+                    {/* Coluna Ações */}
+                    <td className="px-4 py-4 w-1/6">
+                      <div className="flex items-center justify-center gap-1">
+                        <StatusButton
+                          isActive={produto.status}
+                          onClick={() => toggleStatus(produto)}
+                          size="sm"
+                        />
+                        <EditButton onClick={() => onProductEdit(produto)} size="sm" />
+                        <DeleteButton onClick={() => setDeleteModal({ isOpen: true, produto })} size="sm" />
                       </div>
-                    </div>
-                    
-                    {/* Nome do produto */}
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-gray-900 truncate">
-                        {produto.nome}
-                      </p>
-                      {produto.descricao && (
-                        <p className="text-xs text-gray-500 truncate">
-                          {produto.descricao}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </td>
-
-                {/* Coluna Categoria */}
-                <td className="px-4 py-4">
-                  <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">
-                    {produto.categoria_nome || 'Sem categoria'}
-                  </span>
-                </td>
-
-                {/* Coluna Preço */}
-                <td className="px-4 py-4">
-                  <div className="text-sm text-gray-900">
-                    <div className="font-medium">
-                      {formatCurrency(produto.valor_venda)}
-                    </div>
-                    {produto.valor_custo && (
-                      <div className="text-xs text-gray-500">
-                        Custo: {formatCurrency(produto.valor_custo)}
-                      </div>
-                    )}
-                  </div>
-                </td>
-
-                {/* Coluna Status */}
-                <td className="px-4 py-4">
-                  <span
-                    className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${
-                      produto.status
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-red-100 text-red-800'
-                    }`}
-                  >
-                    {produto.status ? 'Ativo' : 'Inativo'}
-                  </span>
-                </td>
-
-                {/* Coluna Ações */}
-                <td className="px-4 py-4">
-                  <div className="flex items-center justify-center space-x-1">
-                    <EditButton
-                      onClick={() => handleEdit(produto)}
-                      size="sm"
-                      className="bg-blue-500 hover:bg-blue-600 text-white rounded-full p-1 shadow-sm w-6 h-6 flex items-center justify-center"
-                    />
-                    <DeleteButton
-                      onClick={() => handleDelete(produto)}
-                      size="sm"
-                      className="bg-red-500 hover:bg-red-600 text-white rounded-full p-1 shadow-sm w-6 h-6 flex items-center justify-center"
-                    />
-                    <StatusButton
-                      onClick={() => handleToggleStatus(produto)}
-                      size="sm"
-                      isActive={produto.status}
-                      className={`rounded-full p-1 shadow-sm w-6 h-6 flex items-center justify-center ${
-                        produto.status
-                          ? 'bg-orange-500 hover:bg-orange-600 text-white'
-                          : 'bg-green-500 hover:bg-green-600 text-white'
-                      }`}
-                    />
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       {/* Indicador de carregamento para rolagem infinita */}
       {loadingMore && (
         <div className="flex justify-center items-center py-6 border-t border-gray-200">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-500"></div>
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-red-500"></div>
           <span className="ml-2 text-sm text-gray-600">Carregando mais produtos...</span>
         </div>
       )}
 
-      {/* Indicador de fim da lista */}
-      {!hasMore && produtos.length > 0 && (
-        <div className="flex justify-center items-center py-6 border-t border-gray-200">
-          <span className="text-sm text-gray-500">Todos os produtos foram carregados</span>
-        </div>
-      )}
-      
-      {/* Modal de confirmação de exclusão */}
-      <ConfirmDelete
-        isOpen={deleteModal.isOpen}
-        onClose={handleCancelDelete}
-        onConfirm={handleConfirmDelete}
-        title="Excluir Produto"
-        message="Tem certeza que deseja excluir este produto?"
-        itemName={deleteModal.produto?.nome}
-        isLoading={deleting}
-      />
+        {/* Modal de confirmação de exclusão */}
+        <ConfirmDelete
+          isOpen={deleteModal.isOpen}
+          onClose={() => setDeleteModal({ isOpen: false, produto: null })}
+          onConfirm={() => handleDelete(deleteModal.produto)}
+          title="Excluir Produto"
+          message={`Tem certeza que deseja excluir o produto "${deleteModal.produto?.nome}"? Esta ação não pode ser desfeita.`}
+          isLoading={deleting}
+        />
+      </div>
     </div>
   );
 };

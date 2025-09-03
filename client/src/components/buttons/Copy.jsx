@@ -1,7 +1,7 @@
 import React from 'react';
-import { Plus } from 'lucide-react';
+import { Copy } from 'lucide-react';
 
-const AddButton = ({ text = "Adicionar", color = "blue", onClick, className = "" }) => {
+const CopyButton = ({ text = "Copiar", color = "blue", onClick, className = "" }) => {
   const getColorClasses = (color) => {
     const colors = {
       blue: "bg-blue-500 hover:bg-blue-600",
@@ -24,12 +24,12 @@ const AddButton = ({ text = "Adicionar", color = "blue", onClick, className = ""
     <button
       onClick={onClick}
       className={`h-12 px-3 sm:px-4 ${getColorClasses(color)} text-white text-sm font-medium rounded-xl flex items-center gap-2 transition-all duration-200 shadow-sm hover:shadow-md ${className}`}
-      title={`Adicionar ${text}`}
+      title={`Copiar ${text}`}
     >
-      <Plus size={16} />
+      <Copy size={16} />
       <span className="inline">{text}</span>
     </button>
   );
 };
 
-export default AddButton;
+export default CopyButton;

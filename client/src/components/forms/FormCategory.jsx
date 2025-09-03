@@ -188,6 +188,37 @@
       return `${cleanBaseUrl}/${cleanImageUrl}`;
     };
 
+    // Função específica para URLs de sugestões (Google Images)
+    const getSuggestionImageUrl = (imagemUrl) => {
+      if (!imagemUrl) return null;
+      
+      // Usar a mesma lógica do input principal que já funciona
+      // Se a URL já é completa (começa com http), retorna como está
+      if (imagemUrl.startsWith('http')) {
+        return imagemUrl;
+      }
+      
+      // Fallback para URLs locais (desenvolvimento)
+      // Normalizar separadores de caminho (Windows usa \, Unix usa /)
+      const normalizedUrl = imagemUrl.replace(/\\/g, '/');
+      
+      // Determinar a base URL baseada no ambiente
+      let baseUrl;
+      if (import.meta.env.VITE_API_URL) {
+        // Remove /api do final se existir, pois vamos adicionar apenas o caminho da imagem
+        baseUrl = import.meta.env.VITE_API_URL.replace(/\/api$/, '');
+      } else {
+        // Fallback para desenvolvimento
+        baseUrl = 'http://localhost:3001';
+      }
+      
+      // Garantir que não há dupla barra
+      const cleanBaseUrl = baseUrl.replace(/\/$/, '');
+      const cleanImageUrl = normalizedUrl.replace(/^\//, '');
+      
+      return `${cleanBaseUrl}/${cleanImageUrl}`;
+    };
+
     const handleSubmit = async (e) => {
       e.preventDefault();
       
@@ -323,84 +354,114 @@
           </p>
         </div>
           
-                  {/* Seção de sugestões de imagens */}
+                  {/* Seção de sugestões de imagens - LAYOUT HORIZONTAL */}
         {mostrarSugestoes && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Zap className="w-5 h-5 text-purple-500" />
-              <h3 className="text-sm font-medium text-gray-700">
-                Sugestões de Imagens
+          <div className="bg-gradient-to-r from-purple-50 to-violet-50 rounded-2xl p-4 border border-purple-200">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-semibold text-purple-800">
+                Sugestões
               </h3>
               {buscandoImagens && (
-                <Loader2 className="w-4 h-4 text-purple-500 animate-spin" />
+                <div className="flex items-center gap-2 text-purple-600">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span className="text-sm font-medium">Buscando...</span>
+                </div>
               )}
             </div>
               
-                          {buscandoImagens ? (
-              <div className="flex items-center justify-center py-6 bg-gray-50 rounded-lg">
-                <Loader2 className="w-5 h-5 text-purple-500 animate-spin" />
-                <span className="ml-2 text-sm text-gray-600">Buscando imagens...</span>
+            {buscandoImagens ? (
+              <div className="flex items-center justify-center py-8 bg-white rounded-xl border-2 border-dashed border-purple-300">
+                <div className="text-center">
+                  <Loader2 className="w-6 h-6 text-purple-500 animate-spin mx-auto mb-2" />
+                  <p className="text-purple-700 font-medium text-sm">Encontrando imagens...</p>
+                </div>
               </div>
             ) : sugestoesImagens.length > 0 ? (
-                <div className="relative">
-                  {/* Container com scroll horizontal */}
-                  <div className="overflow-x-auto scrollbar-hide">
-                    <div className="flex gap-3 pb-2" style={{ width: 'max-content' }}>
-                      {sugestoesImagens.map((imagem, index) => (
-                        <div
-                          key={index}
-                          className="relative group cursor-pointer flex-shrink-0"
-                          onClick={() => selecionarImagemSugerida(imagem.url)}
-                        >
-                          {/* Tamanho responsivo: menor no mobile, maior no desktop */}
-                          <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-lg overflow-hidden border-2 border-gray-200 hover:border-purple-400 transition-colors duration-200">
+              <div className="relative">
+                {/* Container com scroll horizontal */}
+                <div className="overflow-x-auto scrollbar-hide">
+                  <div className="flex gap-3 pb-2" style={{ width: 'max-content' }}>
+                    {sugestoesImagens.map((imagem, index) => (
+                      <div
+                        key={index}
+                        className="group relative cursor-pointer flex-shrink-0"
+                        onClick={() => selecionarImagemSugerida(imagem.url)}
+                        onMouseEnter={() => {
+                          // Preview automático no hover
+                          setImagePreview(imagem.url);
+                        }}
+                        onMouseLeave={() => {
+                          // Volta para a imagem original se não foi selecionada
+                          if (!formData.imagem) {
+                            setImagePreview(categoria?.imagem_url || null);
+                          }
+                        }}
+                      >
+                        {/* Card responsivo */}
+                        <div className="relative overflow-hidden rounded-xl bg-white shadow-md border-2 border-transparent group-hover:border-purple-400 group-hover:shadow-lg transition-all duration-300 transform group-hover:-translate-y-1">
+                          {/* Imagem responsiva */}
+                          <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 relative">
                             <img
-                              src={imagem.thumbnail || imagem.url}
+                              src={getSuggestionImageUrl(imagem.thumbnail || imagem.url)}
                               alt={imagem.title || 'Imagem sugerida'}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
                               onError={(e) => {
+                                console.error('Erro ao carregar imagem sugerida:', imagem.thumbnail || imagem.url);
                                 e.target.style.display = 'none';
                                 e.target.nextSibling.style.display = 'flex';
                               }}
+                              onLoad={() => {
+                                console.log('✅ Imagem sugerida carregada:', imagem.thumbnail || imagem.url);
+                              }}
                             />
+                            {/* Fallback para erro */}
                             <div 
-                              className="w-full h-full flex items-center justify-center text-gray-400 bg-gray-100"
+                              className="w-full h-full flex items-center justify-center text-purple-400 bg-purple-50"
                               style={{ display: 'none' }}
                             >
                               <ImageIcon size={16} className="sm:w-5 sm:h-5" />
                             </div>
                           </div>
                           
-                          {/* Overlay no hover */}
-                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-200 rounded-lg flex items-center justify-center">
-                            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                              <div className="bg-white rounded-full p-1 sm:p-2">
-                                <Upload className="w-3 h-3 sm:w-4 sm:h-4 text-purple-500" />
-                              </div>
+                          {/* Overlay com botão de seleção */}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-1">
+                            <div className="bg-white rounded-full p-1 shadow-lg transform translate-y-1 group-hover:translate-y-0 transition-transform duration-300">
+                              <Upload className="w-3 h-3 text-purple-600" />
                             </div>
                           </div>
+                          
+                          {/* Indicador de seleção */}
+                          <div className="absolute top-1 right-1 w-4 h-4 bg-purple-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                            <div className="w-1 h-1 bg-white rounded-full"></div>
+                          </div>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  {/* Indicador de scroll no mobile */}
-                  <div className="flex justify-center mt-2 sm:hidden">
-                    <div className="flex space-x-1">
-                      <div className="w-1 h-1 bg-gray-300 rounded-full"></div>
-                      <div className="w-1 h-1 bg-gray-300 rounded-full"></div>
-                      <div className="w-1 h-1 bg-gray-300 rounded-full"></div>
-                    </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              ) : formData.nome.trim().length >= 2 ? (
-                <div className="text-center py-8">
-                  <ImageIcon className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                  <p className="text-sm text-gray-500">Nenhuma imagem encontrada</p>
+                
+                {/* Indicador de scroll no mobile */}
+                <div className="flex justify-center mt-2 sm:hidden">
+                  <div className="flex space-x-1">
+                    <div className="w-1 h-1 bg-purple-300 rounded-full"></div>
+                    <div className="w-1 h-1 bg-purple-300 rounded-full"></div>
+                    <div className="w-1 h-1 bg-purple-300 rounded-full"></div>
+                  </div>
                 </div>
-              ) : null}
-            </div>
-          )}
+              </div>
+            ) : formData.nome.trim().length >= 2 ? (
+              <div className="text-center py-8 bg-white rounded-xl border-2 border-dashed border-purple-300">
+                <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <ImageIcon className="w-6 h-6 text-purple-500" />
+                </div>
+                <h4 className="text-purple-800 font-semibold mb-1 text-sm">Nenhuma imagem encontrada</h4>
+                <p className="text-purple-600 text-xs">
+                  Tente um termo diferente para "{formData.nome}"
+                </p>
+              </div>
+            ) : null}
+          </div>
+        )}
           
                   {/* Mensagem de erro */}
         {error && (
