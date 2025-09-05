@@ -3,7 +3,10 @@ import loginController from '../controllers/login.js';
 import categoriasController from '../controllers/categorias.js';
 import produtosController from '../controllers/produtos.js';
 import upload from '../middlewares/cloudinaryUpload.js';
+import pontosConfigController from '../controllers/pontosConfig.js';
 import fetch from 'node-fetch';
+import * as atendimentosController from '../controllers/atendimentos.js';
+import * as pedidosController from '../controllers/pedidos.js';
 
 const router = express.Router();
 
@@ -48,6 +51,35 @@ router.delete('/produtos/:id', loginController.verificarToken, produtosControlle
 
 // Rota para alterar status do produto (requer autenticação)
 router.put('/produtos/:id/status', loginController.verificarToken, produtosController.alterarStatus);
+
+// ===== ROTAS DE CONFIGURAÇÃO DE PONTOS DE ATENDIMENTO =====
+// Obter configuração por estabelecimento
+router.get('/pontos-atendimento/config/:estabelecimento_id', loginController.verificarToken, pontosConfigController.getConfig);
+
+// Criar configuração (com defaults) caso não exista
+router.post('/pontos-atendimento/config/:estabelecimento_id', loginController.verificarToken, pontosConfigController.createOrEnsureDefaults);
+
+// Atualizar configuração
+router.put('/pontos-atendimento/config/:estabelecimento_id', loginController.verificarToken, pontosConfigController.updateConfig);
+
+// Deletar configuração (opcional)
+router.delete('/pontos-atendimento/config/:estabelecimento_id', loginController.verificarToken, pontosConfigController.deleteConfig);
+
+// Listar pontos com base na configuração
+router.get('/pontos-atendimento/:estabelecimento_id', loginController.verificarToken, pontosConfigController.listPoints);
+
+// ===== ROTAS DE ATENDIMENTOS =====
+router.post('/atendimentos/ensure/:estabelecimento_id/:identificador', loginController.verificarToken, atendimentosController.ensureAtendimento);
+router.put('/atendimentos/:estabelecimento_id/:identificador/nome', loginController.verificarToken, atendimentosController.updateNomePonto);
+router.patch('/atendimentos/:estabelecimento_id/:identificador/nome', loginController.verificarToken, atendimentosController.updateNomePonto);
+router.get('/atendimentos/:estabelecimento_id/:identificador/status', loginController.verificarToken, atendimentosController.getStatus);
+router.put('/atendimentos/:estabelecimento_id/:identificador/status', loginController.verificarToken, atendimentosController.setStatus);
+
+// ===== ROTAS DE PEDIDOS =====
+router.put('/pedidos/:estabelecimento_id/:identificador', loginController.verificarToken, pedidosController.upsertPedido);
+router.get('/pedidos/:estabelecimento_id/:identificador', loginController.verificarToken, pedidosController.getPedido);
+router.delete('/pedidos/itens/:item_id', loginController.verificarToken, pedidosController.deleteItem);
+router.delete('/pedidos/:estabelecimento_id/:identificador', loginController.verificarToken, pedidosController.deletePedido);
 
 // ===== ROTAS DE CATEGORIAS DE COMPLEMENTOS =====
 // Rota para cadastrar categoria de complementos (requer autenticação)

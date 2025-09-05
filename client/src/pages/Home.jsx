@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Home as HomeIcon, Settings } from 'lucide-react';
 import SearchBar from '../components/layout/SeachBar';
+import ListPontosAtendimento from '../components/list/ListPontosAtendimento';
 import ConfigButton from '../components/buttons/Config';
 import BaseModal from '../components/modals/Base';
 import FormConfig from '../components/forms/FormConfig';
@@ -38,10 +39,8 @@ function Home() {
       </div>
 
       {/* Área de conteúdo com rolagem */}
-      <div className="flex-1 overflow-y-auto px-4 md:px-6 py-6 mt-16 md:mt-8">
-        <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-          <p className="text-gray-600">Conteúdo da página Home será exibido aqui...</p>
-        </div>
+      <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4 mt-16 md:mt-6">
+        <ListPontosAtendimento />
       </div>
 
       {/* Modal de Configurações */}

@@ -15,7 +15,7 @@ function Sidebar() {
   return (
     <>
       {/* Sidebar para telas médias e grandes (>= 900px) */}
-      <div className="hidden md:flex fixed left-0 top-0 h-full w-20 bg-white border-r border-gray-200 flex-col items-center py-6 z-50 shadow-lg">
+      <div className="hidden md:flex fixed left-0 top-4 h-full w-20 bg-white border-r border-gray-200 flex-col items-center py-4 z-50 shadow-lg">
         {/* Logo */}
         <div className="mb-12">
           <Link to="/home" className="block">
