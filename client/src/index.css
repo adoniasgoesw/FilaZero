@@ -13,3 +13,63 @@
 .scrollbar-hide {
   scroll-behavior: smooth;
 }
+
+/* Hero animations and helpers */
+.floating {
+  animation: floating 6s ease-in-out infinite;
+}
+.floating-delayed {
+  animation: floating 6s ease-in-out infinite;
+  animation-delay: 3s;
+}
+
+/* Cards Ponto de Atendimento */
+.card-hover {
+  transition: all 0.3s ease;
+}
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+.status-badge {
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
+}
+@keyframes floating {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-15px); }
+}
+.blob {
+  border-radius: 40% 60% 60% 40% / 40% 40% 60% 60%;
+  animation: blob-morph 12s ease-in-out infinite;
+}
+@keyframes blob-morph {
+  0%, 100% { border-radius: 40% 60% 60% 40% / 40% 40% 60% 60%; }
+  25% { border-radius: 60% 40% 70% 30% / 70% 50% 50% 30%; }
+  50% { border-radius: 50% 50% 40% 60% / 60% 30% 70% 40%; }
+  75% { border-radius: 40% 60% 50% 50% / 50% 60% 40% 60%; }
+}
+.dashboard-3d {
+  transform: perspective(1000px) rotateX(10deg) rotateY(-10deg);
+  transition: all 0.4s ease;
+  background: linear-gradient(145deg, #ffffff, #f8fafc);
+  box-shadow: 25px 25px 50px rgba(0,0,0,0.08), -25px -25px 50px rgba(255,255,255,0.9);
+}
+.dashboard-3d:hover {
+  transform: perspective(1000px) rotateX(5deg) rotateY(-5deg) scale(1.02);
+}
+.order-item {
+  animation: slideInUp 0.8s ease-out forwards;
+  opacity: 0;
+  transform: translateY(20px);
+}
+.order-item:nth-child(1) { animation-delay: 0.2s; }
+.order-item:nth-child(2) { animation-delay: 0.4s; }
+.order-item:nth-child(3) { animation-delay: 0.6s; }
+.order-item:nth-child(4) { animation-delay: 0.8s; }
+@keyframes slideInUp {
+  to { opacity: 1; transform: translateY(0); }
+}

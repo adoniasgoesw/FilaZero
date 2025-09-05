@@ -10,11 +10,24 @@ import Pagamentos from '../pages/gestao/Pagamentos';
 import Usuarios from '../pages/gestao/Usuarios';
 import Categorias from '../pages/gestao/Categorias';
 import Produtos from '../pages/gestao/Produtos';
+import PontoAtendimento from '../pages/PontoAtendimento';
 
 // Componente wrapper para gerenciar o Sidebar
 function AppContent() {
   const location = useLocation();
   const isLandingPage = location.pathname === '/' || location.pathname === '/landing';
+  const isPontoAtendimento = location.pathname.startsWith('/ponto-atendimento');
+
+  if (isPontoAtendimento) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Routes>
+          <Route path="/ponto-atendimento/:id" element={<PontoAtendimento />} />
+          <Route path="*" element={<Navigate to="/ponto-atendimento/unknown" replace />} />
+        </Routes>
+      </div>
+    );
+  }
 
   if (isLandingPage) {
     return (
@@ -41,6 +54,7 @@ function AppContent() {
           <Route path="/gestao/usuarios" element={<Usuarios />} />
           <Route path="/gestao/categorias" element={<Categorias />} />
           <Route path="/gestao/produtos" element={<Produtos />} />
+          <Route path="/ponto-atendimento/:id" element={<PontoAtendimento />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Rocket } from 'lucide-react';
-import Header from '../components/layout/Header';
 import BaseModal from '../components/modals/Base';
 import FormLogin from '../components/forms/FormLogin';
 import FormRegister from '../components/forms/FormRegister';
 import { User, UserPlus } from 'lucide-react';
+import HeroSect from '../components/layout/HeroSect';
 
 function Landing() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -43,21 +42,8 @@ function Landing() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-purple-600">
-      {/* Header com Logo e Botão Access */}
-      <Header onAccessClick={handleAccessClick} />
-      
-      {/* Conteúdo principal */}
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center text-white">
-          <h1 className="text-6xl font-bold mb-6">FilaZero</h1>
-          <p className="text-xl mb-8">Sistema de gerenciamento de filas e entregas</p>
-          <div className="space-y-4">
-            <p className="text-lg">Bem-vindo ao sistema</p>
-            <p className="text-lg">Faça login para continuar</p>
-          </div>
-        </div>
-      </div>
+    <div className="min-h-screen bg-white">
+      <HeroSect onPrimaryClick={handleAccessClick} />
 
       {/* Modal de Login/Registro */}
       <BaseModal

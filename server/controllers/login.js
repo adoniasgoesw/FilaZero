@@ -68,6 +68,32 @@ const loginController = {
         { expiresIn: '24h' }
       );
 
+      // Garantir configuração padrão de pontos de atendimento para o estabelecimento no login
+      try {
+        if (usuario.estabelecimento_id) {
+          const select = await pool.query(
+            'SELECT id FROM pontos_atendimento WHERE estabelecimento_id = $1 LIMIT 1',
+            [usuario.estabelecimento_id]
+          );
+          if (select.rows.length === 0) {
+            await pool.query(
+              `INSERT INTO pontos_atendimento (
+                estabelecimento_id,
+                atendimento_mesas,
+                atendimento_comandas,
+                quantidade_mesas,
+                quantidade_comandas,
+                prefixo_comanda
+              ) VALUES ($1, true, false, 4, 0, '')`,
+              [usuario.estabelecimento_id]
+            );
+          }
+        }
+      } catch (ensureErr) {
+        // Não bloquear o login por falha de criação; apenas logar
+        console.error('Falha ao garantir pontos_atendimento padrão no login:', ensureErr.message);
+      }
+
       // Remover senha do objeto de resposta
       delete usuario.senha;
 
