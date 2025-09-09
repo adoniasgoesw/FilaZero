@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import CloseButton from '../buttons/Close';
 import CancelButton from '../buttons/Cancel';
 import SaveButton from '../buttons/Save';
@@ -20,6 +20,7 @@ const BaseModal = ({
   isLoading = false
 }) => {
   const [isAnimating, setIsAnimating] = useState(false);
+  const modalRef = useRef(null);
 
   const handleClose = useCallback(() => {
     // Disparar evento para permitir interceptação
@@ -73,17 +74,17 @@ const BaseModal = ({
     <>
       {/* Overlay para fechar ao clicar fora */}
       <div
-        className="fixed inset-0 z-40"
+        className="fixed inset-0 z-[998] bg-black/40"
         onClick={handleClose}
       />
 
       {/* Modal base com animação de gaveta */}
       <div
-        className={`fixed top-0 right-0 h-full z-50 transition-transform duration-300 ease-in-out w-full sm:w-1/2 lg:w-[35%] ${
+        className={`fixed top-0 right-0 h-full z-[999] transition-transform duration-300 ease-in-out w-full sm:w-1/2 lg:w-[35%] ${
           isAnimating ? 'transform translate-x-0' : 'transform translate-x-full'
         }`}
       >
-        <div className="h-full bg-white shadow-2xl flex flex-col">
+        <div ref={modalRef} className="h-full bg-white shadow-2xl flex flex-col">
           {/* Header do modal */}
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
             {headerContent ? (
@@ -115,8 +116,8 @@ const BaseModal = ({
                 </CancelButton>
                 <SaveButton 
                   onClick={() => {
-                    // Encontrar o formulário dentro do modal e submeter
-                    const form = document.querySelector('.modal-form');
+                    // Encontrar o formulário dentro do modal e submeter (escopo do modal)
+                    const form = modalRef.current ? modalRef.current.querySelector('.modal-form') : document.querySelector('.modal-form');
                     if (form) {
                       form.requestSubmit();
                     }

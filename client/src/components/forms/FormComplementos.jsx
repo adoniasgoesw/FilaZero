@@ -60,8 +60,8 @@ const FormComplementos = ({ complemento = null, onClose, onSave }) => {
         
         if (response.success) {
           console.log('✅ Complemento editado com sucesso');
-          if (onSave) onSave(response.data);
-          if (onClose) onClose();
+          // Notificar modal para fechar
+          window.dispatchEvent(new CustomEvent('modalSaveSuccess', { detail: response.data }));
         }
       } else {
         // Modo de criação
@@ -77,8 +77,8 @@ const FormComplementos = ({ complemento = null, onClose, onSave }) => {
         
         if (response.success) {
           console.log('✅ Complemento criado com sucesso');
-          if (onSave) onSave(response.data);
-          if (onClose) onClose();
+          // Notificar modal para fechar
+          window.dispatchEvent(new CustomEvent('modalSaveSuccess', { detail: response.data }));
         }
       }
     } catch (error) {

@@ -126,8 +126,8 @@ const ListComplementos = ({ estabelecimentoId, onComplementoDelete, onComplement
 
   if (loading) {
     return (
-      <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
-        <div className="flex items-center justify-center">
+      <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8 min-h-[50vh] flex items-center justify-center">
+        <div className="flex items-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500"></div>
           <span className="ml-3 text-gray-600">Carregando complementos...</span>
         </div>
@@ -137,7 +137,7 @@ const ListComplementos = ({ estabelecimentoId, onComplementoDelete, onComplement
 
   if (error) {
     return (
-      <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
+      <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8 min-h-[50vh] flex items-center justify-center">
         <div className="text-center">
           <div className="text-red-500 mb-4">
             <Package className="w-12 h-12 mx-auto" />
@@ -157,7 +157,7 @@ const ListComplementos = ({ estabelecimentoId, onComplementoDelete, onComplement
 
   if (complementos.length === 0) {
     return (
-      <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
+      <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8 min-h-[50vh] flex items-center justify-center">
         <div className="text-center">
           <div className="text-gray-400 mb-4">
             <Package className="w-12 h-12 mx-auto" />

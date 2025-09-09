@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { User } from 'lucide-react';
 
 
-const FormUser = () => {
+const FormUser = ({ onSave }) => {
   const [formData, setFormData] = useState({
     nome: '',
     cpf: '',
@@ -29,13 +29,20 @@ const FormUser = () => {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.nome.trim() || !formData.cpf || !formData.senha || !formData.cargo) {
       alert('Nome, CPF, senha e cargo são obrigatórios!');
       return;
     }
-    onSave(formData);
+    try {
+      if (onSave) {
+        await Promise.resolve(onSave(formData));
+      }
+      window.dispatchEvent(new CustomEvent('modalSaveSuccess', { detail: formData }));
+    } catch (err) {
+      console.error('Erro ao salvar usuário:', err);
+    }
   };
 
   return (

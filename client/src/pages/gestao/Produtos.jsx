@@ -143,7 +143,7 @@ function Produtos() {
   return (
     <div className="h-screen bg-gray-50 flex flex-col md:min-h-screen">
       {/* Header - fixo apenas em mobile */}
-      <div className="fixed md:relative top-0 left-0 right-0 md:left-auto md:right-auto z-50 md:z-auto bg-white px-4 md:px-6 py-4">
+      <div className="fixed md:relative top-0 left-0 right-0 md:left-auto md:right-auto z-30 md:z-auto bg-white px-4 md:px-6 py-4">
         <div className="flex items-center gap-3 w-full">
           {/* Botão voltar */}
           <BackButton />
@@ -169,7 +169,7 @@ function Produtos() {
       </div>
 
       {/* Título fixo */}
-      <div className="fixed md:relative top-16 md:top-auto left-0 right-0 md:left-auto md:right-auto z-40 md:z-auto bg-white px-4 md:px-6 py-4">
+      <div className="fixed md:relative top-16 md:top-auto left-0 right-0 md:left-auto md:right-auto z-30 md:z-auto bg-white px-4 md:px-6 py-4">
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
           <Package className="w-6 h-6 text-red-500" />
           {activeTab === 'produtos' ? 'Produtos' : 'Complementos'}
@@ -179,7 +179,7 @@ function Produtos() {
 
 
       {/* Header de navegação - estilo redondo, fixo, sem blur, z-index alto */}
-      <div className="px-4 md:px-6 py-2 sticky top-28 md:top-0 z-[100] bg-white border-b border-gray-200 mt-2 md:mt-0">
+      <div className="px-4 md:px-6 py-2 sticky top-28 md:top-0 z-20 bg-white border-b border-gray-200 mt-2 md:mt-0">
         <div className="flex bg-gray-100 rounded-lg overflow-hidden w-[min(260px,90%)]">
           <button
             onClick={() => setActiveTab('produtos')}
