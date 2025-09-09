@@ -489,8 +489,13 @@ const produtosController = {
       `;
 
       // Tratar valores vazios ou inválidos
-      const qtdMinima = quantidade_minima && quantidade_minima !== '' ? parseInt(quantidade_minima) : 0;
+      let qtdMinima = quantidade_minima && quantidade_minima !== '' ? parseInt(quantidade_minima) : 0;
       const qtdMaxima = quantidade_maxima && quantidade_maxima !== '' ? parseInt(quantidade_maxima) : null;
+      // Se obrigatório e mínima < 1, forçar mínima = 1
+      const isObrigatorio = preenchimento_obrigatorio === true || preenchimento_obrigatorio === 'true';
+      if (isObrigatorio && (!qtdMinima || qtdMinima < 1)) {
+        qtdMinima = 1;
+      }
       
       console.log('🔍 Valores processados:', { qtdMinima, qtdMaxima });
       
@@ -499,7 +504,7 @@ const produtosController = {
         nome.trim(),
         qtdMinima,
         qtdMaxima,
-        preenchimento_obrigatorio === true || preenchimento_obrigatorio === 'true'
+        isObrigatorio
       ];
       
       console.log('🔍 Values para query:', values);
@@ -536,9 +541,13 @@ const produtosController = {
       }
 
       const query = `
-        SELECT * FROM categorias_complementos 
-        WHERE produto_id = $1 AND status = true
-        ORDER BY criado_em DESC
+        SELECT id, produto_id, nome, criado_em, status,
+               COALESCE(quantidade_minima, 0) AS quantidade_minima,
+               quantidade_maxima,
+               COALESCE(preenchimento_obrigatorio, false) AS preenchimento_obrigatorio
+          FROM categorias_complementos 
+         WHERE produto_id = $1 AND status = true
+         ORDER BY criado_em DESC
       `;
 
       const result = await pool.query(query, [produto_id]);

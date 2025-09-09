@@ -255,6 +255,8 @@ const ListCategoryComplements = ({ produtoId, onCategoriaEdit, onCategoriaDelete
             <DeleteButton 
               onClick={() => setDeleteModal({ isOpen: true, categoria })}
               size="sm"
+              variant="outline"
+              title="Excluir categoria"
             />
           </div>
 
@@ -263,7 +265,7 @@ const ListCategoryComplements = ({ produtoId, onCategoriaEdit, onCategoriaDelete
             {/* Nome da categoria */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Nome da Categoria <span className="text-red-500">*</span>
+                Nome da Categoria
               </label>
               <input
                 type="text"
@@ -287,6 +289,7 @@ const ListCategoryComplements = ({ produtoId, onCategoriaEdit, onCategoriaDelete
                   onChange={(e) => updateEditData('quantidadeMinima', e.target.value, categoria.id)}
                   className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="0"
+                  required
                 />
               </div>
 
@@ -301,6 +304,7 @@ const ListCategoryComplements = ({ produtoId, onCategoriaEdit, onCategoriaDelete
                   onChange={(e) => updateEditData('quantidadeMaxima', e.target.value, categoria.id)}
                   className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="1"
+                  required
                 />
               </div>
             </div>
@@ -312,7 +316,7 @@ const ListCategoryComplements = ({ produtoId, onCategoriaEdit, onCategoriaDelete
                 id={`preenchimento-${categoria.id}`}
                 checked={editData.preenchimentoObrigatorio !== undefined ? editData.preenchimentoObrigatorio : categoria.preenchimento_obrigatorio}
                 onChange={(e) => updateEditData('preenchimentoObrigatorio', e.target.checked, categoria.id)}
-                className="w-3 h-3 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                className="h-4 w-4 appearance-none rounded-full border-2 border-blue-500 checked:bg-blue-600 checked:border-blue-600 cursor-pointer"
               />
               <label htmlFor={`preenchimento-${categoria.id}`} className="ml-2 text-xs font-medium text-gray-700">
                 Preenchimento Obrigatório
@@ -332,6 +336,7 @@ const ListCategoryComplements = ({ produtoId, onCategoriaEdit, onCategoriaDelete
                     </span>
                     <DeleteButton
                       size="sm"
+                      variant="outline"
                       onClick={() => handleDeleteComplemento(item)}
                       title="Remover complemento da categoria"
                     />

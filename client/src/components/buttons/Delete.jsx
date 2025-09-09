@@ -1,7 +1,7 @@
 import React from 'react';
 import { Trash2 as DeleteIcon } from 'lucide-react';
 
-const DeleteButton = ({ onClick, className = '', disabled = false, children, size = 'sm', square = false, title = 'Delete' }) => {
+const DeleteButton = ({ onClick, className = '', disabled = false, children, size = 'sm', square = false, title = 'Delete', variant = 'filled' }) => {
   const sizeClasses = {
     sm: 'p-1.5',
     md: 'px-4 py-2',
@@ -36,6 +36,11 @@ const DeleteButton = ({ onClick, className = '', disabled = false, children, siz
     );
   }
 
+  const filledClasses = `bg-red-600 hover:bg-red-700 disabled:bg-red-300 text-white`;
+  const outlineClasses = `bg-white hover:bg-red-50 text-red-600 border border-red-300`;
+
+  const variantClasses = variant === 'outline' ? outlineClasses : filledClasses;
+
   return (
     <button
       onClick={onClick}
@@ -43,8 +48,8 @@ const DeleteButton = ({ onClick, className = '', disabled = false, children, siz
       title={title}
       className={`
         inline-flex items-center justify-center
-        bg-red-600 hover:bg-red-700 disabled:bg-red-300
-        text-white font-medium rounded-full 
+        ${variantClasses}
+        font-medium rounded-full 
         transition-colors duration-200 
         focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2
         disabled:cursor-not-allowed

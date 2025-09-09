@@ -47,7 +47,13 @@ export const upsertPedido = async (req, res) => {
     let pedidoId;
     if (pedSel.rows.length > 0) {
       pedidoId = pedSel.rows[0].id;
-      // Vamos mesclar itens: somar quantidades por produto
+      // Limpa itens e complementos existentes para regravar conforme o payload
+      await client.query(
+        `DELETE FROM complementos_itens_pedido 
+         WHERE item_pedido_id IN (SELECT id FROM itens_pedido WHERE pedido_id = $1)`,
+        [pedidoId]
+      );
+      await client.query(`DELETE FROM itens_pedido WHERE pedido_id = $1`, [pedidoId]);
     } else {
       const pedIns = await client.query(
         `INSERT INTO pedidos (atendimento_id, valor_total)
@@ -57,41 +63,53 @@ export const upsertPedido = async (req, res) => {
       pedidoId = pedIns.rows[0].id;
     }
 
-    // Mesclar: para cada item informado, define quantidade igual à informada; se não existir, cria
+    // Regrava: para cada item informado, cria uma linha nova; complementos diferentes => linhas diferentes
     for (const it of itens) {
       const produtoId = Number(it.produto_id || it.id);
       const quantidade = Math.max(1, Number(it.quantidade || it.qty || 1));
       const valorUnitario = Number(it.valor_unitario || it.unitPrice || 0);
-      // Primeiro tenta atualizar a linha existente (mesmo produto)
-      const upd = await client.query(
-        `UPDATE itens_pedido
-         SET quantidade = $3, valor_unitario = $4
-         WHERE pedido_id = $1 AND produto_id = $2
-         RETURNING id`,
+      const complementos = Array.isArray(it.complementos) ? it.complementos : [];
+      if (Number.isNaN(produtoId)) continue;
+
+      const ins = await client.query(
+        `INSERT INTO itens_pedido (pedido_id, produto_id, quantidade, valor_unitario)
+         VALUES ($1, $2, $3, $4) RETURNING id`,
         [pedidoId, produtoId, quantidade, valorUnitario]
       );
-      if (upd.rows.length === 0) {
-        // Se não existia, cria nova linha
+      const itemPedidoId = ins.rows[0].id;
+
+      // Persistir complementos (se enviados no payload)
+      for (const comp of complementos) {
+        if (!comp || typeof comp !== 'object') continue;
+        const complementoId = Number(comp.complemento_id || comp.id);
+        const nomeComplemento = String(comp.nome_complemento || comp.nome || '').trim();
+        const compQtd = Math.max(1, Number(comp.quantidade || comp.qty || 1));
+        const compVU = Number(comp.valor_unitario || comp.unitPrice || 0);
+        const compStatus = comp.status ? String(comp.status) : 'pendente';
+        const compDesc = comp.descricao ? String(comp.descricao) : null;
+        if (Number.isNaN(complementoId) || !nomeComplemento) continue;
+
         await client.query(
-          `INSERT INTO itens_pedido (pedido_id, produto_id, quantidade, valor_unitario)
-           VALUES ($1, $2, $3, $4)`,
-          [pedidoId, produtoId, quantidade, valorUnitario]
+          `INSERT INTO complementos_itens_pedido
+             (item_pedido_id, complemento_id, nome_complemento, quantidade, valor_unitario, status, descricao)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          [itemPedidoId, complementoId, nomeComplemento, compQtd, compVU, compStatus, compDesc]
         );
       }
     }
 
-    // Apagar itens que não vieram no payload (tratando casos de quantidade zerada/removida)
-    const payloadProdutoIds = itens.map((it) => Number(it.produto_id || it.id)).filter((v) => !Number.isNaN(v));
-    await client.query(
-      `DELETE FROM itens_pedido 
-       WHERE pedido_id = $1 
-         AND (${payloadProdutoIds.length > 0 ? 'NOT (produto_id = ANY($2))' : 'TRUE'})`,
-      payloadProdutoIds.length > 0 ? [pedidoId, payloadProdutoIds] : [pedidoId]
-    );
+    // Não é necessário apagar itens aqui, pois regravamos todos acima
 
-    // Recalcula o total a partir dos itens
+    // Recalcula o total a partir dos itens + complementos
     const sum = await client.query(
-      'SELECT COALESCE(SUM(valor_total),0) AS total FROM itens_pedido WHERE pedido_id = $1',
+      `SELECT 
+         COALESCE((SELECT SUM(valor_total) FROM itens_pedido WHERE pedido_id = $1), 0)
+       + COALESCE((
+           SELECT SUM((c.quantidade)::numeric * c.valor_unitario)
+             FROM complementos_itens_pedido c
+             JOIN itens_pedido ip ON ip.id = c.item_pedido_id
+            WHERE ip.pedido_id = $1
+         ), 0) AS total`,
       [pedidoId]
     );
     const newTotal = Number(sum.rows[0].total) || 0;
@@ -141,7 +159,54 @@ export const getPedido = async (req, res) => {
        ORDER BY ip.id ASC`,
       [pedido.id]
     );
-    return res.json({ success: true, data: { atendimento_id: atendimentoId, nome_ponto: att.rows[0].nome_ponto, pedido, itens: itens.rows } });
+
+    // Busca todos os complementos destes itens de uma só vez
+    const itemIds = itens.rows.map((r) => r.id);
+    let complementosByItemId = new Map();
+    if (itemIds.length > 0) {
+      const comps = await pool.query(
+        `SELECT id, item_pedido_id, complemento_id, nome_complemento, quantidade, valor_unitario
+           FROM complementos_itens_pedido
+          WHERE item_pedido_id = ANY($1)
+          ORDER BY id ASC`,
+        [itemIds]
+      );
+      complementosByItemId = comps.rows.reduce((map, row) => {
+        const arr = map.get(row.item_pedido_id) || [];
+        arr.push(row);
+        map.set(row.item_pedido_id, arr);
+        return map;
+      }, new Map());
+    }
+
+    // Monta lista para exibição: 1 linha por item, com todos os complementos agregados
+    const itensExibicao = [];
+    for (const it of itens.rows) {
+      const compls = complementosByItemId.get(it.id) || [];
+      // Agregar complementos por id somando quantidades
+      const byId = new Map();
+      for (const c of compls) {
+        const cid = Number(c.complemento_id);
+        const q = Math.max(1, Number(c.quantidade) || 0);
+        const name = String(c.nome_complemento || '');
+        const vu = Number(c.valor_unitario) || 0;
+        if (!cid) continue;
+        if (!byId.has(cid)) byId.set(cid, { complemento_id: cid, nome_complemento: name, quantidade: q, valor_unitario: vu });
+        else {
+          const cur = byId.get(cid);
+          byId.set(cid, { ...cur, quantidade: (Number(cur.quantidade) || 0) + q });
+        }
+      }
+      itensExibicao.push({
+        produto_id: it.produto_id,
+        produto_nome: it.produto_nome,
+        quantidade: it.quantidade,
+        valor_unitario: it.valor_unitario,
+        complementos: Array.from(byId.values())
+      });
+    }
+
+    return res.json({ success: true, data: { atendimento_id: atendimentoId, nome_ponto: att.rows[0].nome_ponto, pedido, itens: itens.rows, itens_exibicao: itensExibicao } });
   } catch (err) {
     console.error('Erro ao obter pedido:', err);
     return res.status(500).json({ success: false, message: 'Erro ao obter pedido' });
@@ -161,8 +226,18 @@ export const deleteItem = async (req, res) => {
     }
     const pedidoId = sel.rows[0].pedido_id;
     await pool.query('DELETE FROM itens_pedido WHERE id = $1', [itemId]);
-    // Recalcula total do pedido
-    const sum = await pool.query('SELECT COALESCE(SUM(valor_total),0) AS total FROM itens_pedido WHERE pedido_id = $1', [pedidoId]);
+    // Recalcula total do pedido (itens + complementos)
+    const sum = await pool.query(
+      `SELECT 
+         COALESCE((SELECT SUM(valor_total) FROM itens_pedido WHERE pedido_id = $1), 0)
+       + COALESCE((
+           SELECT SUM((c.quantidade)::numeric * c.valor_unitario)
+             FROM complementos_itens_pedido c
+             JOIN itens_pedido ip ON ip.id = c.item_pedido_id
+            WHERE ip.pedido_id = $1
+         ), 0) AS total`,
+      [pedidoId]
+    );
     await pool.query('UPDATE pedidos SET valor_total = $1 WHERE id = $2', [sum.rows[0].total, pedidoId]);
     return res.json({ success: true, data: { pedido_id: pedidoId, valor_total: sum.rows[0].total } });
   } catch (err) {
@@ -217,4 +292,120 @@ export const deletePedido = async (req, res) => {
   }
 };
 
+
+// ===== COMPLEMENTOS DE ITENS DO PEDIDO =====
+
+export const addItemComplementos = async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const itemPedidoId = parseInt(req.params.item_pedido_id, 10);
+    if (Number.isNaN(itemPedidoId)) {
+      return res.status(400).json({ success: false, message: 'item_pedido_id inválido' });
+    }
+
+    // Verifica se o item de pedido existe
+    const itemSel = await client.query('SELECT id, pedido_id FROM itens_pedido WHERE id = $1', [itemPedidoId]);
+    if (itemSel.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Item do pedido não encontrado' });
+    }
+    const pedidoId = itemSel.rows[0].pedido_id;
+
+    const body = req.body || {};
+    const complementos = Array.isArray(body.complementos) ? body.complementos : [body];
+
+    await client.query('BEGIN');
+
+    const results = [];
+    for (const comp of complementos) {
+      if (!comp || comp === null || typeof comp !== 'object') continue;
+      const complementoId = Number(comp.complemento_id);
+      const nomeComplemento = String(comp.nome_complemento || comp.nome || '').trim();
+      const quantidade = Math.max(1, Number(comp.quantidade || 1));
+      const valorUnitario = Number(comp.valor_unitario || comp.unitPrice || 0);
+      const status = comp.status ? String(comp.status) : 'pendente';
+      const descricao = comp.descricao ? String(comp.descricao) : null;
+
+      if (Number.isNaN(complementoId) || !nomeComplemento) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ success: false, message: 'Dados de complemento inválidos' });
+      }
+
+      // Tenta somar à mesma linha (mesmo complemento) se já existir
+      const existing = await client.query(
+        `SELECT id, quantidade FROM complementos_itens_pedido
+         WHERE item_pedido_id = $1 AND complemento_id = $2
+         ORDER BY id ASC LIMIT 1`,
+        [itemPedidoId, complementoId]
+      );
+
+      if (existing.rows.length > 0) {
+        const row = existing.rows[0];
+        const updated = await client.query(
+          `UPDATE complementos_itens_pedido
+           SET quantidade = $1, valor_unitario = $2, nome_complemento = COALESCE($3, nome_complemento),
+               descricao = COALESCE($4, descricao), status = COALESCE($5, status)
+           WHERE id = $6
+           RETURNING id, item_pedido_id, complemento_id, nome_complemento, quantidade, valor_unitario, valor_total, status, descricao`,
+          [Number(row.quantidade) + quantidade, valorUnitario, nomeComplemento || null, descricao, status, row.id]
+        );
+        results.push(updated.rows[0]);
+      } else {
+        const inserted = await client.query(
+          `INSERT INTO complementos_itens_pedido
+             (item_pedido_id, complemento_id, nome_complemento, quantidade, valor_unitario, status, descricao)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
+           RETURNING id, item_pedido_id, complemento_id, nome_complemento, quantidade, valor_unitario, valor_total, status, descricao`,
+          [itemPedidoId, complementoId, nomeComplemento, quantidade, valorUnitario, status, descricao]
+        );
+        results.push(inserted.rows[0]);
+      }
+    }
+
+    await client.query('COMMIT');
+    // Recalcula total do pedido após alterar complementos
+    if (pedidoId) {
+      const sum = await pool.query(
+        `SELECT 
+           COALESCE((SELECT SUM(valor_total) FROM itens_pedido WHERE pedido_id = $1), 0)
+         + COALESCE((
+             SELECT SUM((c.quantidade)::numeric * c.valor_unitario)
+               FROM complementos_itens_pedido c
+               JOIN itens_pedido ip ON ip.id = c.item_pedido_id
+              WHERE ip.pedido_id = $1
+           ), 0) AS total`,
+        [pedidoId]
+      );
+      await pool.query('UPDATE pedidos SET valor_total = $1 WHERE id = $2', [sum.rows[0].total, pedidoId]);
+    }
+    return res.json({ success: true, data: results });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Erro ao adicionar complementos no item do pedido:', err);
+    return res.status(500).json({ success: false, message: 'Erro ao adicionar complementos' });
+  } finally {
+    client.release();
+  }
+};
+
+export const listItemComplementos = async (req, res) => {
+  try {
+    const itemPedidoId = parseInt(req.params.item_pedido_id, 10);
+    if (Number.isNaN(itemPedidoId)) {
+      return res.status(400).json({ success: false, message: 'item_pedido_id inválido' });
+    }
+
+    const rows = await pool.query(
+      `SELECT id, item_pedido_id, complemento_id, nome_complemento, quantidade, valor_unitario,
+              valor_total, status, descricao
+         FROM complementos_itens_pedido
+        WHERE item_pedido_id = $1
+        ORDER BY id ASC`,
+      [itemPedidoId]
+    );
+    return res.json({ success: true, data: rows.rows });
+  } catch (err) {
+    console.error('Erro ao listar complementos do item do pedido:', err);
+    return res.status(500).json({ success: false, message: 'Erro ao listar complementos' });
+  }
+};
 

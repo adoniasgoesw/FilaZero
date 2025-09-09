@@ -65,8 +65,34 @@ const PanelDetalhes = ({ identificacao, onBack, orderName, onOrderNameChange, mo
         if (!isMounted) return;
         if (res.success && res.data) {
           if (res.data.pedido) {
-            const itensMapped = (res.data.itens || []).map((r) => ({ id: r.produto_id, qty: r.quantidade, name: r.produto_nome || `Produto ${r.produto_id}`, unitPrice: Number(r.valor_unitario) || 0 }));
-            onItemsChange?.(itensMapped);
+            const exib = Array.isArray(res.data.itens_exibicao) ? res.data.itens_exibicao : null;
+            if (exib) {
+              const itensMapped = exib.map((e) => ({
+                id: e.produto_id,
+                qty: Number(e.quantidade) || 0,
+                name: e.produto_nome || `Produto ${e.produto_id}`,
+                unitPrice: Number(e.valor_unitario) || 0,
+                complements: Array.isArray(e.complementos)
+                  ? e.complementos.map((c) => ({
+                      id: Number(c.complemento_id),
+                      name: String(c.nome_complemento || ''),
+                      unitPrice: Number(c.valor_unitario) || 0,
+                      qty: Number(c.quantidade) || 0
+                    }))
+                  : []
+              }));
+              onItemsChange?.(itensMapped);
+            } else {
+              const itensBase = Array.isArray(res.data.itens) ? res.data.itens : [];
+              const itensMapped = itensBase.map((r) => ({
+                id: r.produto_id,
+                qty: r.quantidade,
+                name: r.produto_nome || `Produto ${r.produto_id}`,
+                unitPrice: Number(r.valor_unitario) || 0,
+                complements: []
+              }));
+              onItemsChange?.(itensMapped);
+            }
           }
           // Só preencher o nome se ainda não houver edição local
           if (!hasUserEditedName && res.data.nome_ponto !== undefined && res.data.nome_ponto !== null) {
@@ -84,11 +110,11 @@ const PanelDetalhes = ({ identificacao, onBack, orderName, onOrderNameChange, mo
     return () => { isMounted = false; };
   }, [identificacao, onItemsChange, onOrderNameChange, hasUserEditedName]);
   const safeItems = Array.isArray(displayItems) ? displayItems : (Array.isArray(items) ? items : []);
-  const baseSubtotal = safeItems.reduce((acc, it) => acc + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0), 0);
-  const pendingSubtotal = Array.isArray(pendingItems)
-    ? pendingItems.reduce((acc, it) => acc + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0), 0)
-    : 0;
-  const subtotal = baseSubtotal + pendingSubtotal;
+  const itemsTotal = safeItems.reduce((acc, it) => acc + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0), 0)
+    + (Array.isArray(pendingItems) ? pendingItems.reduce((acc, it) => acc + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0), 0) : 0);
+  const complementsTotal = safeItems.reduce((acc, it) => acc + (Array.isArray(it.complements) ? it.complements.reduce((s, c) => s + (Number(c.qty) || 0) * (Number(c.unitPrice) || 0), 0) : 0), 0)
+    + (Array.isArray(pendingItems) ? pendingItems.reduce((acc, it) => acc + (Array.isArray(it.complements) ? it.complements.reduce((s, c) => s + (Number(c.qty) || 0) * (Number(c.unitPrice) || 0), 0) : 0), 0) : 0);
+  const subtotal = itemsTotal + complementsTotal;
   const acrescimo = 0;
   const desconto = 0;
   const pago = 0;
