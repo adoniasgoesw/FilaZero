@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import api from '../../services/api';
 import { User, Building, Lock, ArrowRight, ArrowLeft, Check } from 'lucide-react';
 
 function FormRegister() {
@@ -43,8 +44,36 @@ function FormRegister() {
     }));
   };
 
+  const isStep1Valid = () => {
+    return (
+      formData.name.trim() &&
+      formData.email.trim() &&
+      formData.whatsapp.trim()
+    );
+  };
+
+  const isStep2Valid = () => {
+    return (
+      formData.establishmentName.trim() &&
+      formData.establishmentSector.trim()
+    );
+  };
+
+  const isStrongPassword = (pwd) => /^(?=.*[a-z])(?=.*[A-Z])(?=.*[^A-Za-z0-9])(?=.{8,})/.test(String(pwd || ''));
+
+  const isStep3Valid = () => {
+    return (
+      formData.cpf.trim() &&
+      formData.password.trim() &&
+      formData.confirmPassword.trim() &&
+      formData.password === formData.confirmPassword &&
+      isStrongPassword(formData.password)
+    );
+  };
+
   const nextStep = () => {
     if (currentStep < 3) {
+      if ((currentStep === 1 && !isStep1Valid()) || (currentStep === 2 && !isStep2Valid())) return;
       setCurrentStep(currentStep + 1);
     }
   };
@@ -55,9 +84,28 @@ function FormRegister() {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Form submitted:', formData);
+    if (!isStep1Valid() || !isStep2Valid() || !isStep3Valid()) return;
+    try {
+      const payload = {
+        nome_completo: formData.name,
+        email: formData.email,
+        whatsapp: formData.whatsapp,
+        estabelecimento_nome: formData.establishmentName,
+        estabelecimento_setor: formData.establishmentSector,
+        cnpj: formData.cnpj || '',
+        cpf: formData.cpf,
+        senha: formData.password
+      };
+      const res = await api.post('/register', payload);
+      if (res.success) {
+        window.dispatchEvent(new CustomEvent('switchToLogin'));
+      }
+    } catch (err) {
+      // Exibir uma notificação simples
+      alert('Falha ao registrar: ' + (err?.message || 'Erro desconhecido'));
+    }
   };
 
   const getStepTitle = () => {
@@ -224,7 +272,7 @@ function FormRegister() {
             onChange={handleInputChange}
             placeholder="00.000.000/0000-00"
             className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            required
+            required={false}
           />
         </div>
       </div>

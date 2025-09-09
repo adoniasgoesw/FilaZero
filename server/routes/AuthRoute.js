@@ -7,12 +7,15 @@ import pontosConfigController from '../controllers/pontosConfig.js';
 import fetch from 'node-fetch';
 import * as atendimentosController from '../controllers/atendimentos.js';
 import * as pedidosController from '../controllers/pedidos.js';
+import registerController from '../controllers/register.js';
 
 const router = express.Router();
 
 // ===== ROTAS DE AUTENTICAÇÃO =====
 // Rota de login
 router.post('/login', loginController.login);
+// Rota de registro (pública)
+router.post('/register', registerController.register);
 
 // Rota para obter dados do usuário logado (requer autenticação)
 router.get('/usuario', loginController.verificarToken, loginController.getUsuarioLogado);
