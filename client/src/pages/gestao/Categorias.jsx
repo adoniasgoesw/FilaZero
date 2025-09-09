@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Tag } from 'lucide-react'; // Icon for page and modal title
 import SearchBar from '../../components/layout/SeachBar';
 import BackButton from '../../components/buttons/Back';
@@ -10,6 +10,10 @@ import Notification from '../../components/elements/Notification';
 
 function Categorias() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const contentRef = useRef(null);
+  useEffect(() => {
+    try { contentRef.current?.scrollTo({ top: 0, behavior: 'auto' }); } catch {}
+  }, []);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [categoriaToEdit, setCategoriaToEdit] = useState(null);
   const [estabelecimentoId, setEstabelecimentoId] = useState(null);
@@ -116,7 +120,7 @@ function Categorias() {
       </div>
 
       {/* Área de conteúdo com rolagem */}
-      <div className="flex-1 overflow-y-auto px-4 md:px-6 py-6 mt-32 md:mt-0">
+      <div ref={contentRef} className="flex-1 overflow-y-auto px-4 md:px-6 py-6 mt-32 md:mt-0">
         {estabelecimentoId ? (
           <ListCategory 
             key={refreshList} 

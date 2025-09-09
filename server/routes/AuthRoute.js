@@ -110,6 +110,9 @@ router.get('/complementos/:estabelecimento_id', produtosController.listarComplem
 // Rota para editar complemento (requer autenticação)
 router.put('/complementos/:id', loginController.verificarToken, produtosController.editarComplemento);
 
+// Rota para alterar status do complemento
+router.put('/complementos/:id/status', produtosController.alterarStatusComplemento);
+
 // Rota para deletar complemento (requer autenticação)
 router.delete('/complementos/:id', loginController.verificarToken, produtosController.deletarComplemento);
 

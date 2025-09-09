@@ -79,9 +79,10 @@ const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, on
         if (!isMounted) return;
         if (resp.success) {
           const list = Array.isArray(resp.data) ? resp.data : [];
-          setCategorias(list);
-          if (!selectedCategoryId && list.length) {
-            setSelectedCategoryId(list[0].id);
+          const active = list.filter((c) => c && (c.status === true || c.status === 1));
+          setCategorias(active);
+          if ((!selectedCategoryId || !active.some((c) => Number(c.id) === Number(selectedCategoryId))) && active.length) {
+            setSelectedCategoryId(active[0].id);
           }
         } else {
           setErrorCats('Erro ao carregar categorias');
@@ -115,7 +116,10 @@ const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, on
         if (!isMounted) return;
         if (response.success) {
           const list = response.data?.produtos || response.data || [];
-          setProdutos(Array.isArray(list) ? list : []);
+          const filtered = Array.isArray(list)
+            ? list.filter((p) => (p?.status === true || p?.status === 1) && (p?.categoria_status === true || p?.categoria_status === 1))
+            : [];
+          setProdutos(filtered);
         } else {
           setErroProdutos('Erro ao carregar produtos');
         }
@@ -145,16 +149,17 @@ const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, on
       // Verifica se o produto possui alguma categoria de complementos ativa
       const resp = await api.get(`/categorias-complementos/${produto.id}`);
       const categorias = resp?.data || resp?.data === 0 ? resp.data : (resp?.success ? resp.data : []);
-      const hasCategorias = Array.isArray(categorias) && categorias.length > 0;
+      const activeCats = Array.isArray(categorias) ? categorias.filter((c) => c && (c.status === true || c.status === 1)) : [];
+      const hasCategorias = activeCats.length > 0;
       if (hasCategorias) {
         setModalProduto(produto);
-        setModalCategoriasComplementos(categorias);
+        setModalCategoriasComplementos(activeCats);
         setComplementsModalOpen(true);
       } else {
         // Adiciona direto se não houver categorias de complementos
         onAddItem?.(produto);
       }
-    } catch (e) {
+    } catch {
       // Em caso de erro ao verificar, segue o fluxo simples de adicionar direto
       onAddItem?.(produto);
     }
@@ -193,7 +198,7 @@ const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, on
           }
           return next;
         });
-      } catch (e) {
+      } catch {
         if (!isMounted) return;
         setModalError('Erro ao carregar complementos');
       } finally {
@@ -245,7 +250,7 @@ const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, on
     }
   }, [modalCategoriasComplementos, modalSelectedByCategoria]);
   return (
-    <main className={`${mobileHidden ? 'hidden md:flex' : 'flex md:flex'} fixed top-4 bottom-20 md:bottom-4 right-4 md:left-[calc(30%+7rem)] left-4 bg-white border border-gray-200 rounded-2xl shadow-2xl z-30 flex-col`}>
+    <main className={`${mobileHidden ? 'hidden md:flex' : 'flex md:flex'} fixed top-4 bottom-4 right-4 md:left-[calc(30%+7rem)] left-4 bg-white border border-gray-200 rounded-2xl shadow-2xl z-30 flex-col`}>
       {/* Header com barra de pesquisa no topo */}
       <div className="p-3 md:p-4 border-b border-gray-200">
         <div className="flex items-center gap-2">
@@ -457,7 +462,9 @@ const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, on
                   }
                 }
               }
-            } catch {}
+            } catch {
+              /* ignore */
+            }
             onAddItem?.(modalProduto, selectedComplements);
           }
           // Limpa estado após salvar

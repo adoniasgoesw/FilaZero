@@ -167,7 +167,8 @@ const produtosController = {
           p.criado_em,
           p.categoria_id,
           c.nome as categoria_nome,
-          c.imagem_url as categoria_imagem_url
+          c.imagem_url as categoria_imagem_url,
+          c.status as categoria_status
         FROM produtos p
         LEFT JOIN categorias c ON p.categoria_id = c.id
         WHERE p.estabelecimento_id = $1
@@ -744,12 +745,12 @@ const produtosController = {
   async listarComplementos(req, res) {
     try {
       const { estabelecimento_id } = req.params;
+      const showAll = String(req.query.show_all || '').toLowerCase();
+      const includeInactive = showAll === '1' || showAll === 'true' || showAll === 'yes';
 
-      const query = `
-        SELECT * FROM complementos 
-        WHERE estabelecimento_id = $1 AND status = true
-        ORDER BY criado_em DESC
-      `;
+      const query = includeInactive
+        ? `SELECT * FROM complementos WHERE estabelecimento_id = $1 ORDER BY criado_em DESC`
+        : `SELECT * FROM complementos WHERE estabelecimento_id = $1 AND status = true ORDER BY criado_em DESC`;
 
       const result = await pool.query(query, [estabelecimento_id]);
 
@@ -810,6 +811,23 @@ const produtosController = {
         success: false,
         message: 'Erro interno do servidor'
       });
+    }
+  },
+
+  // Alternar status do complemento (ativo/inativo)
+  async alterarStatusComplemento(req, res) {
+    try {
+      const { id } = req.params;
+      const sel = await pool.query('SELECT id, status FROM complementos WHERE id = $1', [id]);
+      if (sel.rows.length === 0) {
+        return res.status(404).json({ success: false, message: 'Complemento não encontrado' });
+      }
+      const novoStatus = !sel.rows[0].status;
+      const upd = await pool.query('UPDATE complementos SET status = $1 WHERE id = $2 RETURNING id, nome, status', [novoStatus, id]);
+      return res.json({ success: true, message: `Complemento ${novoStatus ? 'ativado' : 'desativado'} com sucesso`, data: upd.rows[0] });
+    } catch (error) {
+      console.error('Erro ao alterar status do complemento:', error);
+      return res.status(500).json({ success: false, message: 'Erro interno do servidor' });
     }
   },
 

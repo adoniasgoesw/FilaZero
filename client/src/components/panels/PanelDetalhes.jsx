@@ -125,7 +125,7 @@ const PanelDetalhes = ({ identificacao, onBack, orderName, onOrderNameChange, mo
   const totalPendingQty = Array.isArray(pendingItems) ? pendingItems.reduce((acc, it) => acc + (Number(it.qty) || 0), 0) : 0;
 
   return (
-    <aside className={`${mobileVisible ? 'flex md:flex' : 'hidden md:flex'} fixed top-4 bottom-20 md:bottom-4 left-4 md:left-24 w-[calc(100%-2rem)] md:w-[30%] bg-white border border-gray-200 rounded-2xl shadow-2xl z-40 flex-col`}>
+    <aside className={`${mobileVisible ? 'flex md:flex' : 'hidden md:flex'} fixed top-4 bottom-4 left-4 md:left-24 w-[calc(100%-2rem)] md:w-[30%] bg-white border border-gray-200 rounded-2xl shadow-2xl z-40 flex-col`}>
       {/* Header */}
       <div className="p-3 md:p-4 border-b border-gray-200 flex items-center gap-3">
         <div className="shrink-0">

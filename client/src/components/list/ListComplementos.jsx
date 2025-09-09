@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Package } from 'lucide-react';
 import api from '../../services/api';
+import { readCache, writeCache } from '../../services/cache';
 import EditButton from '../buttons/Edit';
 import DeleteButton from '../buttons/Delete';
 import StatusButton from '../buttons/Status';
 import ConfirmDelete from '../elements/ConfirmDelete';
 
-const ListComplementos = ({ estabelecimentoId, onComplementoDelete, onComplementoEdit }) => {
+const ListComplementos = ({ estabelecimentoId, onComplementoDelete, onComplementoEdit, activeTab, setActiveTab }) => {
   const [complementos, setComplementos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -15,17 +16,25 @@ const ListComplementos = ({ estabelecimentoId, onComplementoDelete, onComplement
 
   const fetchComplementos = useCallback(async () => {
     try {
-      setLoading(true);
+      const cacheKey = `complementos:${estabelecimentoId}:all`;
+      const cached = readCache(cacheKey);
+      if (cached && Array.isArray(cached)) {
+        setComplementos(cached);
+        setLoading(false);
+      } else {
+        setLoading(true);
+      }
       setError(null);
       
       console.log('🔍 Buscando complementos para estabelecimento:', estabelecimentoId);
       
-      const response = await api.get(`/complementos/${estabelecimentoId}`);
+      const response = await api.get(`/complementos/${estabelecimentoId}?show_all=1`);
       
       console.log('✅ Resposta da API:', response);
       
       if (response.success) {
         setComplementos(response.data);
+        writeCache(cacheKey, response.data);
         console.log('✅ Complementos carregados:', response.data.length);
       } else {
         throw new Error(response.message || 'Erro ao carregar complementos');
@@ -161,7 +170,7 @@ const ListComplementos = ({ estabelecimentoId, onComplementoDelete, onComplement
   }
 
   return (
-    <div className="bg-white rounded-xl overflow-hidden">
+    <div className="bg-white rounded-xl overflow-hidden mt-16 md:mt-6 mb-8" style={{ scrollBehavior: 'smooth' }}>
       {/* Layout responsivo: Cards para mobile/tablet, Tabela para desktop */}
       
       {/* Cards para mobile e tablet */}

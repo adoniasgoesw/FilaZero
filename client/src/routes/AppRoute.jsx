@@ -1,4 +1,5 @@
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import React from 'react';
 import Sidebar from '../components/layout/Sidebar';
 import Home from '../pages/Home';
 import Landing from '../pages/Landing';
@@ -15,6 +16,26 @@ import PontoAtendimento from '../pages/PontoAtendimento';
 // Componente wrapper para gerenciar o Sidebar
 function AppContent() {
   const location = useLocation();
+  const navigate = useNavigate();
+  React.useEffect(() => {
+    // Forçar o scroll para o topo ao trocar de rota (especialmente no mobile)
+    if (typeof window.scrollTo === 'function') {
+      window.scrollTo({ top: 0, behavior: 'auto' });
+    }
+    const el = document.scrollingElement;
+    if (el && typeof el.scrollTo === 'function') {
+      el.scrollTo({ top: 0, behavior: 'auto' });
+    }
+  }, [location.pathname]);
+
+  // Redirecionar automaticamente para /home se já existir token salvo (login "para sempre")
+  React.useEffect(() => {
+    const token = localStorage.getItem('token');
+    const isLanding = location.pathname === '/' || location.pathname === '/landing';
+    if (token && isLanding) {
+      navigate('/home', { replace: true });
+    }
+  }, [location.pathname, navigate]);
   const isLandingPage = location.pathname === '/' || location.pathname === '/landing';
   const isPontoAtendimento = location.pathname.startsWith('/ponto-atendimento');
 

@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Image as ImageIcon, Package } from 'lucide-react';
 import api from '../../services/api';
+import { readCache, writeCache } from '../../services/cache';
 import EditButton from '../buttons/Edit';
 import DeleteButton from '../buttons/Delete';
 import StatusButton from '../buttons/Status';
 import ConfirmDelete from '../elements/ConfirmDelete';
 
-const ListProduct = ({ estabelecimentoId, onProductDelete, onProductEdit, activeTab, setActiveTab }) => {
+const ListProduct = ({ estabelecimentoId, onProductDelete, onProductEdit, activeTab, setActiveTab, showHeader = true }) => {
   const [produtos, setProdutos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -23,7 +24,16 @@ const ListProduct = ({ estabelecimentoId, onProductDelete, onProductEdit, active
   const fetchProdutos = useCallback(async (page = 1, append = false) => {
     try {
       if (page === 1) {
-        setLoading(true);
+        // Fast-first paint from cache
+        const cached = readCache(`produtos:${estabelecimentoId}:p${itemsPerPage}`);
+        if (cached && Array.isArray(cached.produtos)) {
+          setProdutos(cached.produtos);
+          setHasMore(cached.hasMore ?? true);
+          setCurrentPage(cached.currentPage ?? 1);
+          setLoading(false);
+        } else {
+          setLoading(true);
+        }
       } else {
         setLoadingMore(true);
       }
@@ -51,6 +61,15 @@ const ListProduct = ({ estabelecimentoId, onProductDelete, onProductEdit, active
         setCurrentPage(page);
         setHasMore(page < Math.ceil(total / itemsPerPage));
         
+        // Persist to cache for instant subsequent loads
+        if (page === 1) {
+          writeCache(`produtos:${estabelecimentoId}:p${itemsPerPage}`, {
+            produtos: append ? [...produtos, ...newProdutos] : newProdutos,
+            total,
+            currentPage: page,
+            hasMore: page < Math.ceil(total / itemsPerPage)
+          });
+        }
         console.log('✅ Produtos carregados:', newProdutos.length, 'Total:', total, 'Páginas:', Math.ceil(total / itemsPerPage));
       } else {
         throw new Error(response.message || 'Erro ao carregar produtos');
@@ -62,7 +81,7 @@ const ListProduct = ({ estabelecimentoId, onProductDelete, onProductEdit, active
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [estabelecimentoId, itemsPerPage]);
+  }, [estabelecimentoId, itemsPerPage, produtos]);
 
   useEffect(() => {
     if (estabelecimentoId) {
@@ -231,34 +250,36 @@ const ListProduct = ({ estabelecimentoId, onProductDelete, onProductEdit, active
   }
 
   return (
-    <div className="mt-10">
-      {/* Header para mobile - FORA do container principal */}
-      <div className="block lg:hidden mb-4">
-        <div className="">
-          <div className="flex">
-            <button
-              onClick={() => setActiveTab('produtos')}
-              className={`flex-1 px-4 py-3 text-sm font-medium transition-all duration-200 rounded-tl-lg ${
-                activeTab === 'produtos'
-                  ? 'bg-gray-400 text-white shadow-sm'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              Produtos
-            </button>
-            <button
-              onClick={() => setActiveTab('complementos')}
-              className={`flex-1 px-4 py-3 text-sm font-medium transition-all duration-200 rounded-tr-lg ${
-                activeTab === 'complementos'
-                  ? 'bg-gray-400 text-white shadow-sm'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              Complementos
-            </button>
+    <div className="mt-16 md:mt-6">
+      {/* Header para mobile - ocultável quando a página já fornece um header sticky */}
+      {showHeader && (
+        <div className="block lg:hidden mb-4">
+          <div className="">
+            <div className="flex">
+              <button
+                onClick={() => setActiveTab('produtos')}
+                className={`flex-1 px-4 py-3 text-sm font-medium transition-all duration-200 rounded-tl-lg ${
+                  activeTab === 'produtos'
+                    ? 'bg-gray-400 text-white shadow-sm'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Produtos
+              </button>
+              <button
+                onClick={() => setActiveTab('complementos')}
+                className={`flex-1 px-4 py-3 text-sm font-medium transition-all duration-200 rounded-tr-lg ${
+                  activeTab === 'complementos'
+                    ? 'bg-gray-400 text-white shadow-sm'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Complementos
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="bg-white rounded-xl overflow-hidden">
         {/* Layout responsivo: Cards para mobile/tablet, Tabela para desktop */}

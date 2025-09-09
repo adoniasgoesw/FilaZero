@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle2, Users, Clock, Flag, DollarSign } from 'lucide-react';
 import api from '../../services/api';
+import { readCache, writeCache } from '../../services/cache';
 
 // Configuração de status (cores e ícone) no estilo do design fornecido
 const STATUS_CONFIG = {
@@ -82,13 +83,23 @@ const ListPontosAtendimento = ({ estabelecimentoId: propEstabelecimentoId, searc
   const fetchPoints = useCallback(async () => {
     let isMounted = true;
     try {
-      setLoading(true);
+      const cacheKey = `pontos:${estabId || 'none'}`;
+      const cached = readCache(cacheKey);
+      if (cached && Array.isArray(cached)) {
+        setItems(cached);
+        setLoading(false);
+      } else {
+        setLoading(true);
+      }
       setError(null);
       if (estabId) {
         try {
           const res = await api.get(`/pontos-atendimento/${estabId}`);
           if (res && res.success) {
-            if (isMounted) setItems(res.data || []);
+            if (isMounted) {
+              setItems(res.data || []);
+              writeCache(cacheKey, res.data || []);
+            }
           } else {
             const cfgRes = await api.get(`/pontos-atendimento/config/${estabId}`);
             if (cfgRes && cfgRes.success && cfgRes.data) {
@@ -105,7 +116,10 @@ const ListPontosAtendimento = ({ estabelecimentoId: propEstabelecimentoId, searc
                   generated.push({ id: `comanda-${i}`, identificacao: label, status: 'disponivel', total: 0 });
                 }
               }
-              if (isMounted) setItems(generated);
+              if (isMounted) {
+                setItems(generated);
+                writeCache(cacheKey, generated);
+              }
             } else if (isMounted) {
               setItems(DEFAULT_ITEMS);
             }
@@ -128,7 +142,10 @@ const ListPontosAtendimento = ({ estabelecimentoId: propEstabelecimentoId, searc
                   generated.push({ id: `comanda-${i}`, identificacao: label, status: 'disponivel', total: 0 });
                 }
               }
-              if (isMounted) setItems(generated);
+              if (isMounted) {
+                setItems(generated);
+                writeCache(cacheKey, generated);
+              }
             } else if (isMounted) {
               setItems(DEFAULT_ITEMS);
             }
@@ -218,7 +235,9 @@ const ListPontosAtendimento = ({ estabelecimentoId: propEstabelecimentoId, searc
                       await api.put(`/atendimentos/${estabId}/${encodeURIComponent(item.id)}/status`, { status: 'aberto' });
                       setItems((prev) => prev.map((it) => (it.id === item.id ? { ...it, status: 'aberto' } : it)));
                     }
-                  } catch {}
+                  } catch {
+                    /* ignore */
+                  }
                   navigate(`/ponto-atendimento/${encodeURIComponent(item.id)}`);
                 } else {
                   setLastClickedId(item.id);
