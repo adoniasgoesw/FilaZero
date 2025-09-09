@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Home as HomeIcon, Settings } from 'lucide-react';
 import SearchBar from '../components/layout/SeachBar';
 import ListPontosAtendimento from '../components/list/ListPontosAtendimento';
@@ -8,6 +8,14 @@ import FormConfig from '../components/forms/FormConfig';
 
 function Home() {
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
+  const contentRef = useRef(null);
+
+  useEffect(() => {
+    // Garantir que o scroll começa no topo ao entrar nesta página (especialmente no mobile)
+    if (contentRef.current && typeof contentRef.current.scrollTo === 'function') {
+      contentRef.current.scrollTo({ top: 0, behavior: 'auto' });
+    }
+  }, []);
 
   const handleConfigSave = (data) => {
     console.log('Configurações salvas:', data);
@@ -39,7 +47,7 @@ function Home() {
       </div>
 
       {/* Área de conteúdo com rolagem */}
-      <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4 mt-16 md:mt-6">
+      <div ref={contentRef} className="flex-1 overflow-y-auto px-4 md:px-6 py-4 mt-16 md:mt-6">
         <ListPontosAtendimento />
       </div>
 

@@ -17,10 +17,16 @@ const apiRequest = async (endpoint, options = {}) => {
     config.headers['Content-Type'] = 'application/json';
   }
 
-  // Adicionar token de autenticação se existir
+  // Adicionar token de autenticação se existir e garantir persistência "para sempre"
   const token = localStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+    try {
+      // Renovar a presença do token para manter sessão viva no navegador
+      localStorage.setItem('token', token);
+    } catch {
+      // ignore persistence errors
+    }
   }
 
   try {

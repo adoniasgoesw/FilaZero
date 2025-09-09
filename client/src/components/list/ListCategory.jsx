@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Image as ImageIcon } from 'lucide-react';
 import api from '../../services/api';
+import { readCache, writeCache } from '../../services/cache';
 import EditButton from '../buttons/Edit';
 import DeleteButton from '../buttons/Delete';
 import StatusButton from '../buttons/Status';
@@ -15,7 +16,14 @@ const ListCategory = ({ estabelecimentoId, onCategoryDelete, onCategoryEdit }) =
 
   const fetchCategorias = useCallback(async () => {
     try {
-      setLoading(true);
+      const cacheKey = `categorias:${estabelecimentoId}`;
+      const cached = readCache(cacheKey);
+      if (cached && Array.isArray(cached)) {
+        setCategorias(cached);
+        setLoading(false);
+      } else {
+        setLoading(true);
+      }
       setError(null);
       
       console.log('🔍 Buscando categorias para estabelecimento:', estabelecimentoId);
@@ -27,6 +35,7 @@ const ListCategory = ({ estabelecimentoId, onCategoryDelete, onCategoryEdit }) =
       
       if (response.success) {
         setCategorias(response.data);
+        writeCache(cacheKey, response.data);
         console.log('✅ Categorias carregadas:', response.data);
       } else {
         setError('Erro ao carregar categorias');

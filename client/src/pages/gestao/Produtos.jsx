@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Package } from 'lucide-react'; // Icon for page and modal title
 import SearchBar from '../../components/layout/SeachBar';
 import BackButton from '../../components/buttons/Back';
@@ -12,6 +12,12 @@ import Notification from '../../components/elements/Notification';
 
 function Produtos() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const contentRef = useRef(null);
+  useEffect(() => {
+    if (contentRef.current && typeof contentRef.current.scrollTo === 'function') {
+      contentRef.current.scrollTo({ top: 0, behavior: 'auto' });
+    }
+  }, []);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [produtoToEdit, setProdutoToEdit] = useState(null);
   const [estabelecimentoId, setEstabelecimentoId] = useState(null);
@@ -172,14 +178,14 @@ function Produtos() {
 
 
 
-      {/* Header de navegação */}
-      <div className="px-4 py-2 border-b border-gray-200">
-        <div className="flex bg-gray-100 w-64">
+      {/* Header de navegação - estilo redondo, fixo, sem blur, z-index alto */}
+      <div className="px-4 md:px-6 py-2 sticky top-28 md:top-0 z-[100] bg-white border-b border-gray-200 mt-2 md:mt-0">
+        <div className="flex bg-gray-100 rounded-lg overflow-hidden w-[min(260px,90%)]">
           <button
             onClick={() => setActiveTab('produtos')}
-            className={`flex-1 px-4 py-3 text-sm font-medium transition-all duration-200 rounded-tl-lg ${
+            className={`flex-1 px-4 py-2 text-sm font-medium transition-colors duration-200 ${
               activeTab === 'produtos'
-                ? 'bg-gray-400 text-white shadow-sm'
+                ? 'bg-gray-400 text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
@@ -187,9 +193,9 @@ function Produtos() {
           </button>
           <button
             onClick={() => setActiveTab('complementos')}
-            className={`flex-1 px-4 py-3 text-sm font-medium transition-all duration-200 rounded-tr-lg ${
+            className={`flex-1 px-4 py-2 text-sm font-medium transition-colors duration-200 ${
               activeTab === 'complementos'
-                ? 'bg-gray-400 text-white shadow-sm'
+                ? 'bg-gray-400 text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
@@ -198,8 +204,8 @@ function Produtos() {
         </div>
       </div>
 
-      {/* Área de conteúdo com rolagem */}
-      <div className="flex-1 overflow-y-auto px-4 md:px-6 py-6">
+      {/* Área de conteúdo com rolagem (espaçamento abaixo do header apenas no mobile) */}
+      <div ref={contentRef} className="flex-1 overflow-y-auto px-4 md:px-6 py-6 mt-4 md:mt-0">
 
         {/* Conteúdo baseado na aba ativa */}
         {estabelecimentoId ? (
@@ -211,6 +217,7 @@ function Produtos() {
               onProductEdit={handleProductEdit}
               activeTab={activeTab}
               setActiveTab={setActiveTab}
+              showHeader={false}
             />
           ) : (
             <ListComplementos 
@@ -218,6 +225,8 @@ function Produtos() {
               estabelecimentoId={estabelecimentoId}
               onComplementoDelete={handleComplementoDelete}
               onComplementoEdit={handleComplementoEdit}
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
             />
           )
         ) : (

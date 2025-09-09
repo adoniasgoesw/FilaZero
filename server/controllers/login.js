@@ -65,7 +65,7 @@ const loginController = {
           cargo: usuario.cargo
         },
         process.env.JWT_SECRET || 'sua_chave_secreta_aqui',
-        { expiresIn: '24h' }
+        { expiresIn: '365d' }
       );
 
       // Garantir configuração padrão de pontos de atendimento para o estabelecimento no login
@@ -97,7 +97,7 @@ const loginController = {
       // Remover senha do objeto de resposta
       delete usuario.senha;
 
-      // Retornar sucesso com dados do usuário e token
+      // Retornar sucesso com dados do usuário e token (cliente mantém no localStorage)
       res.status(200).json({
         success: true,
         message: 'Login realizado com sucesso',

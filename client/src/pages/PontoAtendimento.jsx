@@ -195,7 +195,7 @@ function PontoAtendimento() {
   };
   return (
     <div className="min-h-screen bg-gray-50">
-      <Sidebar />
+      <Sidebar hideMobileFooter />
       <PanelItens 
         estabelecimentoId={id}
         onOpenDetails={() => setMobileDetailsOpen(true)}
