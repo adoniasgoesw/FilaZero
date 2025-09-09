@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { CreditCard } from 'lucide-react';
 
 
-const FormPayment = () => {
+const FormPayment = ({ onSave }) => {
   const [formData, setFormData] = useState({
     nome: '',
     tipo: '',
@@ -19,13 +19,22 @@ const FormPayment = () => {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.nome.trim() || !formData.tipo) {
       alert('Nome e tipo são obrigatórios!');
       return;
     }
-    onSave(formData);
+    try {
+      if (onSave) {
+        await Promise.resolve(onSave(formData));
+      }
+      // Notificar o modal para fechar
+      window.dispatchEvent(new CustomEvent('modalSaveSuccess', { detail: formData }));
+    } catch (err) {
+      console.error('Erro ao salvar pagamento:', err);
+      alert('Erro ao salvar pagamento.');
+    }
   };
 
   return (

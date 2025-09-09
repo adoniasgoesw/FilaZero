@@ -298,7 +298,9 @@ const ListPontosAtendimento = ({ estabelecimentoId: propEstabelecimentoId, searc
       </div>
 
       {filtered.length === 0 && !loading && (
-        <div className="text-center text-sm text-gray-600 py-8">Nenhum ponto de atendimento encontrado.</div>
+        <div className="text-center text-sm text-gray-600 py-8 min-h-[40vh] flex items-center justify-center">
+          Nenhum ponto de atendimento encontrado.
+        </div>
       )}
     </div>
   );

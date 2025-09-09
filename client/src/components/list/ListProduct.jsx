@@ -64,7 +64,7 @@ const ListProduct = ({ estabelecimentoId, onProductDelete, onProductEdit, active
         // Persist to cache for instant subsequent loads
         if (page === 1) {
           writeCache(`produtos:${estabelecimentoId}:p${itemsPerPage}`, {
-            produtos: append ? [...produtos, ...newProdutos] : newProdutos,
+            produtos: newProdutos,
             total,
             currentPage: page,
             hasMore: page < Math.ceil(total / itemsPerPage)
@@ -81,13 +81,13 @@ const ListProduct = ({ estabelecimentoId, onProductDelete, onProductEdit, active
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [estabelecimentoId, itemsPerPage, produtos]);
+  }, [estabelecimentoId, itemsPerPage]);
 
   useEffect(() => {
-    if (estabelecimentoId) {
-      fetchProdutos(1);
-    }
-  }, [estabelecimentoId, fetchProdutos]);
+    if (!estabelecimentoId) return;
+    fetchProdutos(1, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [estabelecimentoId]);
 
   // Função para carregar mais produtos
   const loadMore = useCallback(() => {
@@ -200,14 +200,14 @@ const ListProduct = ({ estabelecimentoId, onProductDelete, onProductEdit, active
       }
     };
 
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, [loadMore]);
 
   if (loading && produtos.length === 0) {
     return (
-      <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
-        <div className="flex items-center justify-center">
+      <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8 min-h-[50vh] flex items-center justify-center">
+        <div className="flex items-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500"></div>
           <span className="ml-3 text-gray-600">Carregando produtos...</span>
         </div>
@@ -217,7 +217,7 @@ const ListProduct = ({ estabelecimentoId, onProductDelete, onProductEdit, active
 
   if (error) {
     return (
-      <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
+      <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8 min-h-[50vh] flex items-center justify-center">
         <div className="text-center">
           <div className="text-red-500 mb-4">
             <Package className="w-12 h-12 mx-auto" />
@@ -237,7 +237,7 @@ const ListProduct = ({ estabelecimentoId, onProductDelete, onProductEdit, active
 
   if (produtos.length === 0) {
     return (
-      <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
+      <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8 min-h-[50vh] flex items-center justify-center">
         <div className="text-center">
           <div className="text-gray-400 mb-4">
             <Package className="w-12 h-12 mx-auto" />
