@@ -1,215 +1,327 @@
-# 🚀 FilaZero Backend
+# send
 
-Backend do sistema FilaZero - Sistema de Gestão para Restaurantes
+[![NPM Version][npm-version-image]][npm-url]
+[![NPM Downloads][npm-downloads-image]][npm-url]
+[![Linux Build][github-actions-ci-image]][github-actions-ci-url]
+[![Windows Build][appveyor-image]][appveyor-url]
+[![Test Coverage][coveralls-image]][coveralls-url]
 
-## 📋 Pré-requisitos
+Send is a library for streaming files from the file system as a http response
+supporting partial responses (Ranges), conditional-GET negotiation (If-Match,
+If-Unmodified-Since, If-None-Match, If-Modified-Since), high test coverage,
+and granular events which may be leveraged to take appropriate actions in your
+application or framework.
 
-- Node.js >= 18.0.0
-- PostgreSQL (Neon Database)
-- npm ou yarn
+Looking to serve up entire folders mapped to URLs? Try [serve-static](https://www.npmjs.org/package/serve-static).
 
-## 🛠️ Instalação
+## Installation
 
-1. **Clone o repositório e navegue para a pasta server:**
+This is a [Node.js](https://nodejs.org/en/) module available through the
+[npm registry](https://www.npmjs.com/). Installation is done using the
+[`npm install` command](https://docs.npmjs.com/getting-started/installing-npm-packages-locally):
+
 ```bash
-cd server
+$ npm install send
 ```
 
-2. **Instale as dependências:**
-```bash
-npm install
+## API
+
+```js
+var send = require('send')
 ```
 
-3. **Configure as variáveis de ambiente:**
-   - Copie `env.example` para `.env.dev` e `.env.prod`
-   - Configure sua URL do banco Neon Database
+### send(req, path, [options])
 
-## ⚙️ Configuração
+Create a new `SendStream` for the given path to send to a `res`. The `req` is
+the Node.js HTTP request and the `path` is a urlencoded path to send (urlencoded,
+not the actual file-system path).
 
-### Variáveis de Ambiente
+#### Options
 
-Crie os arquivos `.env.dev` e `.env.prod` com:
+##### acceptRanges
 
-```env
-NODE_ENV=development
-PORT=3001
-DATABASE_URL=sua_url_do_neon_database
-FRONTEND_URL=http://localhost:5173
-LOG_LEVEL=debug
+Enable or disable accepting ranged requests, defaults to true.
+Disabling this will not send `Accept-Ranges` and ignore the contents
+of the `Range` request header.
+
+##### cacheControl
+
+Enable or disable setting `Cache-Control` response header, defaults to
+true. Disabling this will ignore the `immutable` and `maxAge` options.
+
+##### dotfiles
+
+Set how "dotfiles" are treated when encountered. A dotfile is a file
+or directory that begins with a dot ("."). Note this check is done on
+the path itself without checking if the path actually exists on the
+disk. If `root` is specified, only the dotfiles above the root are
+checked (i.e. the root itself can be within a dotfile when when set
+to "deny").
+
+  - `'allow'` No special treatment for dotfiles.
+  - `'deny'` Send a 403 for any request for a dotfile.
+  - `'ignore'` Pretend like the dotfile does not exist and 404.
+
+The default value is _similar_ to `'ignore'`, with the exception that
+this default will not ignore the files within a directory that begins
+with a dot, for backward-compatibility.
+
+##### end
+
+Byte offset at which the stream ends, defaults to the length of the file
+minus 1. The end is inclusive in the stream, meaning `end: 3` will include
+the 4th byte in the stream.
+
+##### etag
+
+Enable or disable etag generation, defaults to true.
+
+##### extensions
+
+If a given file doesn't exist, try appending one of the given extensions,
+in the given order. By default, this is disabled (set to `false`). An
+example value that will serve extension-less HTML files: `['html', 'htm']`.
+This is skipped if the requested file already has an extension.
+
+##### immutable
+
+Enable or disable the `immutable` directive in the `Cache-Control` response
+header, defaults to `false`. If set to `true`, the `maxAge` option should
+also be specified to enable caching. The `immutable` directive will prevent
+supported clients from making conditional requests during the life of the
+`maxAge` option to check if the file has changed.
+
+##### index
+
+By default send supports "index.html" files, to disable this
+set `false` or to supply a new index pass a string or an array
+in preferred order.
+
+##### lastModified
+
+Enable or disable `Last-Modified` header, defaults to true. Uses the file
+system's last modified value.
+
+##### maxAge
+
+Provide a max-age in milliseconds for http caching, defaults to 0.
+This can also be a string accepted by the
+[ms](https://www.npmjs.org/package/ms#readme) module.
+
+##### root
+
+Serve files relative to `path`.
+
+##### start
+
+Byte offset at which the stream starts, defaults to 0. The start is inclusive,
+meaning `start: 2` will include the 3rd byte in the stream.
+
+#### Events
+
+The `SendStream` is an event emitter and will emit the following events:
+
+  - `error` an error occurred `(err)`
+  - `directory` a directory was requested `(res, path)`
+  - `file` a file was requested `(path, stat)`
+  - `headers` the headers are about to be set on a file `(res, path, stat)`
+  - `stream` file streaming has started `(stream)`
+  - `end` streaming has completed
+
+#### .pipe
+
+The `pipe` method is used to pipe the response into the Node.js HTTP response
+object, typically `send(req, path, options).pipe(res)`.
+
+### .mime
+
+The `mime` export is the global instance of of the
+[`mime` npm module](https://www.npmjs.com/package/mime).
+
+This is used to configure the MIME types that are associated with file extensions
+as well as other options for how to resolve the MIME type of a file (like the
+default type to use for an unknown file extension).
+
+## Error-handling
+
+By default when no `error` listeners are present an automatic response will be
+made, otherwise you have full control over the response, aka you may show a 5xx
+page etc.
+
+## Caching
+
+It does _not_ perform internal caching, you should use a reverse proxy cache
+such as Varnish for this, or those fancy things called CDNs. If your
+application is small enough that it would benefit from single-node memory
+caching, it's small enough that it does not need caching at all ;).
+
+## Debugging
+
+To enable `debug()` instrumentation output export __DEBUG__:
+
+```
+$ DEBUG=send node app
 ```
 
-### Banco de Dados Neon
-
-1. Acesse [Neon Database](https://neon.tech)
-2. Crie um novo projeto
-3. Copie a string de conexão
-4. Cole no `DATABASE_URL`
-
-## 🚀 Execução
-
-### Desenvolvimento (Local)
-```bash
-npm run dev
-```
-- Usa `index.js`
-- Porta: 3001
-- Ambiente: desenvolvimento
-- Banco: Neon Database
-
-### Produção (Netlify/Render)
-```bash
-npm start
-```
-- Usa `server.js`
-- Porta: 3001 (ou variável de ambiente)
-- Ambiente: produção
-- Banco: Neon Database
-
-## 📡 Endpoints da API
-
-### Teste de Conexão
-- `GET /api/test-db` - Testa conexão com banco
-- `GET /api/status` - Status da API
-
-### Gestão
-- `GET /api/clientes` - Listar clientes
-- `POST /api/clientes` - Criar cliente
-- `PUT /api/clientes/:id` - Atualizar cliente
-- `DELETE /api/clientes/:id` - Deletar cliente
-
-- `GET /api/produtos` - Listar produtos
-- `POST /api/produtos` - Criar produto
-- `PUT /api/produtos/:id` - Atualizar produto
-- `DELETE /api/produtos/:id` - Deletar produto
-
-- `GET /api/usuarios` - Listar usuários
-- `POST /api/usuarios` - Criar usuário
-- `PUT /api/usuarios/:id` - Atualizar usuário
-- `DELETE /api/usuarios/:id` - Deletar usuário
-
-- `GET /api/categorias` - Listar categorias
-- `POST /api/categorias` - Criar categoria
-- `PUT /api/categorias/:id` - Atualizar categoria
-- `DELETE /api/categorias/:id` - Deletar categoria
-
-- `GET /api/pagamentos` - Listar formas de pagamento
-- `POST /api/pagamentos` - Criar forma de pagamento
-- `PUT /api/pagamentos/:id` - Atualizar forma de pagamento
-- `DELETE /api/pagamentos/:id` - Deletar forma de pagamento
-
-### Caixa
-- `POST /api/caixa/abrir` - Abrir caixa
-- `POST /api/caixa/fechar` - Fechar caixa
-- `GET /api/caixa/status` - Status do caixa
-- `GET /api/caixa/historico` - Histórico do caixa
-
-### Configurações
-- `GET /api/config` - Obter configurações
-- `PUT /api/config` - Atualizar configurações
-- `POST /api/config/testar` - Testar configurações
-
-## 🔧 Estrutura do Projeto
+## Running tests
 
 ```
-server/
-├── config/
-│   └── db.js          # Configuração do banco de dados
-├── index.js            # Servidor de desenvolvimento
-├── server.js           # Servidor de produção
-├── package.json        # Dependências e scripts
-├── env.dev             # Variáveis de ambiente (dev)
-├── env.prod            # Variáveis de ambiente (prod)
-└── README.md           # Este arquivo
+$ npm install
+$ npm test
 ```
 
-## 🌐 Ambientes
+## Examples
 
-### Desenvolvimento
-- **Arquivo:** `index.js`
-- **Porta:** 3001
-- **Banco:** Neon Database
-- **CORS:** localhost:5173
+### Serve a specific file
 
-### Produção
-- **Arquivo:** `server.js`
-- **Porta:** 3001 (ou variável)
-- **Banco:** Neon Database
-- **CORS:** filazero.netlify.app
+This simple example will send a specific file to all requests.
 
-## 📊 Banco de Dados
+```js
+var http = require('http')
+var send = require('send')
 
-### Neon Database
-- **Tipo:** PostgreSQL
-- **Hosting:** Neon.tech
-- **SSL:** Automático
-- **Pool:** 20 conexões máximas
+var server = http.createServer(function onRequest (req, res) {
+  send(req, '/path/to/index.html')
+    .pipe(res)
+})
 
-### Configuração
-```javascript
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
-});
+server.listen(3000)
 ```
 
-## 🚀 Deploy
+### Serve all files from a directory
 
-### Render
-1. Conecte seu repositório
-2. Configure as variáveis de ambiente
-3. Build Command: `npm install`
-4. Start Command: `npm start`
+This simple example will just serve up all the files in a
+given directory as the top-level. For example, a request
+`GET /foo.txt` will send back `/www/public/foo.txt`.
 
-### Netlify Functions
-1. Configure como função serverless
-2. Use `server.js` como entry point
-3. Configure variáveis de ambiente
+```js
+var http = require('http')
+var parseUrl = require('parseurl')
+var send = require('send')
 
-## 🔍 Testes
+var server = http.createServer(function onRequest (req, res) {
+  send(req, parseUrl(req).pathname, { root: '/www/public' })
+    .pipe(res)
+})
 
-### Teste de Conexão com Banco
-```bash
-curl http://localhost:3001/api/test-db
+server.listen(3000)
 ```
 
-### Teste de Status da API
-```bash
-curl http://localhost:3001/api/status
+### Custom file types
+
+```js
+var http = require('http')
+var parseUrl = require('parseurl')
+var send = require('send')
+
+// Default unknown types to text/plain
+send.mime.default_type = 'text/plain'
+
+// Add a custom type
+send.mime.define({
+  'application/x-my-type': ['x-mt', 'x-mtt']
+})
+
+var server = http.createServer(function onRequest (req, res) {
+  send(req, parseUrl(req).pathname, { root: '/www/public' })
+    .pipe(res)
+})
+
+server.listen(3000)
 ```
 
-## 📝 Logs
+### Custom directory index view
 
-### Desenvolvimento
-- Logs detalhados
-- Erros completos
-- Debug ativo
+This is a example of serving up a structure of directories with a
+custom function to render a listing of a directory.
 
-### Produção
-- Logs essenciais
-- Erros sanitizados
-- Performance otimizada
+```js
+var http = require('http')
+var fs = require('fs')
+var parseUrl = require('parseurl')
+var send = require('send')
 
-## 🆘 Suporte
+// Transfer arbitrary files from within /www/example.com/public/*
+// with a custom handler for directory listing
+var server = http.createServer(function onRequest (req, res) {
+  send(req, parseUrl(req).pathname, { index: false, root: '/www/public' })
+    .once('directory', directory)
+    .pipe(res)
+})
 
-Para problemas ou dúvidas:
-1. Verifique os logs do servidor
-2. Teste a conexão com o banco
-3. Verifique as variáveis de ambiente
-4. Consulte a documentação da API
+server.listen(3000)
 
----
+// Custom directory handler
+function directory (res, path) {
+  var stream = this
 
-**FilaZero** - Sistema de Gestão para Restaurantes 🍕🍔🍺
+  // redirect to trailing slash for consistent url
+  if (!stream.hasTrailingSlash()) {
+    return stream.redirect(path)
+  }
 
+  // get directory list
+  fs.readdir(path, function onReaddir (err, list) {
+    if (err) return stream.error(err)
 
+    // render an index for the directory
+    res.setHeader('Content-Type', 'text/plain; charset=UTF-8')
+    res.end(list.join('\n') + '\n')
+  })
+}
+```
 
+### Serving from a root directory with custom error-handling
 
+```js
+var http = require('http')
+var parseUrl = require('parseurl')
+var send = require('send')
 
+var server = http.createServer(function onRequest (req, res) {
+  // your custom error-handling logic:
+  function error (err) {
+    res.statusCode = err.status || 500
+    res.end(err.message)
+  }
 
+  // your custom headers
+  function headers (res, path, stat) {
+    // serve all files for download
+    res.setHeader('Content-Disposition', 'attachment')
+  }
 
+  // your custom directory handling logic:
+  function redirect () {
+    res.statusCode = 301
+    res.setHeader('Location', req.url + '/')
+    res.end('Redirecting to ' + req.url + '/')
+  }
 
+  // transfer arbitrary files from within
+  // /www/example.com/public/*
+  send(req, parseUrl(req).pathname, { root: '/www/public' })
+    .on('error', error)
+    .on('directory', redirect)
+    .on('headers', headers)
+    .pipe(res)
+})
 
+server.listen(3000)
+```
 
+## License
+
+[MIT](LICENSE)
+
+[appveyor-image]: https://badgen.net/appveyor/ci/dougwilson/send/master?label=windows
+[appveyor-url]: https://ci.appveyor.com/project/dougwilson/send
+[coveralls-image]: https://badgen.net/coveralls/c/github/pillarjs/send/master
+[coveralls-url]: https://coveralls.io/r/pillarjs/send?branch=master
+[github-actions-ci-image]: https://badgen.net/github/checks/pillarjs/send/master?label=linux
+[github-actions-ci-url]: https://github.com/pillarjs/send/actions/workflows/ci.yml
+[node-image]: https://badgen.net/npm/node/send
+[node-url]: https://nodejs.org/en/download/
+[npm-downloads-image]: https://badgen.net/npm/dm/send
+[npm-url]: https://npmjs.org/package/send
+[npm-version-image]: https://badgen.net/npm/v/send

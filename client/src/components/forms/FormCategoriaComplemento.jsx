@@ -93,7 +93,7 @@ const FormCategoriaComplemento = ({ onClose, onDataChange, onAdicionarComplement
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">
-              Quantidade Mínima
+              Quantidade Mínima <span className="text-red-500">*</span>
             </label>
             <input
               type="number"
@@ -102,12 +102,13 @@ const FormCategoriaComplemento = ({ onClose, onDataChange, onAdicionarComplement
               onChange={(e) => handleInputChange('quantidadeMinima', e.target.value)}
               className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               placeholder="0"
+              required
             />
           </div>
 
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">
-              Quantidade Máxima
+              Quantidade Máxima <span className="text-red-500">*</span>
             </label>
             <input
               type="number"
@@ -116,6 +117,7 @@ const FormCategoriaComplemento = ({ onClose, onDataChange, onAdicionarComplement
               onChange={(e) => handleInputChange('quantidadeMaxima', e.target.value)}
               className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               placeholder="1"
+              required
             />
           </div>
         </div>
@@ -127,7 +129,7 @@ const FormCategoriaComplemento = ({ onClose, onDataChange, onAdicionarComplement
             id="preenchimentoObrigatorio"
             checked={formData.preenchimentoObrigatorio}
             onChange={() => handleCheckboxChange('preenchimentoObrigatorio')}
-            className="w-3 h-3 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+            className="h-4 w-4 appearance-none rounded-full border-2 border-blue-500 checked:bg-blue-600 checked:border-blue-600 cursor-pointer"
           />
           <label htmlFor="preenchimentoObrigatorio" className="ml-2 text-xs font-medium text-gray-700">
             Preenchimento Obrigatório

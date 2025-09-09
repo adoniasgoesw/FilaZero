@@ -11,6 +11,7 @@ const BaseModal = ({
   icon: Icon, 
   iconBgColor = "bg-blue-500", 
   iconColor = "text-white",
+  headerContent = null,
   showButtons = true,
   hideDefaultButtons = false,
   onSave,
@@ -85,14 +86,18 @@ const BaseModal = ({
         <div className="h-full bg-white shadow-2xl flex flex-col">
           {/* Header do modal */}
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
-            <div className="flex items-center gap-3">
-              {Icon && (
-                <div className={`w-10 h-10 ${iconBgColor} rounded-lg flex items-center justify-center shadow-sm`}>
-                  <Icon className={`w-5 h-5 ${iconColor}`} />
-                </div>
-              )}
-              <h2 className="text-xl font-semibold text-gray-800">{title}</h2>
-            </div>
+            {headerContent ? (
+              <div className="flex-1 min-w-0 pr-3">{headerContent}</div>
+            ) : (
+              <div className="flex items-center gap-3">
+                {Icon && (
+                  <div className={`w-10 h-10 ${iconBgColor} rounded-lg flex items-center justify-center shadow-sm`}>
+                    <Icon className={`w-5 h-5 ${iconColor}`} />
+                  </div>
+                )}
+                <h2 className="text-xl font-semibold text-gray-800">{title}</h2>
+              </div>
+            )}
             <CloseButton onClick={handleClose} />
           </div>
 

@@ -102,23 +102,42 @@ const pontosConfigController = {
         attIdByIdent.set(key, row.id);
       });
 
-      // Totais por atendimento (último pedido)
+      // Totais por atendimento (último pedido) - itens + complementos calculados
       const totals = new Map();
       if (atendRows.rows.length > 0) {
         const ids = atendRows.rows.map(r => r.id);
         const totalsQuery = await pool.query(
-          `SELECT p.atendimento_id, p.valor_total
-           FROM pedidos p
-           INNER JOIN (
+          `WITH last_pedidos AS (
              SELECT atendimento_id, MAX(criado_em) AS max_created
-             FROM pedidos
-             WHERE atendimento_id = ANY($1)
-             GROUP BY atendimento_id
-           ) last ON last.atendimento_id = p.atendimento_id AND last.max_created = p.criado_em`,
+               FROM pedidos
+              WHERE atendimento_id = ANY($1)
+              GROUP BY atendimento_id
+           ),
+           last_ids AS (
+             SELECT p.id, p.atendimento_id
+               FROM pedidos p
+               JOIN last_pedidos l ON l.atendimento_id = p.atendimento_id AND l.max_created = p.criado_em
+           ),
+           itens_total AS (
+             SELECT l.atendimento_id, COALESCE(SUM(ip.valor_total), 0) AS total_itens
+               FROM last_ids l
+               LEFT JOIN itens_pedido ip ON ip.pedido_id = l.id
+              GROUP BY l.atendimento_id
+           ),
+           comps_total AS (
+             SELECT l.atendimento_id, COALESCE(SUM((c.quantidade)::numeric * c.valor_unitario), 0) AS total_comps
+               FROM last_ids l
+               LEFT JOIN itens_pedido ip ON ip.pedido_id = l.id
+               LEFT JOIN complementos_itens_pedido c ON c.item_pedido_id = ip.id
+              GROUP BY l.atendimento_id
+           )
+           SELECT i.atendimento_id, (i.total_itens + c.total_comps) AS total
+             FROM itens_total i
+             LEFT JOIN comps_total c ON c.atendimento_id = i.atendimento_id`,
           [ids]
         );
         totalsQuery.rows.forEach((row) => {
-          totals.set(row.atendimento_id, Number(row.valor_total) || 0);
+          totals.set(row.atendimento_id, Number(row.total) || 0);
         });
       }
 

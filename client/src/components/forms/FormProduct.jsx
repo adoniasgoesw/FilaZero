@@ -770,8 +770,8 @@ const FormProduct = ({ produto = null, onStateChange }) => {
 
   return (
     <form onSubmit={handleSubmit} className="h-full flex flex-col modal-form">
-      {/* Header do formulário */}
-      <div className="border-b border-gray-200 pb-4 mb-6">
+      {/* Header do formulário - fixo */}
+      <div className="border-b border-gray-200 pb-4 mb-6 sticky top-0 z-10 bg-white">
         <div className="flex bg-gray-50 rounded-lg overflow-hidden">
           <button
             type="button"
@@ -1163,7 +1163,7 @@ const FormProduct = ({ produto = null, onStateChange }) => {
                         id={`complemento-${complemento.id}`}
                         checked={complementosSelecionados.some(c => c.id === complemento.id)}
                         onChange={() => handleComplementoSelect(complemento)}
-                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        className="h-5 w-5 appearance-none rounded-full border-2 border-blue-500 checked:bg-blue-600 checked:border-blue-600 cursor-pointer"
                       />
                       <label 
                         htmlFor={`complemento-${complemento.id}`}

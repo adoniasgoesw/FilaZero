@@ -69,17 +69,23 @@ router.delete('/pontos-atendimento/config/:estabelecimento_id', loginController.
 router.get('/pontos-atendimento/:estabelecimento_id', loginController.verificarToken, pontosConfigController.listPoints);
 
 // ===== ROTAS DE ATENDIMENTOS =====
-router.post('/atendimentos/ensure/:estabelecimento_id/:identificador', loginController.verificarToken, atendimentosController.ensureAtendimento);
+// Tornar ensure e setStatus públicos para permitir salvar sem login no PDV
+router.post('/atendimentos/ensure/:estabelecimento_id/:identificador', atendimentosController.ensureAtendimento);
 router.put('/atendimentos/:estabelecimento_id/:identificador/nome', loginController.verificarToken, atendimentosController.updateNomePonto);
 router.patch('/atendimentos/:estabelecimento_id/:identificador/nome', loginController.verificarToken, atendimentosController.updateNomePonto);
-router.get('/atendimentos/:estabelecimento_id/:identificador/status', loginController.verificarToken, atendimentosController.getStatus);
-router.put('/atendimentos/:estabelecimento_id/:identificador/status', loginController.verificarToken, atendimentosController.setStatus);
+router.get('/atendimentos/:estabelecimento_id/:identificador/status', atendimentosController.getStatus);
+router.put('/atendimentos/:estabelecimento_id/:identificador/status', atendimentosController.setStatus);
 
 // ===== ROTAS DE PEDIDOS =====
-router.put('/pedidos/:estabelecimento_id/:identificador', loginController.verificarToken, pedidosController.upsertPedido);
-router.get('/pedidos/:estabelecimento_id/:identificador', loginController.verificarToken, pedidosController.getPedido);
-router.delete('/pedidos/itens/:item_id', loginController.verificarToken, pedidosController.deleteItem);
-router.delete('/pedidos/:estabelecimento_id/:identificador', loginController.verificarToken, pedidosController.deletePedido);
+// Tornar rotas de pedidos públicas para permitir uso sem autenticação no PDV
+router.put('/pedidos/:estabelecimento_id/:identificador', pedidosController.upsertPedido);
+router.get('/pedidos/:estabelecimento_id/:identificador', pedidosController.getPedido);
+router.delete('/pedidos/itens/:item_id', pedidosController.deleteItem);
+router.delete('/pedidos/:estabelecimento_id/:identificador', pedidosController.deletePedido);
+
+// Complementos dos itens do pedido
+router.post('/pedidos/itens/:item_pedido_id/complementos', pedidosController.addItemComplementos);
+router.get('/pedidos/itens/:item_pedido_id/complementos', pedidosController.listItemComplementos);
 
 // ===== ROTAS DE CATEGORIAS DE COMPLEMENTOS =====
 // Rota para cadastrar categoria de complementos (requer autenticação)
