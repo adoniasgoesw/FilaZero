@@ -76,6 +76,7 @@ const ListPontosAtendimento = ({ estabelecimentoId: propEstabelecimentoId, searc
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const estabId = (propEstabelecimentoId ?? Number(localStorage.getItem('estabelecimentoId'))) || null;
+  const [lastClickedId, setLastClickedId] = useState(null);
   const [hintVisibleId, setHintVisibleId] = useState(null);
   const navigate = useNavigate();
 
@@ -223,29 +224,31 @@ const ListPontosAtendimento = ({ estabelecimentoId: propEstabelecimentoId, searc
               key={item.id}
               className="relative bg-white rounded-xl shadow-lg border border-slate-200 p-3 max-[430px]:p-2.5 md:p-4 lg:p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl cursor-pointer"
               onClick={async () => {
-                // Bloqueia acesso caso já esteja em atendimento por outro atendente
-                if (normalized === 'em-atendimento') {
+                // Se não está disponível (ex.: aberto/ocupada), abre direto
+                if (normalized !== 'disponivel') {
+                  navigate(`/ponto-atendimento/${encodeURIComponent(item.id)}`);
+                  return;
+                }
+                // Está disponível: primeiro toque mostra dica; segundo toque abre e altera status
+                if (lastClickedId === item.id) {
+                  try {
+                    if (estabId) {
+                      await api.post(`/atendimentos/ensure/${estabId}/${encodeURIComponent(item.id)}`, { nome_ponto: '' });
+                      await api.put(`/atendimentos/${estabId}/${encodeURIComponent(item.id)}/status`, { status: 'aberto' });
+                      setItems((prev) => prev.map((it) => (it.id === item.id ? { ...it, status: 'aberto' } : it)));
+                    }
+                  } catch {
+                    /* ignore */
+                  }
+                  navigate(`/ponto-atendimento/${encodeURIComponent(item.id)}`);
+                } else {
+                  setLastClickedId(item.id);
                   setHintVisibleId(item.id);
                   setTimeout(() => {
                     setHintVisibleId((current) => (current === item.id ? null : current));
-                  }, 1200);
-                  return;
+                    setLastClickedId((current) => (current === item.id ? null : current));
+                  }, 1500);
                 }
-
-                try {
-                  if (estabId) {
-                    // Garante ponto criado quando necessário
-                    try {
-                      await api.post(`/atendimentos/ensure/${estabId}/${encodeURIComponent(item.id)}`, { nome_ponto: '' });
-                    } catch (e) { console.debug('ensure failed', e); }
-                    // Marca como em atendimento para evitar concorrência
-                    await api.put(`/atendimentos/${estabId}/${encodeURIComponent(item.id)}/status`, { status: 'em-atendimento' });
-                    setItems((prev) => prev.map((it) => (it.id === item.id ? { ...it, status: 'em-atendimento' } : it)));
-                  }
-                } catch (e) {
-                  console.debug('set em-atendimento failed', e);
-                }
-                navigate(`/ponto-atendimento/${encodeURIComponent(item.id)}`);
               }}
             >
               {normalized === 'disponivel' && hintVisibleId === item.id && (

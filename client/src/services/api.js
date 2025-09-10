@@ -31,32 +31,10 @@ const apiRequest = async (endpoint, options = {}) => {
 
   try {
     const response = await fetch(url, config);
-    let data = null;
-    try {
-      data = await response.json();
-    } catch {
-      data = null;
-    }
+    const data = await response.json();
 
     if (!response.ok) {
-      if (response.status === 401) {
-        const message = (data && data.message) || 'Não autorizado';
-        if (String(message).toLowerCase().includes('expirado')) {
-          try {
-            localStorage.removeItem('token');
-            localStorage.removeItem('usuario');
-          } catch {
-            // ignore
-          }
-          // Redireciona para login
-          if (typeof window !== 'undefined') {
-            try { window.location.assign('/'); } catch {
-              // ignore
-            }
-          }
-        }
-      }
-      throw new Error((data && data.message) || 'Erro na requisição');
+      throw new Error(data.message || 'Erro na requisição');
     }
 
     return data;

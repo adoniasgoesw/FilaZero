@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import Sidebar from '../components/layout/Sidebar';
 import PanelDetalhes from '../components/panels/PanelDetalhes';
 import PanelItens from '../components/panels/PanelItens';
@@ -7,7 +7,6 @@ import api from '../services/api';
 
 function PontoAtendimento() {
   const { id } = useParams();
-  const navigate = useNavigate();
   const [orderName, setOrderName] = useState('');
   const [isSmallScreen, setIsSmallScreen] = useState(() => {
     if (typeof window === 'undefined') return false;
@@ -63,8 +62,7 @@ function PontoAtendimento() {
         if (sessionStorage.getItem(key)) return;
         sessionStorage.setItem(key, 'inflight');
         await api.post(`/atendimentos/ensure/${estId}/${encodeURIComponent(identificador)}`, { nome_ponto: '' });
-        // Ao entrar, marca como em-atendimento para evitar concorrência
-        await api.put(`/atendimentos/${estId}/${encodeURIComponent(identificador)}/status`, { status: 'em-atendimento' });
+        await api.put(`/atendimentos/${estId}/${encodeURIComponent(identificador)}/status`, { status: 'aberto' });
         sessionStorage.setItem(key, 'done');
       } catch (e) {
         // Silenciar falhas de ensure para não travar a UI
@@ -79,123 +77,121 @@ function PontoAtendimento() {
       }
     }
     ensureAtendimento();
-    // Ao sair da página sem salvar, rebaixa para 'aberto'
-    return () => {
-      (async () => {
-        try {
-          let estId = null;
-          const parsed = parseInt(id, 10);
-          if (!Number.isNaN(parsed)) estId = parsed;
-          if (estId === null) {
-            const fromStorage = localStorage.getItem('estabelecimentoId');
-            const parsedStorage = parseInt(fromStorage, 10);
-            if (!Number.isNaN(parsedStorage)) estId = parsedStorage;
-          }
-          if (estId === null) return;
-          const identificador = String(id || '').toLowerCase();
-          await api.put(`/atendimentos/${estId}/${encodeURIComponent(identificador)}/status`, { status: 'aberto' });
-        } catch {}
-      })();
-    };
   }, [id]);
 
   const handleSave = async () => {
-    // Dispara a navegação imediatamente para uma experiência instantânea
-    navigate('/home', { replace: true });
+    try {
+      // Resolve establishment id and identificador
+      let estId = null;
+      const parsed = parseInt(id, 10);
+      if (!Number.isNaN(parsed)) estId = parsed;
+      if (estId === null) {
+        const fromStorage = localStorage.getItem('estabelecimentoId');
+        const parsedStorage = parseInt(fromStorage, 10);
+        if (!Number.isNaN(parsedStorage)) estId = parsedStorage;
+      }
+      if (estId === null) return;
+      const identificador = String(id || '').toLowerCase();
 
-    // Executa o salvamento em background (não aguarda para não travar a navegação)
-    (async () => {
-      try {
-        // Resolve establishment id and identificador
-        let estId = null;
-        const parsed = parseInt(id, 10);
-        if (!Number.isNaN(parsed)) estId = parsed;
-        if (estId === null) {
-          const fromStorage = localStorage.getItem('estabelecimentoId');
-          const parsedStorage = parseInt(fromStorage, 10);
-          if (!Number.isNaN(parsedStorage)) estId = parsedStorage;
-        }
-        if (estId === null) return;
-        const identificador = String(id || '').toLowerCase();
+      // Constrói payload preservando separação por complementos
+      // 1) Começa dos itens já salvos (cada entrada pode ter complementos específicos)
+      const itensPayload = [];
+      for (const it of orderItems) {
+        const base = {
+          produto_id: Number(it.id),
+          quantidade: Math.max(1, Number(it.qty) || 0),
+          valor_unitario: Number(it.unitPrice) || 0,
+          complementos: Array.isArray(it.complements)
+            ? it.complements.map((c) => ({
+                complemento_id: Number(c.id),
+                nome_complemento: String(c.name || ''),
+                quantidade: Math.max(1, Number(c.qty) || 0),
+                valor_unitario: Number(c.unitPrice) || 0
+              }))
+            : []
+        };
+        itensPayload.push(base);
+      }
 
-        // Constrói payload preservando separação por complementos
-        const itensPayload = [];
-        for (const it of orderItems) {
-          const base = {
-            produto_id: Number(it.id),
-            quantidade: Math.max(1, Number(it.qty) || 0),
-            valor_unitario: Number(it.unitPrice) || 0,
-            complementos: Array.isArray(it.complements)
-              ? it.complements.map((c) => ({
-                  complemento_id: Number(c.id),
-                  nome_complemento: String(c.name || ''),
-                  quantidade: Math.max(1, Number(c.qty) || 0),
-                  valor_unitario: Number(c.unitPrice) || 0
-                }))
-              : []
-          };
-          itensPayload.push(base);
-        }
-
-        for (const [pidStr, addQtyRaw] of Object.entries(pendingCounts)) {
-          const pid = Number(pidStr);
-          const addQty = Math.max(1, Number(addQtyRaw) || 0);
-          const unitPrice = Number(pendingPricesById[pid]) || 0;
-          const combos = Array.isArray(pendingCombosByProductId[pid]) ? pendingCombosByProductId[pid] : [];
-          if (combos.length === 0) {
-            itensPayload.push({ produto_id: pid, quantidade: addQty, valor_unitario: unitPrice, complementos: [] });
-          } else {
-            for (const combo of combos) {
-              itensPayload.push({
-                produto_id: pid,
-                quantidade: 1,
-                valor_unitario: unitPrice,
-                complementos: Array.isArray(combo)
-                  ? combo.map((c) => ({
-                      complemento_id: Number(c.id),
-                      nome_complemento: String(c.name || ''),
-                      quantidade: Math.max(1, Number(c.qty) || 1),
-                      valor_unitario: Number(c.unitPrice) || 0
-                    }))
-                  : []
-              });
-            }
-            const remaining = Math.max(0, addQty - combos.length);
-            if (remaining > 0) {
-              itensPayload.push({ produto_id: pid, quantidade: remaining, valor_unitario: unitPrice, complementos: [] });
-            }
+      // 2) Adiciona pendentes, mantendo complementos selecionados para aquele produto
+      for (const [pidStr, addQtyRaw] of Object.entries(pendingCounts)) {
+        const pid = Number(pidStr);
+        const addQty = Math.max(1, Number(addQtyRaw) || 0);
+        const unitPrice = Number(pendingPricesById[pid]) || 0;
+        const combos = Array.isArray(pendingCombosByProductId[pid]) ? pendingCombosByProductId[pid] : [];
+        if (combos.length === 0) {
+          itensPayload.push({
+            produto_id: pid,
+            quantidade: addQty,
+            valor_unitario: unitPrice,
+            complementos: []
+          });
+        } else {
+          // Quando há complementos, divide em unidades por complemento selecionado
+          // Ex.: 2x Pizza Big com borda X e 1x Pizza Big com borda Y => duas entradas
+          for (const combo of combos) {
+            itensPayload.push({
+              produto_id: pid,
+              quantidade: 1,
+              valor_unitario: unitPrice,
+              complementos: Array.isArray(combo)
+                ? combo.map((c) => ({
+                    complemento_id: Number(c.id),
+                    nome_complemento: String(c.name || ''),
+                    quantidade: Math.max(1, Number(c.qty) || 1),
+                    valor_unitario: Number(c.unitPrice) || 0
+                  }))
+                : []
+            });
+          }
+          // Se sobrar quantidade sem complemento, registra também
+          const remaining = Math.max(0, addQty - combos.length);
+          if (remaining > 0) {
+            itensPayload.push({
+              produto_id: pid,
+              quantidade: remaining,
+              valor_unitario: unitPrice,
+              complementos: []
+            });
           }
         }
-
-        const finalItens = itensPayload
-          .map((i) => ({
-            ...i,
-            quantidade: Math.max(1, Number(i.quantidade) || 0),
-            valor_unitario: Number(i.valor_unitario) || 0,
-            complementos: Array.isArray(i.complementos)
-              ? i.complementos.map((c) => ({
-                  complemento_id: Number(c.complemento_id),
-                  nome_complemento: String(c.nome_complemento || ''),
-                  quantidade: Math.max(1, Number(c.quantidade) || 0),
-                  valor_unitario: Number(c.valor_unitario) || 0
-                }))
-              : []
-          }))
-          .filter((i) => !Number.isNaN(i.produto_id) && i.quantidade > 0);
-
-        const payload = {
-          nome_ponto: orderName || '',
-          valor_total: finalItens.reduce((s, i) => s + i.quantidade * i.valor_unitario, 0),
-          itens: finalItens,
-        };
-        await api.put(`/pedidos/${estId}/${encodeURIComponent(identificador)}`, payload);
-        try {
-          await api.put(`/atendimentos/${estId}/${encodeURIComponent(identificador)}/status`, { status: 'ocupada' });
-        } catch {}
-      } catch (e) {
-        console.warn('Falha ao salvar pedido', e);
       }
-    })();
+
+      // 3) Normaliza e filtra
+      const finalItens = itensPayload
+        .map((i) => ({
+          ...i,
+          quantidade: Math.max(1, Number(i.quantidade) || 0),
+          valor_unitario: Number(i.valor_unitario) || 0,
+          complementos: Array.isArray(i.complementos)
+            ? i.complementos.map((c) => ({
+                complemento_id: Number(c.complemento_id),
+                nome_complemento: String(c.nome_complemento || ''),
+                quantidade: Math.max(1, Number(c.quantidade) || 0),
+                valor_unitario: Number(c.valor_unitario) || 0
+              }))
+            : []
+        }))
+        .filter((i) => !Number.isNaN(i.produto_id) && i.quantidade > 0);
+
+      const payload = {
+        nome_ponto: orderName || '',
+        valor_total: finalItens.reduce((s, i) => s + i.quantidade * i.valor_unitario, 0),
+        itens: finalItens,
+      };
+      await api.put(`/pedidos/${estId}/${encodeURIComponent(identificador)}`, payload);
+      try {
+        await api.put(`/atendimentos/${estId}/${encodeURIComponent(identificador)}/status`, { status: 'ocupada' });
+      } catch {}
+      // Zerar contadores (seleções pendentes) após salvar
+      setPendingCounts({});
+      setPendingPricesById({});
+      setPendingNamesById({});
+      // Voltar para Home ao salvar
+      window.location.assign('/home');
+    } catch (e) {
+      console.warn('Falha ao salvar pedido', e);
+    }
   };
   return (
     <div className="min-h-screen bg-gray-50">
