@@ -7,7 +7,7 @@ import DeleteButton from '../buttons/Delete';
 import StatusButton from '../buttons/Status';
 import ConfirmDelete from '../elements/ConfirmDelete';
 
-const ListProduct = ({ estabelecimentoId, onProductDelete, onProductEdit, activeTab, setActiveTab, showHeader = true }) => {
+const ListProduct = ({ estabelecimentoId, onProductDelete, onProductEdit, activeTab, setActiveTab, showHeader = true, searchQuery = '' }) => {
   const [produtos, setProdutos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -20,6 +20,18 @@ const ListProduct = ({ estabelecimentoId, onProductDelete, onProductEdit, active
   const [loadingMore, setLoadingMore] = useState(false);
 
   const itemsPerPage = 10;
+
+  const displayedProdutos = React.useMemo(() => {
+    const list = Array.isArray(produtos) ? produtos : [];
+    const q = String(searchQuery || '').toLowerCase().trim();
+    if (!q) return list;
+    const normalize = (s) => String(s || '').toLowerCase();
+    return list.filter((p) => {
+      const name = normalize(p.nome);
+      const cat = normalize(p.categoria_nome);
+      return name.includes(q) || cat.includes(q);
+    });
+  }, [produtos, searchQuery]);
 
   const fetchProdutos = useCallback(async (page = 1, append = false) => {
     try {
@@ -158,11 +170,13 @@ const ListProduct = ({ estabelecimentoId, onProductDelete, onProductEdit, active
 
   // Função para formatar moeda
   const formatCurrency = (value) => {
-    if (!value) return 'R$ 0,00';
-    return new Intl.NumberFormat('pt-BR', {
+    if (!value) return '$ 0,00';
+    const formatted = new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL'
     }).format(value);
+    // Substitui o prefixo "R$" (com espaço normal ou NBSP) por "$"
+    return formatted.replace(/^R\$[\s\u00A0]?/, '$ ');
   };
 
   // Função para obter URL da imagem
@@ -288,7 +302,7 @@ const ListProduct = ({ estabelecimentoId, onProductDelete, onProductEdit, active
         <div className="block lg:hidden">
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
-          {produtos.map((produto) => (
+          {displayedProdutos.map((produto) => (
             <div
               key={produto.id}
               className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow duration-200 h-20"
@@ -392,7 +406,7 @@ const ListProduct = ({ estabelecimentoId, onProductDelete, onProductEdit, active
           <div className="max-h-96 overflow-y-auto">
             <table className="w-full">
               <tbody className="bg-white divide-y divide-gray-200">
-                {produtos.map((produto) => (
+                {displayedProdutos.map((produto) => (
                   <tr key={produto.id} className="hover:bg-gray-50 transition-colors duration-150">
                     {/* Coluna Produto (Imagem + Nome) */}
                     <td className="px-4 py-4 w-1/3">

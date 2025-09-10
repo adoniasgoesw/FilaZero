@@ -8,7 +8,7 @@ import { readCache, writeCache } from '../../services/cache';
 const STATUS_CONFIG = {
   'disponivel': {
     label: 'Disponível',
-    classes: 'bg-emerald-100 text-emerald-800 border border-emerald-200',
+    classes: 'bg-gray-100 text-gray-800 border border-gray-200',
     Icon: CheckCircle2,
   },
   'aberto': {
@@ -18,12 +18,12 @@ const STATUS_CONFIG = {
   },
   'ocupada': {
     label: 'Ocupada',
-    classes: 'bg-orange-100 text-orange-800 border border-orange-200',
+    classes: 'bg-emerald-100 text-emerald-800 border border-emerald-200',
     Icon: Users,
   },
   'em-atendimento': {
     label: 'Em Atendimento',
-    classes: 'bg-blue-100 text-blue-800 border border-blue-200',
+    classes: 'bg-purple-100 text-purple-800 border border-purple-200',
     Icon: Clock,
   },
   'finalizada': {
@@ -76,7 +76,6 @@ const ListPontosAtendimento = ({ estabelecimentoId: propEstabelecimentoId, searc
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const estabId = (propEstabelecimentoId ?? Number(localStorage.getItem('estabelecimentoId'))) || null;
-  const [lastClickedId, setLastClickedId] = useState(null);
   const [hintVisibleId, setHintVisibleId] = useState(null);
   const navigate = useNavigate();
 
@@ -210,6 +209,8 @@ const ListPontosAtendimento = ({ estabelecimentoId: propEstabelecimentoId, searc
         </div>
       )}
 
+      
+
       {/* Grid responsiva: <390px=1, ≥390px=2, ≥890px=3, ≥1500px=4 */}
       <div className="grid grid-cols-1 [@media(min-width:390px)]:grid-cols-2 [@media(min-width:890px)]:grid-cols-3 [@media(min-width:900px)]:grid-cols-4 gap-3 sm:gap-4 md:gap-5 lg:gap-6">
         {filtered.map((item) => {
@@ -222,31 +223,29 @@ const ListPontosAtendimento = ({ estabelecimentoId: propEstabelecimentoId, searc
               key={item.id}
               className="relative bg-white rounded-xl shadow-lg border border-slate-200 p-3 max-[430px]:p-2.5 md:p-4 lg:p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl cursor-pointer"
               onClick={async () => {
-                // Se não está disponível (ex.: aberto/ocupada), abre direto
-                if (normalized !== 'disponivel') {
-                  navigate(`/ponto-atendimento/${encodeURIComponent(item.id)}`);
-                  return;
-                }
-                // Está disponível: primeiro toque mostra dica; segundo toque abre e altera status
-                if (lastClickedId === item.id) {
-                  try {
-                    if (estabId) {
-                      await api.post(`/atendimentos/ensure/${estabId}/${encodeURIComponent(item.id)}`, { nome_ponto: '' });
-                      await api.put(`/atendimentos/${estabId}/${encodeURIComponent(item.id)}/status`, { status: 'aberto' });
-                      setItems((prev) => prev.map((it) => (it.id === item.id ? { ...it, status: 'aberto' } : it)));
-                    }
-                  } catch {
-                    /* ignore */
-                  }
-                  navigate(`/ponto-atendimento/${encodeURIComponent(item.id)}`);
-                } else {
-                  setLastClickedId(item.id);
+                // Bloqueia acesso caso já esteja em atendimento por outro atendente
+                if (normalized === 'em-atendimento') {
                   setHintVisibleId(item.id);
                   setTimeout(() => {
                     setHintVisibleId((current) => (current === item.id ? null : current));
-                    setLastClickedId((current) => (current === item.id ? null : current));
-                  }, 1500);
+                  }, 1200);
+                  return;
                 }
+
+                try {
+                  if (estabId) {
+                    // Garante ponto criado quando necessário
+                    try {
+                      await api.post(`/atendimentos/ensure/${estabId}/${encodeURIComponent(item.id)}`, { nome_ponto: '' });
+                    } catch (e) { console.debug('ensure failed', e); }
+                    // Marca como em atendimento para evitar concorrência
+                    await api.put(`/atendimentos/${estabId}/${encodeURIComponent(item.id)}/status`, { status: 'em-atendimento' });
+                    setItems((prev) => prev.map((it) => (it.id === item.id ? { ...it, status: 'em-atendimento' } : it)));
+                  }
+                } catch (e) {
+                  console.debug('set em-atendimento failed', e);
+                }
+                navigate(`/ponto-atendimento/${encodeURIComponent(item.id)}`);
               }}
             >
               {normalized === 'disponivel' && hintVisibleId === item.id && (
@@ -272,21 +271,15 @@ const ListPontosAtendimento = ({ estabelecimentoId: propEstabelecimentoId, searc
 
               {/* Informações do Pedido */}
               <div className="space-y-2 md:space-y-3">
-                {/* Valor Total */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <DollarSign className="w-3.5 h-3.5 md:w-4 md:h-4 text-emerald-500" />
-                    <span className="text-[11px] max-[430px]:text-[10px] md:text-sm font-medium text-slate-600">Valor Total</span>
-                  </div>
+                {/* Valor Total (apenas valor ao lado do ícone) */}
+                <div className="flex items-center gap-2">
+                  <DollarSign className="w-3.5 h-3.5 md:w-4 md:h-4 text-emerald-500" />
                   <span className="text-sm max-[430px]:text-[13px] md:text-base lg:text-lg font-bold text-emerald-600">{formatCurrency(item.total)}</span>
                 </div>
 
-                {/* Tempo */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Clock className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-500" />
-                    <span className="text-[11px] max-[430px]:text-[10px] md:text-sm font-medium text-slate-600">Tempo</span>
-                  </div>
+                {/* Tempo (apenas contagem ao lado do ícone) */}
+                <div className="flex items-center gap-2">
+                  <Clock className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-500" />
                   <span className="text-[11px] max-[430px]:text-[10px] md:text-sm font-medium text-slate-700">
                     {(item.tempo || item.tempoAtivo || item.tempoAtendimento || '—')}
                   </span>

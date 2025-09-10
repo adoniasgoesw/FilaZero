@@ -9,6 +9,7 @@ import FormConfig from '../components/forms/FormConfig';
 function Home() {
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const contentRef = useRef(null);
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     // Garantir que o scroll começa no topo ao entrar nesta página (especialmente no mobile)
@@ -38,7 +39,7 @@ function Home() {
           
           {/* Barra de pesquisa */}
           <div className="flex-1 min-w-0">
-            <SearchBar placeholder="Pesquisar..." />
+            <SearchBar placeholder="Pesquisar..." value={search} onChange={setSearch} />
           </div>
           
           {/* Botão de configuração */}
@@ -48,7 +49,7 @@ function Home() {
 
       {/* Área de conteúdo com rolagem */}
       <div ref={contentRef} className="flex-1 overflow-y-auto px-4 md:px-6 py-4 mt-16 md:mt-6">
-        <ListPontosAtendimento />
+        <ListPontosAtendimento search={search} />
       </div>
 
       {/* Modal de Configurações */}
