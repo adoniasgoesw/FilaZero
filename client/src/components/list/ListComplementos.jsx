@@ -7,7 +7,7 @@ import DeleteButton from '../buttons/Delete';
 import StatusButton from '../buttons/Status';
 import ConfirmDelete from '../elements/ConfirmDelete';
 
-const ListComplementos = ({ estabelecimentoId, onComplementoDelete, onComplementoEdit, activeTab, setActiveTab }) => {
+const ListComplementos = ({ estabelecimentoId, onComplementoDelete, onComplementoEdit, activeTab, setActiveTab, searchQuery = '' }) => {
   const [complementos, setComplementos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -122,7 +122,12 @@ const ListComplementos = ({ estabelecimentoId, onComplementoDelete, onComplement
     }).format(value);
   };
 
-
+  const displayed = React.useMemo(() => {
+    const list = Array.isArray(complementos) ? complementos : [];
+    const q = String(searchQuery || '').toLowerCase().trim();
+    if (!q) return list;
+    return list.filter((c) => String(c.nome || '').toLowerCase().includes(q));
+  }, [complementos, searchQuery]);
 
   if (loading) {
     return (
@@ -155,7 +160,7 @@ const ListComplementos = ({ estabelecimentoId, onComplementoDelete, onComplement
     );
   }
 
-  if (complementos.length === 0) {
+  if (displayed.length === 0) {
     return (
       <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8 min-h-[50vh] flex items-center justify-center">
         <div className="text-center">
@@ -176,7 +181,7 @@ const ListComplementos = ({ estabelecimentoId, onComplementoDelete, onComplement
       {/* Cards para mobile e tablet */}
       <div className="block lg:hidden">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
-          {complementos.map((complemento) => (
+          {displayed.map((complemento) => (
                          <div
                key={complemento.id}
                className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow duration-200 h-20"
@@ -234,17 +239,17 @@ const ListComplementos = ({ estabelecimentoId, onComplementoDelete, onComplement
               <thead>
                 <tr>
                                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/2">
-                     Complemento
-                   </th>
-                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">
-                     Preço de Venda
-                   </th>
-                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
-                     Status
-                   </th>
-                   <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
-                     Ações
-                   </th>
+                    Complemento
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">
+                    Preço de Venda
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
+                    Status
+                  </th>
+                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
+                    Ações
+                  </th>
                 </tr>
               </thead>
             </table>
@@ -254,53 +259,53 @@ const ListComplementos = ({ estabelecimentoId, onComplementoDelete, onComplement
           <div className="max-h-96 overflow-y-auto">
             <table className="w-full">
               <tbody className="bg-white divide-y divide-gray-200">
-                                 {complementos.map((complemento) => (
-                   <tr key={complemento.id} className="hover:bg-gray-50 transition-colors duration-150">
-                     {/* Coluna Complemento (Nome) */}
-                     <td className="px-4 py-4 w-1/2">
-                       <div className="flex items-center">
-                         <div className="min-w-0 flex-1">
-                           <p className="text-sm font-medium text-gray-900 truncate">
-                             {complemento.nome}
-                           </p>
-                         </div>
-                       </div>
-                     </td>
+                                 {displayed.map((complemento) => (
+                  <tr key={complemento.id} className="hover:bg-gray-50 transition-colors duration-150">
+                    {/* Coluna Complemento (Nome) */}
+                    <td className="px-4 py-4 w-1/2">
+                      <div className="flex items-center">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {complemento.nome}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
 
-                     {/* Coluna Preço de Venda */}
-                     <td className="px-4 py-4 w-1/4">
-                       <div className="text-sm text-gray-900 font-medium">
-                         {formatCurrency(complemento.valor_venda)}
-                       </div>
-                     </td>
+                    {/* Coluna Preço de Venda */}
+                    <td className="px-4 py-4 w-1/4">
+                      <div className="text-sm text-gray-900 font-medium">
+                        {formatCurrency(complemento.valor_venda)}
+                      </div>
+                    </td>
 
-                     {/* Coluna Status */}
-                     <td className="px-4 py-4 w-1/6">
-                       <span
-                         className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${
-                           complemento.status
-                             ? 'bg-green-100 text-green-800'
-                             : 'bg-red-100 text-red-800'
-                         }`}
-                       >
-                         {complemento.status ? 'Ativo' : 'Inativo'}
-                       </span>
-                     </td>
+                    {/* Coluna Status */}
+                    <td className="px-4 py-4 w-1/6">
+                      <span
+                        className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${
+                          complemento.status
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-red-100 text-red-800'
+                        }`}
+                      >
+                        {complemento.status ? 'Ativo' : 'Inativo'}
+                      </span>
+                    </td>
 
-                     {/* Coluna Ações */}
-                     <td className="px-4 py-4 w-1/6">
-                       <div className="flex items-center justify-center gap-1">
-                         <StatusButton
-                           isActive={complemento.status}
-                           onClick={() => toggleStatus(complemento)}
-                           size="sm"
-                         />
-                         <EditButton onClick={() => onComplementoEdit(complemento)} size="sm" />
-                         <DeleteButton onClick={() => setDeleteModal({ isOpen: true, complemento })} size="sm" />
-                       </div>
-                     </td>
-                   </tr>
-                 ))}
+                    {/* Coluna Ações */}
+                    <td className="px-4 py-4 w-1/6">
+                      <div className="flex items-center justify-center gap-1">
+                        <StatusButton
+                          isActive={complemento.status}
+                          onClick={() => toggleStatus(complemento)}
+                          size="sm"
+                        />
+                        <EditButton onClick={() => onComplementoEdit(complemento)} size="sm" />
+                        <DeleteButton onClick={() => setDeleteModal({ isOpen: true, complemento })} size="sm" />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

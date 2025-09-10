@@ -771,7 +771,7 @@ const FormProduct = ({ produto = null, onStateChange }) => {
   return (
     <form onSubmit={handleSubmit} className="h-full flex flex-col modal-form">
       {/* Header do formulário - fixo */}
-      <div className="border-b border-gray-200 pb-4 mb-6 sticky top-0 z-10 bg-white">
+      <div className="border-b border-gray-200 pb-4 mb-6 sticky top-0 z-20 bg-white shadow-sm">
         <div className="flex bg-gray-50 rounded-lg overflow-hidden">
           <button
             type="button"
@@ -814,7 +814,7 @@ const FormProduct = ({ produto = null, onStateChange }) => {
         {activeFormTab === 'detalhes' && (
           <>
         {/* Nome e Categoria (esquerda) + Imagem (direita) */}
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
           {/* Coluna esquerda: Nome e Categoria */}
           <div className="space-y-4">
             {/* Nome - Obrigatório */}
@@ -1019,7 +1019,7 @@ const FormProduct = ({ produto = null, onStateChange }) => {
         )}
 
         {/* Grid de 2 colunas para os outros campos */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Valor de Venda - Obrigatório */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">

@@ -7,12 +7,19 @@ import DeleteButton from '../buttons/Delete';
 import StatusButton from '../buttons/Status';
 import ConfirmDelete from '../elements/ConfirmDelete';
 
-const ListCategory = ({ estabelecimentoId, onCategoryDelete, onCategoryEdit }) => {
+const ListCategory = ({ estabelecimentoId, onCategoryDelete, onCategoryEdit, searchQuery = '' }) => {
   const [categorias, setCategorias] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, categoria: null });
   const [deleting, setDeleting] = useState(false);
+
+  const displayed = React.useMemo(() => {
+    const list = Array.isArray(categorias) ? categorias : [];
+    const q = String(searchQuery || '').toLowerCase().trim();
+    if (!q) return list;
+    return list.filter((c) => String(c.nome || '').toLowerCase().includes(q));
+  }, [categorias, searchQuery]);
 
   const fetchCategorias = useCallback(async () => {
     try {
@@ -223,7 +230,7 @@ const ListCategory = ({ estabelecimentoId, onCategoryDelete, onCategoryEdit }) =
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-      {categorias.map((categoria) => (
+      {displayed.map((categoria) => (
         <div
           key={categoria.id}
           className="bg-white rounded-lg shadow-md border border-gray-100 overflow-hidden hover:shadow-lg transition-shadow duration-200"

@@ -114,12 +114,7 @@ const ListaItensPedido = ({ items, onItemsChange, pendingItems = [], onPendingDe
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-slate-800 truncate">
-                    {item.name}
-                    {item.signature !== 'none' && item.complements.length > 0 ? (
-                      <span className="text-[11px] font-normal text-slate-600"> {` + ${item.complements.map(c => c.name).join(' + ')}`}</span>
-                    ) : null}
-                  </div>
+                  <div className="text-sm font-medium text-slate-800 truncate">{item.name}</div>
                   <div className="text-[11px] text-slate-500">Valor total {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((Number(displayQty) || 0) * (Number(item.unitPrice) || 0))}</div>
                   {Array.isArray(item.complements) && item.complements.length > 0 ? (
                     <ul className="mt-1 space-y-1">

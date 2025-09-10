@@ -19,6 +19,7 @@ function Categorias() {
   const [estabelecimentoId, setEstabelecimentoId] = useState(null);
   const [refreshList, setRefreshList] = useState(0);
   const [notification, setNotification] = useState({ isOpen: false, type: 'success', title: '', message: '' });
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     // Buscar o ID do estabelecimento do localStorage
@@ -99,7 +100,7 @@ function Categorias() {
           
           {/* Barra de pesquisa */}
           <div className="flex-1 min-w-0">
-            <SearchBar placeholder="Pesquisar categorias..." />
+            <SearchBar placeholder="Pesquisar categorias..." value={search} onChange={setSearch} />
           </div>
           
           {/* Botão adicionar */}
@@ -127,6 +128,7 @@ function Categorias() {
             estabelecimentoId={estabelecimentoId}
             onCategoryDelete={handleCategoryDelete}
             onCategoryEdit={handleCategoryEdit}
+            searchQuery={search}
           />
         ) : (
           <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">

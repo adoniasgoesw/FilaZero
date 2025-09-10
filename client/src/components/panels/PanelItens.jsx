@@ -16,6 +16,7 @@ const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, on
   const [loadingCats, setLoadingCats] = React.useState(true);
   const [errorCats, setErrorCats] = React.useState(null);
   const [selectedCategoryId, setSelectedCategoryId] = React.useState(null);
+  const [search, setSearch] = React.useState('');
 
   const [produtos, setProdutos] = React.useState([]);
   const [loadingProdutos, setLoadingProdutos] = React.useState(true);
@@ -265,7 +266,7 @@ const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, on
               }
             }} />
           </div>
-          <SearchBar placeholder="Buscar produtos e categorias" />
+          <SearchBar placeholder="Buscar produtos e categorias" value={search} onChange={setSearch} />
         </div>
       </div>
 
@@ -324,8 +325,13 @@ const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, on
             (() => {
               const filtered = Array.isArray(produtos)
                 ? produtos.filter((p) => {
-                    if (!selectedCategoryId) return true;
-                    return Number(p.categoria_id) === Number(selectedCategoryId);
+                    if (selectedCategoryId && Number(p.categoria_id) !== Number(selectedCategoryId)) return false;
+                    const q = String(search || '').toLowerCase().trim();
+                    if (!q) return true;
+                    const name = String(p.nome || '').toLowerCase();
+                    if (name.includes(q)) return true;
+                    const catName = String((categorias.find((c) => Number(c.id) === Number(p.categoria_id)) || {}).nome || '').toLowerCase();
+                    return catName.includes(q);
                   })
                 : [];
               if (!filtered.length) {
