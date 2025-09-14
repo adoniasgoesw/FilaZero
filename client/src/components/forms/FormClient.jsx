@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Users } from 'lucide-react';
+import ValidationNotification from '../elements/ValidationNotification';
+import { useFormValidation } from '../../hooks/useFormValidation';
 
 
 const FormClient = ({ onSave }) => {
@@ -12,6 +14,16 @@ const FormClient = ({ onSave }) => {
     taxaEntrega: ''
   });
 
+  // Hook de validação
+  const {
+    errors,
+    showNotification,
+    validateForm,
+    clearError,
+    getFieldError,
+    setShowNotification
+  } = useFormValidation();
+
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
       ...prev,
@@ -21,10 +33,16 @@ const FormClient = ({ onSave }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.nome.trim()) {
-      alert('Nome é obrigatório!');
+    
+    const validationRules = {
+      nome: { required: true, label: 'Nome' }
+    };
+
+    const isValid = validateForm(formData, validationRules);
+    if (!isValid) {
       return;
     }
+
     try {
       if (onSave) {
         await Promise.resolve(onSave(formData));
@@ -36,22 +54,29 @@ const FormClient = ({ onSave }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="h-full flex flex-col">
+    <form onSubmit={handleSubmit} className="h-full flex flex-col bg-white">
       {/* Conteúdo do formulário */}
-      <div className="flex-1 space-y-6">
+      <div className="flex-1 p-2 sm:p-4 max-h-96 overflow-y-auto scrollbar-hide space-y-4 sm:space-y-6">
         {/* Nome - Obrigatório (largura total) */}
         <div className="col-span-2">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Nome <span className="text-red-500">*</span>
+          <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">
+            Nome
           </label>
           <input
             type="text"
-            required
             value={formData.nome}
-            onChange={(e) => handleInputChange('nome', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            onChange={(e) => {
+              handleInputChange('nome', e.target.value);
+              clearError('nome');
+            }}
+            className={`w-full px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+              getFieldError('nome') ? 'border-red-500' : 'border-gray-300'
+            }`}
             placeholder="Nome completo"
           />
+          {getFieldError('nome') && (
+            <p className="text-xs text-red-500 mt-1">{getFieldError('nome')}</p>
+          )}
         </div>
 
         {/* Grid de 2 colunas para os outros campos */}
@@ -128,7 +153,13 @@ const FormClient = ({ onSave }) => {
         </div>
       </div>
 
-
+      {/* Notificação de Validação */}
+      <ValidationNotification
+        isOpen={showNotification}
+        onClose={() => setShowNotification(false)}
+        errors={errors}
+        title="Campos obrigatórios não preenchidos"
+      />
     </form>
   );
 };

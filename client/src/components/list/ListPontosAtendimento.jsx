@@ -224,6 +224,19 @@ const ListPontosAtendimento = ({ estabelecimentoId: propEstabelecimentoId, searc
               key={item.id}
               className="relative bg-white rounded-xl shadow-lg border border-slate-200 p-3 max-[430px]:p-2.5 md:p-4 lg:p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl cursor-pointer"
               onClick={async () => {
+                // Bloquear se caixa fechado
+                try {
+                  if (estabId) {
+                    const res = await api.get(`/caixas/aberto/${estabId}`);
+                    const aberto = res && res.success ? res.data : null;
+                    if (!aberto) {
+                      window.location.assign('/home?caixa_fechado=1');
+                      return;
+                    }
+                  }
+                } catch {
+                  // ignore network errors
+                }
                 // Se não está disponível (ex.: aberto/ocupada), abre direto
                 if (normalized !== 'disponivel') {
                   navigate(`/ponto-atendimento/${encodeURIComponent(item.id)}`);

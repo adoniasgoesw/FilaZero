@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Home, History, Truck, Settings } from 'lucide-react';
+import Logo from '../../assets/logo';
 
 function Sidebar({ hideMobileFooter = false }) {
   const location = useLocation();
@@ -19,9 +20,7 @@ function Sidebar({ hideMobileFooter = false }) {
         {/* Logo */}
         <div className="mb-12">
           <Link to="/home" className="block">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer">
-              FZ
-            </div>
+            <Logo />
           </Link>
         </div>
 

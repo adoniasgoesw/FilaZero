@@ -7,12 +7,22 @@ import DeleteButton from '../buttons/Delete';
 import StatusButton from '../buttons/Status';
 import ConfirmDelete from '../elements/ConfirmDelete';
 
-const ListComplementos = ({ estabelecimentoId, onComplementoDelete, onComplementoEdit, activeTab, setActiveTab, searchQuery = '' }) => {
+const ListComplementos = ({ 
+  estabelecimentoId, 
+  onComplementoDelete, 
+  onComplementoEdit, 
+  searchQuery = '',
+  selectedComplementos = [],
+  onSelectionChange
+}) => {
   const [complementos, setComplementos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, complemento: null });
   const [deleting, setDeleting] = useState(false);
+  
+  // Estados para seleção múltipla
+  const [selectAll, setSelectAll] = useState(false);
 
   const fetchComplementos = useCallback(async () => {
     try {
@@ -60,6 +70,19 @@ const ListComplementos = ({ estabelecimentoId, onComplementoDelete, onComplement
     }
   }, [estabelecimentoId, fetchComplementos]);
 
+  // Memoizar lista filtrada
+  const displayed = React.useMemo(() => {
+    const list = Array.isArray(complementos) ? complementos : [];
+    const q = String(searchQuery || '').toLowerCase().trim();
+    if (!q) return list;
+    return list.filter((c) => String(c.nome || '').toLowerCase().includes(q));
+  }, [complementos, searchQuery]);
+
+  // Controlar seleção baseada nos complementos selecionados externos
+  useEffect(() => {
+    setSelectAll(selectedComplementos.length === displayed.length && displayed.length > 0);
+  }, [selectedComplementos, displayed.length]);
+
   // Função para alternar status do complemento
   const toggleStatus = async (complemento) => {
     try {
@@ -82,6 +105,35 @@ const ListComplementos = ({ estabelecimentoId, onComplementoDelete, onComplement
       setError(error.message || 'Erro ao alterar status do complemento');
     }
   };
+
+  // Função para selecionar/deselecionar complemento individual
+  const handleComplementoSelect = (complemento) => {
+    if (onSelectionChange) {
+      const isSelected = selectedComplementos.some(c => c.id === complemento.id);
+      if (isSelected) {
+        onSelectionChange(selectedComplementos.filter(c => c.id !== complemento.id));
+      } else {
+        onSelectionChange([...selectedComplementos, complemento]);
+      }
+    }
+  };
+
+  // Função para selecionar/deselecionar todos os complementos
+  const handleSelectAll = () => {
+    if (onSelectionChange) {
+      if (selectAll) {
+        onSelectionChange([]);
+      } else {
+        onSelectionChange([...displayed]);
+      }
+    }
+  };
+
+  // Função para clicar no complemento (abrir modal de edição)
+  const handleComplementoClick = (complemento) => {
+    onComplementoEdit(complemento);
+  };
+
 
   // Função para deletar complemento
   const handleDelete = async (complemento) => {
@@ -121,13 +173,6 @@ const ListComplementos = ({ estabelecimentoId, onComplementoDelete, onComplement
       currency: 'BRL'
     }).format(value);
   };
-
-  const displayed = React.useMemo(() => {
-    const list = Array.isArray(complementos) ? complementos : [];
-    const q = String(searchQuery || '').toLowerCase().trim();
-    if (!q) return list;
-    return list.filter((c) => String(c.nome || '').toLowerCase().includes(q));
-  }, [complementos, searchQuery]);
 
   if (loading) {
     return (
@@ -175,142 +220,97 @@ const ListComplementos = ({ estabelecimentoId, onComplementoDelete, onComplement
   }
 
   return (
-    <div className="bg-white rounded-xl overflow-hidden mt-16 md:mt-6 mb-8" style={{ scrollBehavior: 'smooth' }}>
-      {/* Layout responsivo: Cards para mobile/tablet, Tabela para desktop */}
-      
-      {/* Cards para mobile e tablet */}
-      <div className="block lg:hidden">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
-          {displayed.map((complemento) => (
-                         <div
-               key={complemento.id}
-               className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow duration-200 h-20"
-             >
-               {/* Layout: Conteúdo completo */}
-               <div className="flex h-full">
-                 {/* Conteúdo - 100% da largura */}
-                 <div className="flex-1 p-3 relative">
-                   {/* Nome e Preço alinhados */}
-                   <div className="mb-2">
-                     <h3 className="text-sm font-medium text-gray-900 truncate">
-                       {complemento.nome}
-                     </h3>
-                     <div className="text-sm font-medium text-gray-900">
-                       {formatCurrency(complemento.valor_venda)}
-                     </div>
-                   </div>
-                   
-                   {/* Status no canto superior direito */}
-                   <div className="absolute top-2 right-2">
-                     <span
-                       className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                         complemento.status
-                           ? 'bg-green-100 text-green-800'
-                           : 'bg-red-100 text-red-800'
-                       }`}
-                     >
-                       {complemento.status ? 'Ativo' : 'Inativo'}
-                     </span>
-                   </div>
-                   
-                   {/* Botões no canto inferior direito */}
-                   <div className="absolute bottom-2 right-2 flex items-center gap-1">
-                     <StatusButton
-                       isActive={complemento.status}
-                       onClick={() => toggleStatus(complemento)}
-                       size="sm"
-                     />
-                     <EditButton onClick={() => onComplementoEdit(complemento)} size="sm" />
-                     <DeleteButton onClick={() => setDeleteModal({ isOpen: true, complemento })} size="sm" />
-                   </div>
-                 </div>
-               </div>
-             </div>
-          ))}
-        </div>
-      </div>
+    <div>
 
-      {/* Tabela para desktop com cabeçalho fixo */}
-      <div className="hidden lg:block">
+      {/* Tabela responsiva */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-8" style={{ scrollBehavior: 'smooth' }}>
         <div className="overflow-x-auto">
-          {/* Cabeçalho fixo da tabela */}
-          <div className="sticky top-0 z-10 bg-gray-50 border-b border-gray-200">
-            <table className="w-full">
-              <thead>
-                <tr>
-                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/2">
-                    Complemento
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">
-                    Preço de Venda
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
-                    Ações
-                  </th>
+          <table className="min-w-full">
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="px-1 py-4 text-left">
+                  <div className="flex items-center h-6">
+                    <input 
+                      type="checkbox" 
+                      checked={selectAll}
+                      onChange={handleSelectAll}
+                      className="w-4 h-4 text-blue-600 bg-white border-2 border-blue-500 rounded-full focus:ring-blue-500 focus:ring-2 checked:bg-blue-500 checked:border-blue-500" 
+                    />
+                  </div>
+                </th>
+                <th className="px-1 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Complemento</th>
+                <th className="px-3 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Preço</th>
+                <th className="px-3 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden md:table-cell">Status</th>
+                <th className="px-3 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden lg:table-cell">Ações</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {displayed.map((complemento) => (
+                <tr 
+                  key={complemento.id} 
+                  className="transition-colors cursor-pointer"
+                  onClick={() => handleComplementoClick(complemento)}
+                >
+                  <td className="px-1 py-6" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center h-6">
+                      <input 
+                        type="checkbox" 
+                        checked={selectedComplementos.some(c => c.id === complemento.id)}
+                        onChange={() => handleComplementoSelect(complemento)}
+                        className="w-4 h-4 text-blue-600 bg-white border-2 border-blue-500 rounded-full focus:ring-blue-500 focus:ring-2 checked:bg-blue-500 checked:border-blue-500" 
+                      />
+                    </div>
+                  </td>
+                  <td className="px-1 py-6">
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-semibold text-gray-900 truncate">{complemento.nome}</div>
+                      <div className="text-xs text-gray-500 truncate">Complemento do cardápio</div>
+                    </div>
+                  </td>
+                  <td className="px-3 py-6 whitespace-nowrap">
+                    <span className="text-sm font-bold text-gray-400">{formatCurrency(complemento.valor_venda)}</span>
+                  </td>
+                  <td className="px-3 py-6 hidden md:table-cell">
+                    <span
+                      className={`px-2 py-1 text-xs font-medium rounded-full ${
+                        complemento.status
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-red-100 text-red-800'
+                      }`}
+                    >
+                      {complemento.status ? 'Ativo' : 'Inativo'}
+                    </span>
+                  </td>
+                  <td className="px-3 py-6 hidden lg:table-cell" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center gap-1">
+                      <StatusButton
+                        isActive={complemento.status}
+                        onClick={() => toggleStatus(complemento)}
+                        size="sm"
+                        className="w-7 h-7 rounded-full flex items-center justify-center transition-colors"
+                        title={complemento.status ? 'Desativar' : 'Ativar'}
+                      />
+                      <EditButton 
+                        onClick={() => onComplementoEdit(complemento)} 
+                        size="sm"
+                        className="w-7 h-7 rounded-full flex items-center justify-center transition-colors"
+                        title="Editar"
+                      />
+                      <DeleteButton 
+                        onClick={() => setDeleteModal({ isOpen: true, complemento })} 
+                        size="sm"
+                        className="w-7 h-7 rounded-full flex items-center justify-center transition-colors"
+                        title="Deletar"
+                      />
+                    </div>
+                  </td>
                 </tr>
-              </thead>
-            </table>
-          </div>
-          
-          {/* Corpo da tabela com scroll */}
-          <div className="max-h-96 overflow-y-auto">
-            <table className="w-full">
-              <tbody className="bg-white divide-y divide-gray-200">
-                                 {displayed.map((complemento) => (
-                  <tr key={complemento.id} className="hover:bg-gray-50 transition-colors duration-150">
-                    {/* Coluna Complemento (Nome) */}
-                    <td className="px-4 py-4 w-1/2">
-                      <div className="flex items-center">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-gray-900 truncate">
-                            {complemento.nome}
-                          </p>
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* Coluna Preço de Venda */}
-                    <td className="px-4 py-4 w-1/4">
-                      <div className="text-sm text-gray-900 font-medium">
-                        {formatCurrency(complemento.valor_venda)}
-                      </div>
-                    </td>
-
-                    {/* Coluna Status */}
-                    <td className="px-4 py-4 w-1/6">
-                      <span
-                        className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${
-                          complemento.status
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-red-100 text-red-800'
-                        }`}
-                      >
-                        {complemento.status ? 'Ativo' : 'Inativo'}
-                      </span>
-                    </td>
-
-                    {/* Coluna Ações */}
-                    <td className="px-4 py-4 w-1/6">
-                      <div className="flex items-center justify-center gap-1">
-                        <StatusButton
-                          isActive={complemento.status}
-                          onClick={() => toggleStatus(complemento)}
-                          size="sm"
-                        />
-                        <EditButton onClick={() => onComplementoEdit(complemento)} size="sm" />
-                        <DeleteButton onClick={() => setDeleteModal({ isOpen: true, complemento })} size="sm" />
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
+
 
       {/* Modal de confirmação de exclusão */}
       <ConfirmDelete

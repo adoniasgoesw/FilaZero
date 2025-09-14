@@ -253,6 +253,37 @@ const pontosConfigController = {
 
       await ensureExists(estabelecimentoId);
 
+      // Buscar configuração atual para comparar mudanças
+      const currentConfig = await pool.query(
+        'SELECT atendimento_mesas, atendimento_comandas FROM pontos_atendimento WHERE estabelecimento_id = $1',
+        [estabelecimentoId]
+      );
+
+      const currentMesasEnabled = currentConfig.rows[0]?.atendimento_mesas || false;
+      const currentComandasEnabled = currentConfig.rows[0]?.atendimento_comandas || false;
+
+      // Se desabilitou mesas, deletar todos os atendimentos de mesas
+      if (currentMesasEnabled && !mesasEnabled) {
+        console.log('🗑️ Desabilitando mesas - deletando atendimentos de mesas');
+        await pool.query(
+          `DELETE FROM atendimentos 
+           WHERE estabelecimento_id = $1 
+           AND identificador LIKE 'mesa-%'`,
+          [estabelecimentoId]
+        );
+      }
+
+      // Se desabilitou comandas, deletar todos os atendimentos de comandas
+      if (currentComandasEnabled && !comandasEnabled) {
+        console.log('🗑️ Desabilitando comandas - deletando atendimentos de comandas');
+        await pool.query(
+          `DELETE FROM atendimentos 
+           WHERE estabelecimento_id = $1 
+           AND identificador LIKE 'comanda-%'`,
+          [estabelecimentoId]
+        );
+      }
+
       const update = await pool.query(
         `UPDATE pontos_atendimento
          SET 
@@ -267,8 +298,16 @@ const pontosConfigController = {
         [mesasEnabled, comandasEnabled, quantidadeMesas, quantidadeComandas, prefixoComanda, estabelecimentoId]
       );
 
+      console.log('✅ Configuração atualizada:', {
+        mesasEnabled,
+        comandasEnabled,
+        quantidadeMesas,
+        quantidadeComandas
+      });
+
       return res.json({ success: true, data: toCamelConfig(update.rows[0]) });
     } catch (err) {
+      console.error('❌ Erro ao atualizar configuração:', err);
       return res.status(500).json({ success: false, error: 'Erro ao atualizar configuração' });
     }
   },

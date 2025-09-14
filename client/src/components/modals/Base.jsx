@@ -8,6 +8,7 @@ const BaseModal = ({
   onClose, 
   children, 
   title = "Modal", 
+  subtitle = null,
   icon: Icon, 
   iconBgColor = "bg-blue-500", 
   iconColor = "text-white",
@@ -17,7 +18,8 @@ const BaseModal = ({
   onSave,
   saveText = "Salvar",
   cancelText = "Cancelar",
-  isLoading = false
+  isLoading = false,
+  printButton = null
 }) => {
   const [isAnimating, setIsAnimating] = useState(false);
   const modalRef = useRef(null);
@@ -96,10 +98,20 @@ const BaseModal = ({
                     <Icon className={`w-5 h-5 ${iconColor}`} />
                   </div>
                 )}
-                <h2 className="text-xl font-semibold text-gray-800">{title}</h2>
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-800">{title}</h2>
+                  {subtitle && (
+                    <p className="text-sm text-gray-500 font-medium italic mt-1">
+                      {subtitle}
+                    </p>
+                  )}
+                </div>
               </div>
             )}
-            <CloseButton onClick={handleClose} />
+            <div className="flex items-center gap-3">
+              {printButton}
+              <CloseButton onClick={handleClose} />
+            </div>
           </div>
 
           {/* Conteúdo do modal */}

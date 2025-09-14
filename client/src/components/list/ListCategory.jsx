@@ -5,6 +5,7 @@ import { readCache, writeCache } from '../../services/cache';
 import EditButton from '../buttons/Edit';
 import DeleteButton from '../buttons/Delete';
 import StatusButton from '../buttons/Status';
+import { ToggleLeft, ToggleRight } from 'lucide-react';
 import ConfirmDelete from '../elements/ConfirmDelete';
 
 const ListCategory = ({ estabelecimentoId, onCategoryDelete, onCategoryEdit, searchQuery = '' }) => {
@@ -233,68 +234,72 @@ const ListCategory = ({ estabelecimentoId, onCategoryDelete, onCategoryEdit, sea
       {displayed.map((categoria) => (
         <div
           key={categoria.id}
-          className="bg-white rounded-lg shadow-md border border-gray-100 overflow-hidden hover:shadow-lg transition-shadow duration-200"
+          className="group bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
         >
           {/* Imagem da categoria */}
-          <div className="aspect-square bg-gray-100 relative">
-            {getImageUrl(categoria.imagem_url) ? (
-              <img
-                src={getImageUrl(categoria.imagem_url)}
-                alt={categoria.nome}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  e.target.style.display = 'none';
-                  e.target.nextSibling.style.display = 'flex';
-                }}
-              />
-            ) : null}
-            <div 
-              className="w-full h-full flex items-center justify-center text-gray-400"
-              style={{ display: getImageUrl(categoria.imagem_url) ? 'none' : 'flex' }}
-            >
-              <ImageIcon size={20} />
-            </div>
-            
-            {/* Botões de ação no canto superior direito */}
-            <div className="absolute top-1.5 right-1.5 flex gap-1">
-              <EditButton
-                onClick={() => handleEdit(categoria)}
-                size="sm"
-                className="bg-blue-500 hover:bg-blue-600 text-white rounded-full p-1 shadow-sm w-6 h-6 flex items-center justify-center"
-              />
-              <DeleteButton
-                onClick={() => handleDelete(categoria)}
-                size="sm"
-                className="bg-red-500 hover:bg-red-600 text-white rounded-full p-1 shadow-sm w-6 h-6 flex items-center justify-center"
-              />
-              <StatusButton
-                onClick={() => handleToggleStatus(categoria)}
-                size="sm"
-                isActive={categoria.status}
-                className={`rounded-full p-1 shadow-sm w-6 h-6 flex items-center justify-center ${
-                  categoria.status
-                    ? 'bg-orange-500 hover:bg-orange-600 text-white'
-                    : 'bg-green-500 hover:bg-green-600 text-white'
-                }`}
-              />
-            </div>
-
-            {/* Status badge no canto inferior direito */}
-            <div className="absolute bottom-1.5 right-1.5">
-              <span
-                className={`px-1.5 py-0.5 rounded-full text-xs font-medium ${
-                  categoria.status
-                    ? 'bg-green-600 text-white'
-                    : 'bg-red-500 text-white'
-                }`}
+          <div className="p-2 sm:p-3">
+            <div className="relative aspect-square bg-gray-50 rounded-xl border border-gray-100 overflow-hidden">
+              {getImageUrl(categoria.imagem_url) ? (
+                <img
+                  src={getImageUrl(categoria.imagem_url)}
+                  alt={categoria.nome}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    e.target.nextSibling.style.display = 'flex';
+                  }}
+                />
+              ) : null}
+              <div 
+                className="w-full h-full flex items-center justify-center text-gray-400"
+                style={{ display: getImageUrl(categoria.imagem_url) ? 'none' : 'flex' }}
               >
-                {categoria.status ? 'Ativo' : 'Inativo'}
-              </span>
+                <ImageIcon size={20} />
+              </div>
+
+              {/* Botões de ação no canto superior direito - aparecem no hover */}
+              <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                <button
+                  onClick={() => handleToggleStatus(categoria)}
+                  className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${categoria.status ? 'bg-green-50 hover:bg-green-100' : 'bg-orange-50 hover:bg-orange-100'}`}
+                  title={categoria.status ? 'Desabilitar' : 'Habilitar'}
+                >
+                  {categoria.status ? (
+                    <ToggleRight className="w-4 h-4 text-green-600" />
+                  ) : (
+                    <ToggleLeft className="w-4 h-4 text-orange-500" />
+                  )}
+                </button>
+                <EditButton
+                  onClick={() => handleEdit(categoria)}
+                  size="sm"
+                  variant="soft"
+                  className="rounded-full p-1 shadow-sm w-6 h-6 flex items-center justify-center"
+                />
+                <DeleteButton
+                  onClick={() => handleDelete(categoria)}
+                  size="sm"
+                  variant="soft"
+                  className="rounded-full p-1 shadow-sm w-6 h-6 flex items-center justify-center"
+                />
+              </div>
+              {/* Status badge no canto inferior direito */}
+              <div className="absolute bottom-2 right-2">
+                <span
+                  className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${
+                    categoria.status
+                      ? 'bg-green-600 text-white'
+                      : 'bg-red-500 text-white'
+                  }`}
+                >
+                  {categoria.status ? 'Ativo' : 'Inativo'}
+                </span>
+              </div>
             </div>
           </div>
 
           {/* Conteúdo do card */}
-          <div className="p-2">
+          <div className="px-2 sm:px-3 py-2">
             <h3 className="font-semibold text-gray-900 text-xs mb-1 truncate">
               {categoria.nome}
             </h3>

@@ -7,7 +7,8 @@ const Notification = ({
   type = "success", // success, error, warning, info
   title = "",
   message = "",
-  duration = 5000 // auto close after 5 seconds
+  duration = 5000, // auto close after 5 seconds; 0 = persist
+  actions = [] // optional: [{ label, onClick, variant }]
 }) => {
   // Auto close after duration
   React.useEffect(() => {
@@ -43,10 +44,10 @@ const Notification = ({
       case 'warning':
         return {
           icon: AlertCircle,
-          iconColor: 'text-yellow-600',
-          iconBg: 'bg-yellow-100',
-          borderColor: 'border-yellow-200',
-          bgColor: 'bg-yellow-50'
+          iconColor: 'text-orange-600',
+          iconBg: 'bg-orange-100',
+          borderColor: 'border-orange-200',
+          bgColor: 'bg-orange-50'
         };
       case 'info':
         return {
@@ -101,6 +102,23 @@ const Notification = ({
             <X className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500" />
           </button>
         </div>
+        {Array.isArray(actions) && actions.length > 0 && (
+          <div className="mt-2 flex items-center gap-2 flex-wrap">
+            {actions.map((a, idx) => (
+              <button
+                key={idx}
+                onClick={a.onClick}
+                className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
+                  a.variant === 'primary' ? 'bg-orange-600 text-white hover:bg-orange-700' :
+                  a.variant === 'secondary' ? 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50' :
+                  'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                {a.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

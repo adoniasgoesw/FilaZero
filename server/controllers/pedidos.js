@@ -1,4 +1,5 @@
 import pool from '../config/db.js';
+import jwt from 'jsonwebtoken';
 
 async function ensureAtendimentoId(estabelecimentoId, identificador) {
   const sel = await pool.query(
@@ -23,11 +24,32 @@ export const upsertPedido = async (req, res) => {
     const nomePonto = body.nome_ponto ? String(body.nome_ponto) : '';
     const itens = Array.isArray(body.itens) ? body.itens : [];
     const valorTotal = Number(body.valor_total || 0);
+    const clienteId = Number(body.cliente_id || 0); // padrão 0 quando não informado
+    const pagamentoId = Number(body.pagamento_id || 0); // padrão 0 quando não informado
+    // Captura do usuário via token (se houver)
+    let usuarioId = 0;
+    try {
+      const token = req.headers.authorization?.replace('Bearer ', '');
+      if (token) {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'sua_chave_secreta_aqui');
+        usuarioId = Number(decoded?.id || 0) || 0;
+      }
+    } catch {}
+    const canal = body.canal ? String(body.canal) : 'PDV';
     if (Number.isNaN(estabelecimentoId) || !identificador) {
       return res.status(400).json({ success: false, message: 'Parâmetros inválidos' });
     }
 
     await client.query('BEGIN');
+
+    // Localiza o caixa aberto para este estabelecimento (se existir)
+    const caixaSel = await client.query(
+      `SELECT id FROM caixas 
+        WHERE estabelecimento_id = $1 AND status = true 
+        ORDER BY data_abertura DESC LIMIT 1`,
+      [estabelecimentoId]
+    );
+    const caixaId = caixaSel.rows.length > 0 ? caixaSel.rows[0].id : null;
 
     const atendimentoId = await ensureAtendimentoId(estabelecimentoId, identificador);
 
@@ -40,13 +62,25 @@ export const upsertPedido = async (req, res) => {
 
     // Verifica se já existe um pedido para este atendimento (usa o mais recente)
     const pedSel = await client.query(
-      `SELECT id FROM pedidos WHERE atendimento_id = $1 ORDER BY criado_em DESC LIMIT 1`,
+      `SELECT id, status FROM pedidos WHERE atendimento_id = $1 ORDER BY criado_em DESC LIMIT 1`,
       [atendimentoId]
     );
 
     let pedidoId;
-    if (pedSel.rows.length > 0) {
+    if (pedSel.rows.length > 0 && String(pedSel.rows[0].status || '').toLowerCase() === 'pendente') {
       pedidoId = pedSel.rows[0].id;
+      // Reutiliza apenas se o último pedido está pendente
+      await client.query(
+        `UPDATE pedidos 
+            SET caixa_id = COALESCE(caixa_id, $1),
+                status = 'pendente',
+                cliente_id = COALESCE($2, cliente_id),
+                pagamento_id = COALESCE($3, pagamento_id),
+                usuario_id = COALESCE($4, usuario_id),
+                canal = COALESCE($5, canal)
+          WHERE id = $6`,
+        [caixaId, clienteId || 0, pagamentoId || 0, usuarioId || null, canal, pedidoId]
+      );
       // Limpa itens e complementos existentes para regravar conforme o payload
       await client.query(
         `DELETE FROM complementos_itens_pedido 
@@ -55,31 +89,86 @@ export const upsertPedido = async (req, res) => {
       );
       await client.query(`DELETE FROM itens_pedido WHERE pedido_id = $1`, [pedidoId]);
     } else {
+      // Gerar código sequencial do pedido para o caixa atual
+      let codigoPedido = '01';
+      if (caixaId) {
+        // Verificar último código na tabela pedidos_historico (pedidos finalizados)
+        const ultimoPedidoHistorico = await client.query(
+          `SELECT codigo FROM pedidos_historico 
+           WHERE caixa_id = $1 
+           ORDER BY finalizado_em DESC LIMIT 1`,
+          [caixaId]
+        );
+        
+        // Verificar também na tabela pedidos (pedidos ativos)
+        const ultimoPedidoAtivo = await client.query(
+          `SELECT codigo FROM pedidos 
+           WHERE caixa_id = $1 
+           ORDER BY criado_em DESC LIMIT 1`,
+          [caixaId]
+        );
+        
+        // Pegar o maior código entre histórico e ativos
+        let ultimoCodigo = 0;
+        if (ultimoPedidoHistorico.rows.length > 0 && ultimoPedidoHistorico.rows[0].codigo) {
+          ultimoCodigo = Math.max(ultimoCodigo, parseInt(ultimoPedidoHistorico.rows[0].codigo) || 0);
+        }
+        if (ultimoPedidoAtivo.rows.length > 0 && ultimoPedidoAtivo.rows[0].codigo) {
+          ultimoCodigo = Math.max(ultimoCodigo, parseInt(ultimoPedidoAtivo.rows[0].codigo) || 0);
+        }
+        
+        if (ultimoCodigo > 0) {
+          codigoPedido = String(ultimoCodigo + 1).padStart(2, '0');
+        }
+      }
+
       const pedIns = await client.query(
-        `INSERT INTO pedidos (atendimento_id, valor_total)
-         VALUES ($1, $2) RETURNING id, valor_total, criado_em`,
-        [atendimentoId, valorTotal]
+        `INSERT INTO pedidos (atendimento_id, valor_total, caixa_id, status, cliente_id, pagamento_id, usuario_id, canal, codigo)
+         VALUES ($1, $2, $3, COALESCE($4, 'pendente'), COALESCE($5, 0), COALESCE($6, 0), $7, $8, $9)
+         RETURNING id, valor_total, criado_em, codigo`,
+        [atendimentoId, valorTotal, caixaId, body.status, clienteId, pagamentoId, usuarioId || null, canal, codigoPedido]
       );
       pedidoId = pedIns.rows[0].id;
     }
 
-    // Regrava: para cada item informado, cria uma linha nova; complementos diferentes => linhas diferentes
+    // Agrupar itens por produto_id e somar quantidades
+    const itensAgrupados = new Map();
+    
     for (const it of itens) {
       const produtoId = Number(it.produto_id || it.id);
       const quantidade = Math.max(1, Number(it.quantidade || it.qty || 1));
       const valorUnitario = Number(it.valor_unitario || it.unitPrice || 0);
       const complementos = Array.isArray(it.complementos) ? it.complementos : [];
+      
       if (Number.isNaN(produtoId)) continue;
 
+      if (itensAgrupados.has(produtoId)) {
+        // Se o produto já existe, somar a quantidade
+        const itemExistente = itensAgrupados.get(produtoId);
+        itemExistente.quantidade += quantidade;
+        itemExistente.complementos.push(...complementos);
+      } else {
+        // Se é um produto novo, criar entrada
+        itensAgrupados.set(produtoId, {
+          produto_id: produtoId,
+          quantidade: quantidade,
+          valor_unitario: valorUnitario,
+          complementos: complementos
+        });
+      }
+    }
+
+    // Inserir itens agrupados
+    for (const [produtoId, item] of itensAgrupados) {
       const ins = await client.query(
         `INSERT INTO itens_pedido (pedido_id, produto_id, quantidade, valor_unitario)
          VALUES ($1, $2, $3, $4) RETURNING id`,
-        [pedidoId, produtoId, quantidade, valorUnitario]
+        [pedidoId, item.produto_id, item.quantidade, item.valor_unitario]
       );
       const itemPedidoId = ins.rows[0].id;
 
       // Persistir complementos (se enviados no payload)
-      for (const comp of complementos) {
+      for (const comp of item.complementos) {
         if (!comp || typeof comp !== 'object') continue;
         const complementoId = Number(comp.complemento_id || comp.id);
         const nomeComplemento = String(comp.nome_complemento || comp.nome || '').trim();
@@ -267,22 +356,39 @@ export const deletePedido = async (req, res) => {
     }
     const atendimentoId = att.rows[0].id;
 
-    const pedidos = await client.query('SELECT id FROM pedidos WHERE atendimento_id = $1', [atendimentoId]);
-    const pedidoIds = pedidos.rows.map((r) => r.id);
-    if (pedidoIds.length > 0) {
-      await client.query('DELETE FROM itens_pedido WHERE pedido_id = ANY($1)', [pedidoIds]);
-      await client.query('DELETE FROM pedidos WHERE id = ANY($1)', [pedidoIds]);
+    // Deleta apenas o pedido atual (pendente) mais recente deste atendimento
+    const pedSel = await client.query(
+      `SELECT id FROM pedidos 
+         WHERE atendimento_id = $1 AND LOWER(status) = 'pendente' 
+         ORDER BY criado_em DESC LIMIT 1`,
+      [atendimentoId]
+    );
+
+    let deleted = false;
+    if (pedSel.rows.length > 0) {
+      const pedidoId = pedSel.rows[0].id;
+      // Remover complementos ligados aos itens deste pedido
+      await client.query(
+        `DELETE FROM complementos_itens_pedido 
+           WHERE item_pedido_id IN (SELECT id FROM itens_pedido WHERE pedido_id = $1)`,
+        [pedidoId]
+      );
+      // Remover itens do pedido e o pedido em si
+      await client.query('DELETE FROM itens_pedido WHERE pedido_id = $1', [pedidoId]);
+      await client.query('DELETE FROM pedidos WHERE id = $1', [pedidoId]);
+      deleted = true;
     }
 
+    // Liberar o ponto de atendimento, sem apagar registros históricos
     await client.query(
       `UPDATE atendimentos 
-       SET status = 'disponivel', nome_ponto = '', criado_em = NULL, atualizado_em = NOW()
+         SET status = 'disponivel', nome_ponto = '', criado_em = NULL, atualizado_em = NOW()
        WHERE id = $1`,
       [atendimentoId]
     );
 
     await client.query('COMMIT');
-    return res.json({ success: true, deleted: true });
+    return res.json({ success: true, deleted });
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('Erro ao deletar pedido do atendimento:', err);
@@ -406,6 +512,279 @@ export const listItemComplementos = async (req, res) => {
   } catch (err) {
     console.error('Erro ao listar complementos do item do pedido:', err);
     return res.status(500).json({ success: false, message: 'Erro ao listar complementos' });
+  }
+};
+
+// ===== FINALIZAR PEDIDO =====
+export const finalizarPedido = async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const estabelecimentoId = parseInt(req.params.estabelecimento_id, 10);
+    const identificador = String(req.params.identificador || '').trim().toLowerCase();
+    if (Number.isNaN(estabelecimentoId) || !identificador) {
+      return res.status(400).json({ success: false, message: 'Parâmetros inválidos' });
+    }
+
+    await client.query('BEGIN');
+
+    // Encontrar atendimento
+    const att = await client.query(
+      'SELECT id FROM atendimentos WHERE estabelecimento_id = $1 AND identificador = $2 LIMIT 1',
+      [estabelecimentoId, identificador]
+    );
+    if (att.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ success: false, message: 'Atendimento não encontrado' });
+    }
+    const atendimentoId = att.rows[0].id;
+
+    // Seleciona pedido mais recente deste atendimento
+    const pedSel = await client.query(
+      `SELECT id FROM pedidos WHERE atendimento_id = $1 ORDER BY criado_em DESC LIMIT 1`,
+      [atendimentoId]
+    );
+    if (pedSel.rows.length === 0) {
+      await client.query('COMMIT');
+      return res.json({ success: true, message: 'Nada para finalizar' });
+    }
+    const pedidoId = pedSel.rows[0].id;
+
+    // 1. Copiar dados do pedido para o histórico
+    const pedidoHistorico = await client.query(
+      `INSERT INTO pedidos_historico 
+       (pedido_id, atendimento_id, valor_total, criado_em, finalizado_em, status, 
+        cliente_id, pagamento_id, caixa_id, usuario_id, canal, codigo, situacao)
+       SELECT id, atendimento_id, valor_total, criado_em, NOW(), status,
+              cliente_id, pagamento_id, caixa_id, usuario_id, canal, codigo, 'encerrado'
+       FROM pedidos WHERE id = $1
+       RETURNING id`,
+      [pedidoId]
+    );
+    
+    const pedidoHistoricoId = pedidoHistorico.rows[0].id;
+
+    // 2. Copiar itens do pedido para o histórico (agrupados por produto_id)
+    const itensHistorico = await client.query(
+      `INSERT INTO itens_pedido_historico 
+       (pedido_historico_id, produto_id, quantidade, valor_unitario, valor_total, status)
+       SELECT $1, produto_id, SUM(quantidade) as quantidade, valor_unitario, 
+              SUM(valor_total) as valor_total, 'finalizado'
+       FROM itens_pedido 
+       WHERE pedido_id = $2
+       GROUP BY produto_id, valor_unitario
+       RETURNING id`,
+      [pedidoHistoricoId, pedidoId]
+    );
+
+    // 3. Copiar complementos dos itens para o histórico (agrupados)
+    if (itensHistorico.rows.length > 0) {
+      // Buscar os IDs originais dos itens agrupados por produto_id
+      const itensOriginais = await client.query(
+        `SELECT produto_id, array_agg(id) as item_ids 
+         FROM itens_pedido 
+         WHERE pedido_id = $1 
+         GROUP BY produto_id`,
+        [pedidoId]
+      );
+
+      // Mapear produto_id para novo item_id do histórico
+      const mapeamentoProduto = {};
+      itensOriginais.rows.forEach((item, index) => {
+        mapeamentoProduto[item.produto_id] = itensHistorico.rows[index].id;
+      });
+
+      // Copiar complementos agrupados por complemento_id
+      for (const itemOriginal of itensOriginais.rows) {
+        const novoItemId = mapeamentoProduto[itemOriginal.produto_id];
+        
+        await client.query(
+          `INSERT INTO complementos_itens_pedido_historico 
+           (item_pedido_historico_id, complemento_id, nome_complemento, quantidade, 
+            valor_unitario, valor_total, status)
+           SELECT $1, complemento_id, nome_complemento, SUM(quantidade) as quantidade,
+                  valor_unitario, SUM(valor_unitario * quantidade) as valor_total, 'finalizado'
+           FROM complementos_itens_pedido 
+           WHERE item_pedido_id = ANY($2)
+           GROUP BY complemento_id, nome_complemento, valor_unitario`,
+          [novoItemId, itemOriginal.item_ids]
+        );
+      }
+    }
+
+    // 4. Limpar dados das tabelas ativas
+    await client.query(
+      `DELETE FROM complementos_itens_pedido 
+       WHERE item_pedido_id IN (SELECT id FROM itens_pedido WHERE pedido_id = $1)`,
+      [pedidoId]
+    );
+    await client.query(`DELETE FROM itens_pedido WHERE pedido_id = $1`, [pedidoId]);
+    await client.query(`DELETE FROM pedidos WHERE id = $1`, [pedidoId]);
+
+    // Libera o ponto de atendimento (status disponivel), zera nome e limpa criado_em
+    await client.query(
+      `UPDATE atendimentos 
+          SET status = 'disponivel', 
+              nome_ponto = '', 
+              criado_em = NULL,
+              atualizado_em = NOW() 
+        WHERE id = $1`,
+      [atendimentoId]
+    );
+
+    await client.query('COMMIT');
+    return res.json({ success: true, message: 'Pedido finalizado, dados copiados para histórico e ponto de atendimento liberado' });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Erro ao finalizar pedido:', err);
+    return res.status(500).json({ success: false, message: 'Erro ao finalizar pedido' });
+  } finally {
+    client.release();
+  }
+};
+// ===== HISTÓRICO DE PEDIDOS =====
+export const listarHistorico = async (req, res) => {
+  try {
+    const estabelecimentoId = parseInt(req.params.estabelecimento_id, 10);
+    if (Number.isNaN(estabelecimentoId)) {
+      return res.status(400).json({ success: false, message: 'estabelecimento_id inválido' });
+    }
+
+    // Filtrar por caixa_id finalizado (obrigatório)
+    const caixaId = req.query.caixa_id ? parseInt(req.query.caixa_id, 10) : null;
+    if (Number.isNaN(caixaId) || caixaId === null) {
+      return res.status(400).json({ success: false, message: 'caixa_id é obrigatório' });
+    }
+
+    const rows = await pool.query(
+      `SELECT 
+         ph.id,
+         ph.pedido_id,
+         ph.codigo,
+         ph.valor_total,
+         ph.criado_em,
+         ph.finalizado_em,
+         a.nome_ponto AS cliente_nome,
+         NULL::text AS forma_pagamento,
+         COALESCE(ph.canal, 'PDV') AS canal,
+         u.nome_completo AS vendido_por,
+         ph.situacao
+       FROM pedidos_historico ph
+       JOIN atendimentos a ON a.id = ph.atendimento_id
+       LEFT JOIN usuarios u ON u.id = ph.usuario_id
+      WHERE a.estabelecimento_id = $1 AND ph.caixa_id = $2
+      ORDER BY ph.finalizado_em DESC
+      LIMIT 200`,
+      [estabelecimentoId, caixaId]
+    );
+
+    return res.json({ success: true, data: rows.rows });
+  } catch (err) {
+    console.error('Erro ao listar histórico de pedidos:', err);
+    return res.status(500).json({ success: false, message: 'Erro ao listar histórico de pedidos' });
+  }
+};
+
+// ===== DETALHES DO PEDIDO =====
+export const getDetalhesPedido = async (req, res) => {
+  try {
+    const pedidoId = parseInt(req.params.pedido_id, 10);
+    
+    if (!pedidoId || pedidoId <= 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'ID do pedido inválido'
+      });
+    }
+
+    // Buscar dados básicos do pedido no histórico
+    const pedido = await pool.query(
+      `SELECT 
+         ph.id,
+         ph.pedido_id,
+         ph.codigo,
+         ph.valor_total,
+         ph.criado_em,
+         ph.finalizado_em,
+         ph.status,
+         ph.canal,
+         ph.situacao,
+         a.nome_ponto AS cliente_nome,
+         u.nome_completo AS vendido_por
+       FROM pedidos_historico ph
+       JOIN atendimentos a ON a.id = ph.atendimento_id
+       LEFT JOIN usuarios u ON u.id = ph.usuario_id
+      WHERE ph.pedido_id = $1`,
+      [pedidoId]
+    );
+
+    if (pedido.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Pedido não encontrado' });
+    }
+
+    const pedidoData = pedido.rows[0];
+
+    // Buscar itens do pedido no histórico
+    const pedidoHistoricoId = pedido.rows[0].id;
+    const itens = await pool.query(
+      `SELECT 
+         iph.id,
+         iph.quantidade,
+         iph.valor_unitario,
+         iph.valor_total,
+         COALESCE(p.nome, 'Produto não encontrado') AS produto_nome,
+         COALESCE(p.descricao, '') AS produto_descricao
+       FROM itens_pedido_historico iph
+       LEFT JOIN produtos p ON p.id = iph.produto_id
+      WHERE iph.pedido_historico_id = $1
+      ORDER BY iph.id ASC`,
+      [pedidoHistoricoId]
+    );
+
+    // Buscar complementos dos itens no histórico
+    const itemIds = itens.rows.map(item => item.id);
+    let complementos = [];
+    if (itemIds.length > 0) {
+      const complementosResult = await pool.query(
+        `SELECT 
+           ciph.id,
+           ciph.item_pedido_historico_id AS item_pedido_id,
+           ciph.nome_complemento,
+           ciph.quantidade,
+           ciph.valor_unitario,
+           ciph.valor_total
+         FROM complementos_itens_pedido_historico ciph
+        WHERE ciph.item_pedido_historico_id = ANY($1)
+        ORDER BY ciph.item_pedido_historico_id, ciph.id`,
+        [itemIds]
+      );
+      complementos = complementosResult.rows;
+    }
+
+    // Organizar complementos por item
+    const complementosPorItem = {};
+    complementos.forEach(comp => {
+      if (!complementosPorItem[comp.item_pedido_id]) {
+        complementosPorItem[comp.item_pedido_id] = [];
+      }
+      complementosPorItem[comp.item_pedido_id].push(comp);
+    });
+
+    // Adicionar complementos aos itens
+    const itensComComplementos = itens.rows.map(item => ({
+      ...item,
+      complementos: complementosPorItem[item.id] || []
+    }));
+
+    return res.json({
+      success: true,
+      data: {
+        pedido: pedidoData,
+        itens: itensComComplementos
+      }
+    });
+  } catch (err) {
+    console.error('❌ Erro ao buscar detalhes do pedido:', err);
+    return res.status(500).json({ success: false, message: 'Erro ao buscar detalhes do pedido' });
   }
 };
 

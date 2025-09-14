@@ -251,7 +251,7 @@ const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, on
     }
   }, [modalCategoriasComplementos, modalSelectedByCategoria]);
   return (
-    <main className={`${mobileHidden ? 'hidden md:flex' : 'flex md:flex'} fixed top-4 bottom-4 right-4 md:left-[calc(30%+7rem)] left-4 bg-white border border-gray-200 rounded-2xl shadow-2xl z-30 flex-col`}>
+    <main className={`${mobileHidden ? 'hidden md:flex' : 'flex md:flex'} fixed md:top-4 md:bottom-4 md:right-4 md:left-[calc(30%+7rem)] top-0 bottom-0 left-0 right-0 bg-white border border-gray-200 md:rounded-2xl shadow-2xl z-30 flex-col`}>
       {/* Header com barra de pesquisa no topo */}
       <div className="p-3 md:p-4 border-b border-gray-200">
         <div className="flex items-center gap-2">

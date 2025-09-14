@@ -54,6 +54,16 @@ const FormConfig = ({ estabelecimentoId: propEstabelecimentoId }) => {
       }
 
       const next = { ...prev, [field]: togglingTo };
+      
+      // Se habilitando novamente, resetar quantidade para 1
+      if (togglingTo) {
+        if (field === 'mesasEnabled') {
+          next.quantidadeMesas = 1;
+        } else if (field === 'comandasEnabled') {
+          next.quantidadeComandas = 1;
+        }
+      }
+      
       setError(null);
       scheduleAutoSave(next);
       return next;
@@ -143,12 +153,12 @@ const FormConfig = ({ estabelecimentoId: propEstabelecimentoId }) => {
   };
 
   return (
-    <form id="form-config" onSubmit={handleSubmit} className="modal-form h-full flex flex-col">
+    <form id="form-config" onSubmit={handleSubmit} className="modal-form h-full flex flex-col bg-white">
       {/* Conteúdo do formulário */}
-      <div className="flex-1 space-y-8">
+      <div className="flex-1 p-2 sm:p-4 max-h-96 overflow-y-auto scrollbar-hide space-y-4 sm:space-y-6">
         {/* Configuração de Mesas */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-gray-800 border-b border-gray-200 pb-2">
+        <div className="space-y-3 sm:space-y-4">
+          <h3 className="text-sm sm:text-lg font-semibold text-gray-800 border-b border-gray-200 pb-1 sm:pb-2">
             Configuração de Mesas
           </h3>
           

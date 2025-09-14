@@ -38,9 +38,9 @@ const FormPayment = ({ onSave }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="h-full flex flex-col">
+    <form onSubmit={handleSubmit} className="h-full flex flex-col bg-white">
       {/* Conteúdo do formulário */}
-      <div className="flex-1 space-y-6">
+      <div className="flex-1 p-2 sm:p-4 max-h-96 overflow-y-auto scrollbar-hide space-y-4 sm:space-y-6">
         {/* Grid de 2 colunas */}
         <div className="grid grid-cols-2 gap-4">
           {/* Nome - Obrigatório */}
