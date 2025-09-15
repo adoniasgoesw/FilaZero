@@ -122,10 +122,12 @@ const PanelDetalhes = ({ identificacao, onBack, orderName, onOrderNameChange, mo
   const [deleting, setDeleting] = React.useState(false);
   const [confirmUnsavedOpen, setConfirmUnsavedOpen] = React.useState(false);
   const [savingAndExit, setSavingAndExit] = React.useState(false);
+  const [confirmFinalizeOpen, setConfirmFinalizeOpen] = React.useState(false);
+  const [finalizing, setFinalizing] = React.useState(false);
   const totalPendingQty = Array.isArray(pendingItems) ? pendingItems.reduce((acc, it) => acc + (Number(it.qty) || 0), 0) : 0;
 
   return (
-    <aside className={`${mobileVisible ? 'flex md:flex' : 'hidden md:flex'} fixed top-4 bottom-4 left-4 md:left-24 w-[calc(100%-2rem)] md:w-[30%] bg-white border border-gray-200 rounded-2xl shadow-2xl z-40 flex-col`}>
+    <aside className={`${mobileVisible ? 'flex md:flex' : 'hidden md:flex'} fixed md:top-4 md:bottom-4 md:left-24 md:w-[30%] top-0 bottom-0 left-0 right-0 w-full bg-white border border-gray-200 md:rounded-2xl shadow-2xl z-40 flex-col`}>
       {/* Header */}
       <div className="p-3 md:p-4 border-b border-gray-200 flex items-center gap-3">
         <div className="shrink-0">
@@ -180,6 +182,7 @@ const PanelDetalhes = ({ identificacao, onBack, orderName, onOrderNameChange, mo
         </div>
         <button
           type="button"
+          onClick={() => setConfirmFinalizeOpen(true)}
           className="w-full h-11 md:h-12 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-semibold transition-colors"
         >
           Finalizar pedido
@@ -242,6 +245,54 @@ const PanelDetalhes = ({ identificacao, onBack, orderName, onOrderNameChange, mo
         primaryLabel="Salvar e sair"
         secondaryLabel="Sair"
         isLoading={savingAndExit}
+      />
+
+      <ConfirmDialog
+        isOpen={confirmFinalizeOpen}
+        onClose={() => setConfirmFinalizeOpen(false)}
+        onSecondary={() => setConfirmFinalizeOpen(false)}
+        onPrimary={async () => {
+          try {
+            setFinalizing(true);
+            // Resolver estabelecimento id
+            let estId = null;
+            const fromStorage = localStorage.getItem('estabelecimentoId');
+            const parsedStorage = parseInt(fromStorage, 10);
+            if (!Number.isNaN(parsedStorage)) estId = parsedStorage;
+            if (estId === null) {
+              try {
+                const usuarioRaw = localStorage.getItem('usuario');
+                if (usuarioRaw) {
+                  const usuario = JSON.parse(usuarioRaw);
+                  const cand = parseInt(usuario?.estabelecimento_id, 10);
+                  if (!Number.isNaN(cand)) estId = cand;
+                }
+              } catch {}
+            }
+            if (estId === null) {
+              setFinalizing(false);
+              setConfirmFinalizeOpen(false);
+              return;
+            }
+            const ident = String(identificacao || '').toLowerCase();
+            await api.post(`/pedidos/${estId}/${encodeURIComponent(ident)}/finalizar`);
+            // Limpa UI local: nome do pedido e itens
+            onOrderNameChange?.('');
+            onItemsChange?.([]);
+            setConfirmFinalizeOpen(false);
+            // Fechar painel/página de ponto de atendimento
+            onBack?.();
+          } catch (e) {
+            // noop
+          } finally {
+            setFinalizing(false);
+          }
+        }}
+        title="Finalizar pedido"
+        message={"Deseja finalizar este pedido? O ponto de atendimento será limpo e o pedido ficará com status 'finalizado'."}
+        primaryLabel="Finalizar"
+        secondaryLabel="Cancelar"
+        isLoading={finalizing}
       />
     </aside>
   );

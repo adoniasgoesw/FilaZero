@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Package } from 'lucide-react'; // Icon for page and modal title
+import { Package, MoreHorizontal, Check, X, Trash2 } from 'lucide-react'; // Icon for page and modal title
 import SearchBar from '../../components/layout/SeachBar';
 import BackButton from '../../components/buttons/Back';
 import AddButton from '../../components/buttons/Add';
@@ -9,6 +9,9 @@ import FormComplementos from '../../components/forms/FormComplementos';
 import ListProduct from '../../components/list/ListProduct';
 import ListComplementos from '../../components/list/ListComplementos';
 import Notification from '../../components/elements/Notification';
+import api from '../../services/api';
+import StatusButton from '../../components/buttons/Status';
+import DeleteButton from '../../components/buttons/Delete';
 
 function Produtos() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -36,6 +39,11 @@ function Produtos() {
     complementosSelecionados: [],
     activeFormTab: 'detalhes'
   });
+  
+  // Estados para barra de ações no cabeçalho
+  const [selectedProducts, setSelectedProducts] = useState([]);
+  const [selectedComplementos, setSelectedComplementos] = useState([]);
+  const [showActionsDropdown, setShowActionsDropdown] = useState(false);
 
   useEffect(() => {
     // Buscar o ID do estabelecimento do localStorage
@@ -141,6 +149,16 @@ function Produtos() {
     setComplementoToEdit(null);
   };
 
+  // Funções para controlar seleção e barra de ações
+  const handleProductSelectionChange = (selected) => {
+    setSelectedProducts(selected);
+  };
+
+  const handleComplementoSelectionChange = (selected) => {
+    setSelectedComplementos(selected);
+  };
+
+
   return (
     <div className="h-screen bg-gray-50 flex flex-col md:min-h-screen">
       {/* Header - fixo apenas em mobile */}
@@ -173,74 +191,149 @@ function Produtos() {
         </div>
       </div>
 
-      {/* Título fixo */}
-      <div className="fixed md:relative top-20 md:top-auto left-0 right-0 md:left-auto md:right-auto z-30 md:z-auto bg-white px-4 md:px-6 py-4">
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <Package className="w-6 h-6 text-red-500" />
-          {activeTab === 'produtos' ? 'Produtos' : 'Complementos'}
-        </h1>
-      </div>
+      {/* Título padronizado com outras páginas (Clientes/Categorias) */}
+      <div className="px-4 md:px-6 pt-4 pb-2 mt-16 md:mt-0">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Package className="w-6 h-6 text-blue-600" />
+            <h1 className="text-2xl font-bold text-gray-900">
+              {activeTab === 'produtos' ? 'Produtos' : 'Complementos'}
+            </h1>
+          </div>
+          {/* Ações alinhadas à direita: mostrar apenas quando houver seleção */}
+          {(() => {
+            const count = activeTab === 'produtos' ? selectedProducts.length : selectedComplementos.length;
+            if (count === 0) return null;
+            return (
+              <div className="flex items-center gap-3 relative">
+                <span className="text-sm text-gray-600 whitespace-nowrap">{count} produto{count > 1 ? 's' : ''} selecionado{count > 1 ? 's' : ''}</span>
+                <button
+                  onClick={() => setShowActionsDropdown((v) => !v)}
+                  className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 py-1 rounded-md text-xs font-medium transition-colors flex items-center justify-center"
+                  title="Ações"
+                >
+                  <MoreHorizontal className="w-3.5 h-3.5" />
+                </button>
 
-
-
-      {/* Header de navegação - estilo redondo, fixo, sem blur, z-index alto */}
-      <div className="px-4 md:px-6 py-2 sticky top-28 md:top-0 z-20 bg-white mt-2 md:mt-0">
-        <div className="flex bg-gray-100 rounded-lg overflow-hidden w-[min(260px,90%)]">
-          <button
-            onClick={() => setActiveTab('produtos')}
-            className={`flex-1 px-4 py-2 text-sm font-medium transition-colors duration-200 ${
-              activeTab === 'produtos'
-                ? 'bg-gray-400 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            Produtos
-          </button>
-          <button
-            onClick={() => setActiveTab('complementos')}
-            className={`flex-1 px-4 py-2 text-sm font-medium transition-colors duration-200 ${
-              activeTab === 'complementos'
-                ? 'bg-gray-400 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            Complementos
-          </button>
+                {showActionsDropdown && (
+                  <div className="absolute right-0 top-8 w-40 bg-white rounded-md shadow-lg border border-gray-200 z-10">
+                    <button
+                      onClick={async () => {
+                        try {
+                          if (activeTab !== 'produtos' || selectedProducts.length === 0) return;
+                          await Promise.all(selectedProducts.map((p) => api.put(`/produtos/${p.id}/status`)));
+                          setShowActionsDropdown(false);
+                          setSelectedProducts([]);
+                          setRefreshList((v) => v + 1);
+                        } catch { /* noop */ }
+                      }}
+                      className="w-full text-left px-3 py-2 text-xs sm:text-sm flex items-center gap-2 text-gray-700 hover:bg-gray-50"
+                    >
+                      <Check className="w-4 h-4 text-green-600" />
+                      <span>Ativar</span>
+                    </button>
+                    <button
+                      onClick={async () => {
+                        try {
+                          if (activeTab !== 'produtos' || selectedProducts.length === 0) return;
+                          await Promise.all(selectedProducts.map((p) => api.put(`/produtos/${p.id}/status`)));
+                          setShowActionsDropdown(false);
+                          setSelectedProducts([]);
+                          setRefreshList((v) => v + 1);
+                        } catch { /* noop */ }
+                      }}
+                      className="w-full text-left px-3 py-2 text-xs sm:text-sm flex items-center gap-2 text-gray-700 hover:bg-gray-50"
+                    >
+                      <X className="w-4 h-4 text-orange-600" />
+                      <span>Desativar</span>
+                    </button>
+                    <button
+                      onClick={async () => {
+                        try {
+                          if (activeTab !== 'produtos' || selectedProducts.length === 0) return;
+                          await Promise.all(selectedProducts.map((p) => api.delete(`/produtos/${p.id}`)));
+                          setShowActionsDropdown(false);
+                          setSelectedProducts([]);
+                          setRefreshList((v) => v + 1);
+                        } catch { /* noop */ }
+                      }}
+                      className="w-full text-left px-3 py-2 text-xs sm:text-sm flex items-center gap-2 text-gray-700 hover:bg-gray-50"
+                    >
+                      <Trash2 className="w-4 h-4 text-gray-500" />
+                      <span>Excluir</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
       </div>
 
-      {/* Área de conteúdo com rolagem (espaçamento abaixo do header apenas no mobile) */}
-      <div ref={contentRef} className="flex-1 overflow-y-auto px-4 md:px-6 py-6 mt-6 md:mt-0">
-
-        {/* Conteúdo baseado na aba ativa */}
-        {estabelecimentoId ? (
-          activeTab === 'produtos' ? (
-            <ListProduct 
-              key={refreshList} 
-              estabelecimentoId={estabelecimentoId}
-              onProductDelete={handleProductDelete}
-              onProductEdit={handleProductEdit}
-              activeTab={activeTab}
-              setActiveTab={setActiveTab}
-              showHeader={false}
-              searchQuery={search}
-            />
-          ) : (
-            <ListComplementos 
-              key={refreshComplementosList} 
-              estabelecimentoId={estabelecimentoId}
-              onComplementoDelete={handleComplementoDelete}
-              onComplementoEdit={handleComplementoEdit}
-              activeTab={activeTab}
-              setActiveTab={setActiveTab}
-              searchQuery={search}
-            />
-          )
-        ) : (
-          <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-            <p className="text-gray-600">Carregando dados do estabelecimento...</p>
+      {/* Conteúdo Principal */}
+      <div className="px-4 md:px-6 pb-6">
+        {/* Abas modernas */}
+        <div className="mb-6">
+          <div className="border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <nav className="-mb-px flex space-x-8">
+                <button
+                  onClick={() => setActiveTab('produtos')}
+                  className={`py-3 px-1 border-b-2 font-semibold text-sm transition-colors ${
+                    activeTab === 'produtos'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  Produtos
+                </button>
+                <button
+                  onClick={() => setActiveTab('complementos')}
+                  className={`py-3 px-1 border-b-2 font-semibold text-sm transition-colors ${
+                    activeTab === 'complementos'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  Complementos
+                </button>
+              </nav>
+              
+            </div>
           </div>
-        )}
+        </div>
+
+        {/* Área de conteúdo com rolagem */}
+        <div ref={contentRef} className="flex-1 overflow-y-auto scrollbar-hide">
+          {/* Conteúdo baseado na aba ativa */}
+          {estabelecimentoId ? (
+            activeTab === 'produtos' ? (
+              <ListProduct 
+                key={refreshList} 
+                estabelecimentoId={estabelecimentoId}
+                onProductDelete={handleProductDelete}
+                onProductEdit={handleProductEdit}
+                searchQuery={search}
+                selectedProducts={selectedProducts}
+                onSelectionChange={handleProductSelectionChange}
+              />
+            ) : (
+              <ListComplementos 
+                key={refreshComplementosList} 
+                estabelecimentoId={estabelecimentoId}
+                onComplementoDelete={handleComplementoDelete}
+                onComplementoEdit={handleComplementoEdit}
+                searchQuery={search}
+                selectedComplementos={selectedComplementos}
+                onSelectionChange={handleComplementoSelectionChange}
+              />
+            )
+          ) : (
+            <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+              <p className="text-gray-600">Carregando dados do estabelecimento...</p>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Modal de Adicionar Produto */}

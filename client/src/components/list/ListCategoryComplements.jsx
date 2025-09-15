@@ -94,22 +94,31 @@ const ListCategoryComplements = ({ produtoId, onCategoriaEdit, onCategoriaDelete
   // Função para iniciar edição
   const handleEdit = (categoria) => {
     setEditingCategoria(categoria.id);
-    setEditData({
-      nome: categoria.nome,
-      quantidadeMinima: categoria.quantidade_minima || '',
-      quantidadeMaxima: categoria.quantidade_maxima || '',
-      preenchimentoObrigatorio: categoria.preenchimento_obrigatorio || false
-    });
+    setEditData(prev => ({
+      ...prev,
+      [categoria.id]: {
+        nome: categoria.nome,
+        quantidadeMinima: categoria.quantidade_minima || '',
+        quantidadeMaxima: categoria.quantidade_maxima || '',
+        preenchimentoObrigatorio: categoria.preenchimento_obrigatorio || false
+      }
+    }));
   };
 
   // Função para salvar edição
   const handleSaveEdit = async (categoriaId) => {
     try {
+      const dadosCategoria = editData[categoriaId];
+      if (!dadosCategoria) {
+        console.error('Dados de edição não encontrados para categoria:', categoriaId);
+        return;
+      }
+
       const response = await api.put(`/categorias-complementos/${categoriaId}`, {
-        nome: editData.nome,
-        quantidade_minima: editData.quantidadeMinima,
-        quantidade_maxima: editData.quantidadeMaxima,
-        preenchimento_obrigatorio: editData.preenchimentoObrigatorio
+        nome: dadosCategoria.nome,
+        quantidade_minima: dadosCategoria.quantidadeMinima,
+        quantidade_maxima: dadosCategoria.quantidadeMaxima,
+        preenchimento_obrigatorio: dadosCategoria.preenchimentoObrigatorio
       });
 
       if (response.success) {
@@ -121,7 +130,12 @@ const ListCategoryComplements = ({ produtoId, onCategoriaEdit, onCategoriaDelete
         ));
         
         setEditingCategoria(null);
-        setEditData({});
+        // Remover apenas os dados de edição desta categoria específica
+        setEditData(prev => {
+          const newData = { ...prev };
+          delete newData[categoriaId];
+          return newData;
+        });
         
         if (onCategoriaEdit) {
           onCategoriaEdit(response.data);
@@ -136,9 +150,14 @@ const ListCategoryComplements = ({ produtoId, onCategoriaEdit, onCategoriaDelete
   };
 
   // Função para cancelar edição
-  const handleCancelEdit = () => {
+  const handleCancelEdit = (categoriaId) => {
     setEditingCategoria(null);
-    setEditData({});
+    // Remover apenas os dados de edição desta categoria específica
+    setEditData(prev => {
+      const newData = { ...prev };
+      delete newData[categoriaId];
+      return newData;
+    });
   };
 
   // Função para deletar categoria
@@ -148,8 +167,15 @@ const ListCategoryComplements = ({ produtoId, onCategoriaEdit, onCategoriaDelete
       const response = await api.delete(`/categorias-complementos/${categoria.id}`);
       
       if (response.success) {
-        // Remover categoria da lista
+        // Remover categoria da lista local
         setCategorias(prev => prev.filter(cat => cat.id !== categoria.id));
+        
+        // Remover dados de edição desta categoria
+        setEditData(prev => {
+          const newData = { ...prev };
+          delete newData[categoria.id];
+          return newData;
+        });
         
         // Fechar modal
         setDeleteModal({ isOpen: false, categoria: null });
@@ -195,19 +221,30 @@ const ListCategoryComplements = ({ produtoId, onCategoriaEdit, onCategoriaDelete
     // Buscar a categoria atual para obter os valores base
     const categoriaAtual = categorias.find(cat => cat.id === categoriaId);
     
-    const newData = {
-      nome: editData.nome !== undefined ? editData.nome : (categoriaAtual?.nome || ''),
-      quantidadeMinima: editData.quantidadeMinima !== undefined ? editData.quantidadeMinima : (categoriaAtual?.quantidade_minima || ''),
-      quantidadeMaxima: editData.quantidadeMaxima !== undefined ? editData.quantidadeMaxima : (categoriaAtual?.quantidade_maxima || ''),
-      preenchimentoObrigatorio: editData.preenchimentoObrigatorio !== undefined ? editData.preenchimentoObrigatorio : (categoriaAtual?.preenchimento_obrigatorio || false),
-      [field]: value
+    // Se não há dados de edição para esta categoria, inicializar com dados da categoria
+    if (!editData[categoriaId]) {
+      editData[categoriaId] = {
+        nome: categoriaAtual?.nome || '',
+        quantidadeMinima: categoriaAtual?.quantidade_minima || '',
+        quantidadeMaxima: categoriaAtual?.quantidade_maxima || '',
+        preenchimentoObrigatorio: categoriaAtual?.preenchimento_obrigatorio || false
+      };
+    }
+    
+    // Atualizar apenas o campo específico para esta categoria
+    const newEditData = {
+      ...editData,
+      [categoriaId]: {
+        ...editData[categoriaId],
+        [field]: value
+      }
     };
     
-    setEditData(newData);
+    setEditData(newEditData);
     
     // Notificar o componente pai sobre mudanças
     if (onCategoriaEdit) {
-      onCategoriaEdit(categoriaId, newData);
+      onCategoriaEdit(categoriaId, newEditData[categoriaId]);
     }
   };
 
@@ -269,7 +306,7 @@ const ListCategoryComplements = ({ produtoId, onCategoriaEdit, onCategoriaDelete
               </label>
               <input
                 type="text"
-                value={editData.nome !== undefined ? editData.nome : categoria.nome}
+                value={editData[categoria.id]?.nome !== undefined ? editData[categoria.id].nome : categoria.nome}
                 onChange={(e) => updateEditData('nome', e.target.value, categoria.id)}
                 className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Ex: Bebidas, Acompanhamentos, Sobremesas"
@@ -285,11 +322,10 @@ const ListCategoryComplements = ({ produtoId, onCategoriaEdit, onCategoriaDelete
                 <input
                   type="number"
                   min="0"
-                  value={editData.quantidadeMinima !== undefined ? editData.quantidadeMinima : (categoria.quantidade_minima || '')}
+                  value={editData[categoria.id]?.quantidadeMinima !== undefined ? editData[categoria.id].quantidadeMinima : (categoria.quantidade_minima || '')}
                   onChange={(e) => updateEditData('quantidadeMinima', e.target.value, categoria.id)}
                   className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="0"
-                  required
                 />
               </div>
 
@@ -300,11 +336,10 @@ const ListCategoryComplements = ({ produtoId, onCategoriaEdit, onCategoriaDelete
                 <input
                   type="number"
                   min="1"
-                  value={editData.quantidadeMaxima !== undefined ? editData.quantidadeMaxima : (categoria.quantidade_maxima || '')}
+                  value={editData[categoria.id]?.quantidadeMaxima !== undefined ? editData[categoria.id].quantidadeMaxima : (categoria.quantidade_maxima || '')}
                   onChange={(e) => updateEditData('quantidadeMaxima', e.target.value, categoria.id)}
                   className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="1"
-                  required
                 />
               </div>
             </div>
@@ -314,7 +349,7 @@ const ListCategoryComplements = ({ produtoId, onCategoriaEdit, onCategoriaDelete
               <input
                 type="checkbox"
                 id={`preenchimento-${categoria.id}`}
-                checked={editData.preenchimentoObrigatorio !== undefined ? editData.preenchimentoObrigatorio : categoria.preenchimento_obrigatorio}
+                checked={editData[categoria.id]?.preenchimentoObrigatorio !== undefined ? editData[categoria.id].preenchimentoObrigatorio : categoria.preenchimento_obrigatorio}
                 onChange={(e) => updateEditData('preenchimentoObrigatorio', e.target.checked, categoria.id)}
                 className="h-4 w-4 appearance-none rounded-full border-2 border-blue-500 checked:bg-blue-600 checked:border-blue-600 cursor-pointer"
               />

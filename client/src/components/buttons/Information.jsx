@@ -6,10 +6,10 @@ const Information = ({ onClick, className = "", title = "Informações" }) => {
     <button
       type="button"
       onClick={onClick}
-      className={`w-10 h-10 md:w-11 md:h-11 border border-orange-400 text-orange-500 hover:bg-orange-50 rounded-lg flex items-center justify-center transition-all duration-200 shadow-sm hover:shadow-md ${className}`}
+      className={`w-7 h-7 md:w-8 md:h-8 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-full flex items-center justify-center transition-all duration-200 ${className}`}
       title={title}
     >
-      <Info size={18} />
+      <Info className="w-4 h-4" />
     </button>
   );
 };

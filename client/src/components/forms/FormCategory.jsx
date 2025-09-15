@@ -2,6 +2,8 @@
   import { Image as ImageIcon, Upload, Zap, Loader2 } from 'lucide-react';
   
   import api, { buscarImagens } from '../../services/api';
+  import ValidationNotification from '../elements/ValidationNotification';
+  import { useFormValidation } from '../../hooks/useFormValidation';
 
   // Função debounce
   function debounce(func, wait) {
@@ -25,6 +27,16 @@
     const [imagePreview, setImagePreview] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
+
+    // Hook de validação
+    const {
+      errors,
+      showNotification,
+      validateForm,
+      clearError,
+      getFieldError,
+      setShowNotification
+    } = useFormValidation();
     
     // Estados para sugestões de imagens
     const [sugestoesImagens, setSugestoesImagens] = useState([]);
@@ -223,14 +235,17 @@
       e.preventDefault();
       
       // Validações
-      if (!formData.nome.trim()) {
-        setError('Nome é obrigatório!');
-        return;
+      const validationRules = {
+        nome: { required: true, label: 'Nome da categoria' }
+      };
+
+      // Adicionar validação de imagem apenas no modo de criação
+      if (!isEditMode) {
+        validationRules.imagem = { required: true, label: 'Imagem da categoria' };
       }
 
-      // Imagem é obrigatória apenas no modo de criação
-      if (!isEditMode && !formData.imagem) {
-        setError('Imagem é obrigatória!');
+      const isValid = validateForm(formData, validationRules);
+      if (!isValid) {
         return;
       }
 
@@ -287,31 +302,38 @@
     };
 
       return (
-    <form onSubmit={handleSubmit} className="h-full flex flex-col modal-form">
+    <form onSubmit={handleSubmit} className="h-full flex flex-col modal-form bg-white">
             {/* Conteúdo do formulário */}
-      <div className="flex-1 space-y-8">
+      <div className="flex-1 p-2 sm:p-4 max-h-96 overflow-y-auto scrollbar-hide space-y-4 sm:space-y-6">
         {/* Nome - Obrigatório */}
-        <div className="space-y-3">
-          <label className="block text-sm font-medium text-gray-700">
-            Nome da Categoria <span className="text-red-500">*</span>
+        <div className="space-y-2 sm:space-y-3">
+          <label className="block text-xs sm:text-sm font-semibold text-gray-700">
+            Nome da Categoria
           </label>
           <input
             type="text"
-            required
             value={formData.nome}
-            onChange={(e) => handleInputChange('nome', e.target.value)}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
+            onChange={(e) => {
+              handleInputChange('nome', e.target.value);
+              clearError('nome');
+            }}
+            className={`w-full px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+              getFieldError('nome') ? 'border-red-500' : 'border-gray-300'
+            }`}
             placeholder="Digite o nome da categoria"
             disabled={isLoading}
           />
+          {getFieldError('nome') && (
+            <p className="text-xs text-red-500 mt-1">{getFieldError('nome')}</p>
+          )}
         </div>
 
         {/* Imagem - Obrigatório apenas no modo de criação */}
-        <div className="space-y-3">
-          <label className="block text-sm font-medium text-gray-700">
-            Imagem da Categoria {!isEditMode && <span className="text-red-500">*</span>}
+        <div className="space-y-2 sm:space-y-3">
+          <label className="block text-xs sm:text-sm font-semibold text-gray-700">
+            Imagem da Categoria
           </label>
-          <div className="flex justify-center">
+          <div className="flex justify-start">
             <div className="relative">
               <input
                 type="file"
@@ -322,7 +344,7 @@
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 disabled={isLoading}
               />
-              <div className="w-40 h-40 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center hover:border-blue-400 hover:bg-blue-50 transition-all duration-200 overflow-hidden bg-gray-50">
+              <div className="w-32 h-32 sm:w-40 sm:h-40 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center hover:border-blue-400 hover:bg-blue-50 transition-all duration-200 overflow-hidden bg-gray-50">
                 {formData.imagem ? (
                   <div className="w-full h-full relative">
                     <img
@@ -340,31 +362,31 @@
                     />
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center text-gray-500 p-4 text-center">
-                    <ImageIcon className="w-10 h-10 mb-3 text-gray-400" />
-                    <span className="text-sm font-medium">Clique para selecionar</span>
-                    <span className="text-xs text-gray-400 mt-1">ou arraste uma imagem aqui</span>
+                  <div className="flex flex-col items-center text-gray-500 p-2 sm:p-4 text-center">
+                    <ImageIcon className="w-6 h-6 sm:w-10 sm:h-10 mb-2 sm:mb-3 text-gray-400" />
+                    <span className="text-xs sm:text-sm font-medium">Clique para selecionar</span>
+                    <span className="text-xs text-gray-400 mt-1">PNG, JPG até 5MB</span>
                   </div>
                 )}
               </div>
             </div>
           </div>
-          <p className="text-xs text-gray-500 text-center">
+          <p className="text-xs text-gray-500">
             {isEditMode && categoria?.imagem_url ? 'Deixe em branco para manter a imagem atual' : 'Formatos aceitos: PNG, JPG, JPEG (máx. 5MB)'}
           </p>
         </div>
           
                   {/* Seção de sugestões de imagens - LAYOUT HORIZONTAL */}
         {mostrarSugestoes && (
-          <div className="bg-gradient-to-r from-purple-50 to-violet-50 rounded-2xl p-4 border border-purple-200">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-lg font-semibold text-purple-800">
+          <div className="bg-gradient-to-r from-purple-50 to-violet-50 rounded-2xl p-2 sm:p-4 border border-purple-200">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+              <h3 className="text-sm sm:text-lg font-semibold text-purple-800">
                 Sugestões
               </h3>
               {buscandoImagens && (
-                <div className="flex items-center gap-2 text-purple-600">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span className="text-sm font-medium">Buscando...</span>
+                <div className="flex items-center gap-1 sm:gap-2 text-purple-600">
+                  <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin" />
+                  <span className="text-xs sm:text-sm font-medium">Buscando...</span>
                 </div>
               )}
             </div>
@@ -478,7 +500,13 @@
         )}
       </div>
 
-
+      {/* Notificação de Validação */}
+      <ValidationNotification
+        isOpen={showNotification}
+        onClose={() => setShowNotification(false)}
+        errors={errors}
+        title="Campos obrigatórios não preenchidos"
+      />
     </form>
   );
   };

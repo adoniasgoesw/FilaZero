@@ -5,17 +5,65 @@ import ListPontosAtendimento from '../components/list/ListPontosAtendimento';
 import ConfigButton from '../components/buttons/Config';
 import BaseModal from '../components/modals/Base';
 import FormConfig from '../components/forms/FormConfig';
+import ConfirmDialog from '../components/elements/ConfirmDialog';
+import api from '../services/api';
 
 function Home() {
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const contentRef = useRef(null);
   const [search, setSearch] = useState('');
+  const [caixaInfo, setCaixaInfo] = useState({ loading: true, aberto: null });
+  const [showClosedNotice, setShowClosedNotice] = useState(false);
+  const [show24hNotice, setShow24hNotice] = useState(false);
 
   useEffect(() => {
     // Garantir que o scroll começa no topo ao entrar nesta página (especialmente no mobile)
     if (contentRef.current && typeof contentRef.current.scrollTo === 'function') {
       contentRef.current.scrollTo({ top: 0, behavior: 'auto' });
     }
+  }, []);
+
+  // Checar status do caixa ao entrar na Home
+  useEffect(() => {
+    async function checkCaixa() {
+      try {
+        const estabelecimentoId = Number(localStorage.getItem('estabelecimentoId')) || null;
+        if (!estabelecimentoId) {
+          setCaixaInfo({ loading: false, aberto: null });
+          setShowClosedNotice(false);
+          return;
+        }
+        const res = await api.get(`/caixas/aberto/${estabelecimentoId}`);
+        const aberto = res && res.success ? res.data : null;
+        setCaixaInfo({ loading: false, aberto });
+        const url = new URL(window.location.href);
+        const showClosed = url.searchParams.get('caixa_fechado') === '1';
+        if (!aberto) {
+          setShowClosedNotice(showClosed || true);
+          setShow24hNotice(false);
+        } else {
+          setShowClosedNotice(showClosed);
+          // Checar 24h
+          try {
+            const abertura = aberto.caixa?.data_abertura || aberto.data_abertura;
+            if (abertura) {
+              const openedAt = new Date(abertura).getTime();
+              const now = Date.now();
+              const diffMs = now - openedAt;
+              const suppress = sessionStorage.getItem('suppress24hWarning');
+              if (diffMs >= 24 * 60 * 60 * 1000 && suppress !== '1') {
+                setShow24hNotice(true);
+              }
+            }
+          } catch {
+            // ignore
+          }
+        }
+      } catch {
+        setCaixaInfo({ loading: false, aberto: null });
+      }
+    }
+    checkCaixa();
   }, []);
 
   const handleConfigSave = (data) => {
@@ -29,6 +77,35 @@ function Home() {
 
   return (
     <div className="h-screen bg-gray-50 flex flex-col md:min-h-screen">
+      {/* Notificações de caixa */}
+      {!caixaInfo.loading && showClosedNotice && (
+        <ConfirmDialog
+          isOpen={true}
+          onClose={() => setShowClosedNotice(false)}
+          onSecondary={() => setShowClosedNotice(false)}
+          onPrimary={() => { setShowClosedNotice(false); window.location.assign('/historic?abrir_caixa=1'); }}
+          title="Caixa fechado"
+          message="Abra um caixa para anotar pedidos."
+          primaryLabel="Abrir caixa"
+          secondaryLabel="OK"
+          variant="warning"
+          rightAlign
+        />
+      )}
+      {!caixaInfo.loading && caixaInfo.aberto && show24hNotice && (
+        <ConfirmDialog
+          isOpen={true}
+          onClose={() => { setShow24hNotice(false); sessionStorage.setItem('suppress24hWarning', '1'); }}
+          onSecondary={() => { setShow24hNotice(false); sessionStorage.setItem('suppress24hWarning', '1'); }}
+          onPrimary={() => { setShow24hNotice(false); window.location.assign('/historic?fechar_abrir=1'); }}
+          title="Caixa aberto há mais de 24 horas"
+          message="Considere fechar e abrir um novo caixa para relatórios mais organizados."
+          primaryLabel="Fechar e abrir novo caixa"
+          secondaryLabel="Continuar"
+          variant="warning"
+          rightAlign
+        />
+      )}
       {/* Header - fixo apenas em mobile */}
       <div className="fixed md:relative top-0 left-0 right-0 md:left-auto md:right-auto z-50 md:z-auto bg-white px-4 md:px-6 py-4">
         <div className="flex items-center gap-3 w-full">

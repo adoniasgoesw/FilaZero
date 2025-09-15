@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import api from '../../services/api';
+import ValidationNotification from '../elements/ValidationNotification';
+import { useFormValidation } from '../../hooks/useFormValidation';
 
 const FormComplementos = ({ complemento = null, onClose, onSave }) => {
   const [formData, setFormData] = useState({
@@ -9,6 +11,16 @@ const FormComplementos = ({ complemento = null, onClose, onSave }) => {
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Hook de validação
+  const {
+    errors,
+    showNotification,
+    validateForm,
+    clearError,
+    getFieldError,
+    setShowNotification
+  } = useFormValidation();
 
   // Detectar se é modo de edição
   const isEditMode = !!complemento;
@@ -34,13 +46,13 @@ const FormComplementos = ({ complemento = null, onClose, onSave }) => {
     e.preventDefault();
     
     // Validações
-    if (!formData.nome.trim()) {
-      setError('Nome é obrigatório!');
-      return;
-    }
-    
-    if (!formData.valorVenda) {
-      setError('Valor de venda é obrigatório!');
+    const validationRules = {
+      nome: { required: true, label: 'Nome do complemento' },
+      valorVenda: { required: true, label: 'Valor de venda' }
+    };
+
+    const isValid = validateForm(formData, validationRules);
+    if (!isValid) {
       return;
     }
 
@@ -90,37 +102,51 @@ const FormComplementos = ({ complemento = null, onClose, onSave }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="h-full flex flex-col modal-form">
+    <form onSubmit={handleSubmit} className="h-full flex flex-col modal-form bg-white">
       {/* Conteúdo do formulário */}
-      <div className="flex-1 space-y-6">
+      <div className="flex-1 p-2 sm:p-4 max-h-96 overflow-y-auto scrollbar-hide space-y-4 sm:space-y-6">
         {/* Nome - Obrigatório */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Nome do Complemento <span className="text-red-500">*</span>
+            Nome do Complemento
           </label>
           <input
             type="text"
-            required
             value={formData.nome}
-            onChange={(e) => handleInputChange('nome', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            onChange={(e) => {
+              handleInputChange('nome', e.target.value);
+              clearError('nome');
+            }}
+            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+              getFieldError('nome') ? 'border-red-500' : 'border-gray-300'
+            }`}
             placeholder="Ex: Refrigerante, Batata Frita"
           />
+          {getFieldError('nome') && (
+            <p className="text-xs text-red-500 mt-1">{getFieldError('nome')}</p>
+          )}
         </div>
 
         {/* Valor de Venda - Obrigatório */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Valor de Venda <span className="text-red-500">*</span>
+            Valor de Venda
           </label>
           <input
             type="text"
-            required
             value={formData.valorVenda}
-            onChange={(e) => handleInputChange('valorVenda', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            onChange={(e) => {
+              handleInputChange('valorVenda', e.target.value);
+              clearError('valorVenda');
+            }}
+            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+              getFieldError('valorVenda') ? 'border-red-500' : 'border-gray-300'
+            }`}
             placeholder="R$ 0,00"
           />
+          {getFieldError('valorVenda') && (
+            <p className="text-xs text-red-500 mt-1">{getFieldError('valorVenda')}</p>
+          )}
         </div>
         
         {/* Mensagem de erro */}
@@ -137,6 +163,14 @@ const FormComplementos = ({ complemento = null, onClose, onSave }) => {
           </div>
         )}
       </div>
+
+      {/* Notificação de Validação */}
+      <ValidationNotification
+        isOpen={showNotification}
+        onClose={() => setShowNotification(false)}
+        errors={errors}
+        title="Campos obrigatórios não preenchidos"
+      />
     </form>
   );
 };

@@ -6,14 +6,14 @@ const Dashboard = () => {
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-xl font-semibold text-gray-800">Dashboard FilaZero</h3>
         <div className="flex space-x-2">
-          <div className="w-3 h-3 bg-red-400 rounded-full"></div>
+          <div className="w-3 h-3 bg-blue-400 rounded-full"></div>
           <div className="w-3 h-3 bg-yellow-400 rounded-full"></div>
           <div className="w-3 h-3 bg-green-400 rounded-full"></div>
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4 mb-6">
-        <div className="bg-gradient-to-br from-red-500 to-red-600 p-4 rounded-xl text-white">
+        <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-4 rounded-xl text-white">
           <div className="text-2xl font-bold">127</div>
           <div className="text-sm opacity-80">Pedidos Hoje</div>
         </div>

@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Image as ImageIcon, Upload, Zap, Loader2, Plus } from 'lucide-react';
+import { Package, Image as ImageIcon, Upload, Zap, Loader2, Plus, X } from 'lucide-react';
 import api, { buscarImagens } from '../../services/api';
 import AddButton from '../buttons/Add';
 import CopyButton from '../buttons/Copy';
 import FormCategoriaComplemento from './FormCategoriaComplemento';
 import ListCategoryComplements from '../list/ListCategoryComplements';
 import Notification from '../elements/Notification';
+import ValidationNotification from '../elements/ValidationNotification';
+import { useFormValidation } from '../../hooks/useFormValidation';
 
 // Função debounce
 function debounce(func, wait) {
@@ -33,6 +35,16 @@ const FormProduct = ({ produto = null, onStateChange }) => {
     tempoPreparoEnabled: false,
     tempoPreparo: ''
   });
+
+  // Hook de validação
+  const {
+    errors,
+    showNotification: showValidationNotification,
+    validateForm,
+    clearError,
+    getFieldError,
+    setShowNotification: setShowValidationNotification
+  } = useFormValidation();
 
   // Detectar se é modo de edição
   const isEditMode = !!produto;
@@ -66,6 +78,12 @@ const FormProduct = ({ produto = null, onStateChange }) => {
   
   // Estado para armazenar categorias editadas
   const [categoriasEditadas, setCategoriasEditadas] = useState({});
+  
+  // Estados para cópia de complementos
+  const [showCopyComplementos, setShowCopyComplementos] = useState(false);
+  const [produtosComComplementos, setProdutosComComplementos] = useState([]);
+  const [produtoSelecionadoParaCopiar, setProdutoSelecionadoParaCopiar] = useState(null);
+  const [loadingProdutos, setLoadingProdutos] = useState(false);
   
   // Estado para notificações
   const [notification, setNotification] = useState({ show: false, message: '', type: 'success' });
@@ -158,7 +176,7 @@ const FormProduct = ({ produto = null, onStateChange }) => {
         codigoPdv: produto.codigo_pdv || '',
         estoqueEnabled: produto.habilita_estoque || false,
         estoque: produto.estoque_qtd || '',
-        tempoPreparoEnabled: produto.habilita_tempo_preparo || false,
+        tempoPreparoEnabled: !!produto.tempo_preparo_min,
         tempoPreparo: produto.tempo_preparo_min || ''
       });
       
@@ -342,6 +360,104 @@ const FormProduct = ({ produto = null, onStateChange }) => {
     setTimeout(() => {
       setNotification({ show: false, message: '', type: 'success' });
     }, 3000);
+  };
+
+  // Função para buscar produtos que possuem categorias de complementos
+  const buscarProdutosComComplementos = async () => {
+    try {
+      setLoadingProdutos(true);
+      const estabelecimentoId = localStorage.getItem('estabelecimentoId');
+      
+      if (!estabelecimentoId) {
+        setError('Estabelecimento não identificado!');
+        return;
+      }
+
+      // Usar o novo endpoint específico para produtos com categorias de complementos
+      const response = await api.get(`/produtos-com-categorias-complementos/${estabelecimentoId}`);
+      
+      if (response.success) {
+        setProdutosComComplementos(response.data);
+        console.log('✅ Produtos com categorias de complementos encontrados:', response.data.length);
+      } else {
+        throw new Error('Erro ao carregar produtos');
+      }
+    } catch (error) {
+      console.error('❌ Erro ao buscar produtos com complementos:', error);
+      setError('Erro ao carregar produtos: ' + error.message);
+    } finally {
+      setLoadingProdutos(false);
+    }
+  };
+
+  // Função para lidar com o clique no botão "Copiar Complementos"
+  const handleCopiarComplementos = async () => {
+    setShowCopyComplementos(true);
+    await buscarProdutosComComplementos();
+  };
+
+  // Função para selecionar produto para copiar complementos
+  const handleSelecionarProdutoParaCopiar = (produto) => {
+    setProdutoSelecionadoParaCopiar(produto);
+  };
+
+  // Função para copiar categorias de complementos do produto selecionado
+  const handleCopiarCategoriasComplementos = async () => {
+    if (!produtoSelecionadoParaCopiar || !produto?.id) {
+      setError('Produto não selecionado ou produto atual não encontrado!');
+      return;
+    }
+
+    try {
+      // Buscar categorias do produto selecionado
+      const categoriasResponse = await api.get(`/categorias-complementos/${produtoSelecionadoParaCopiar.id}`);
+      
+      if (categoriasResponse.success && categoriasResponse.data.length > 0) {
+        const categoriasParaCopiar = categoriasResponse.data;
+        
+        // Para cada categoria, criar uma nova no produto atual
+        for (const categoria of categoriasParaCopiar) {
+          const payload = {
+            produto_id: produto.id,
+            nome: categoria.nome,
+            quantidade_minima: categoria.quantidade_minima || 0,
+            quantidade_maxima: categoria.quantidade_maxima || null,
+            preenchimento_obrigatorio: categoria.preenchimento_obrigatorio || false
+          };
+          
+          // Criar a categoria
+          const categoriaResponse = await api.post('/categorias-complementos', payload);
+          
+          if (categoriaResponse.success) {
+            // Buscar complementos da categoria original
+            const complementosResponse = await api.get(`/itens-complementos/categoria/${categoria.id}`);
+            
+            if (complementosResponse.success && complementosResponse.data.length > 0) {
+              // Copiar os complementos para a nova categoria
+              const complementosIds = complementosResponse.data.map(item => item.complemento_id);
+              await api.post('/itens-complementos', {
+                categoria_id: categoriaResponse.data.id,
+                complementos: complementosIds
+              });
+            }
+          }
+        }
+        
+        showNotification(`${categoriasParaCopiar.length} categorias de complementos copiadas com sucesso!`);
+        
+        // Fechar o modo de cópia e limpar seleção
+        setShowCopyComplementos(false);
+        setProdutoSelecionadoParaCopiar(null);
+        
+        // Disparar evento para atualizar a listagem
+        window.dispatchEvent(new CustomEvent('categoriasAtualizadas'));
+      } else {
+        setError('Produto selecionado não possui categorias de complementos!');
+      }
+    } catch (error) {
+      console.error('❌ Erro ao copiar categorias:', error);
+      setError('Erro ao copiar categorias: ' + error.message);
+    }
   };
 
   // Função para lidar com o clique no botão "Adicionar Complemento"
@@ -586,6 +702,19 @@ const FormProduct = ({ produto = null, onStateChange }) => {
     
     // Se estiver na aba de complementos
     if (activeFormTab === 'complementos') {
+      // Se estiver no modo de cópia de complementos
+      if (showCopyComplementos) {
+        // Validar se um produto foi selecionado
+        if (!produtoSelecionadoParaCopiar) {
+          setError('Selecione um produto para copiar as categorias!');
+          return;
+        }
+        
+        // Copiar categorias do produto selecionado
+        await handleCopiarCategoriasComplementos();
+        return;
+      }
+      
       // Se estiver mostrando a listagem de complementos para seleção
       if (showComplementoForm) {
         // Validar se pelo menos um complemento foi selecionado
@@ -633,24 +762,19 @@ const FormProduct = ({ produto = null, onStateChange }) => {
     
     // Validações para aba de detalhes
     if (activeFormTab === 'detalhes') {
-      if (!formData.nome.trim()) {
-        setError('Nome é obrigatório!');
-        return;
+      const validationRules = {
+        nome: { required: true, label: 'Nome' },
+        categoria: { required: true, label: 'Categoria' },
+        valorVenda: { required: true, label: 'Valor de venda' }
+      };
+
+      // Adicionar validação de imagem apenas no modo de criação
+      if (!isEditMode) {
+        validationRules.imagem = { required: true, label: 'Imagem' };
       }
-      
-      if (!formData.categoria) {
-        setError('Categoria é obrigatória!');
-        return;
-      }
-      
-      if (!formData.valorVenda) {
-        setError('Valor de venda é obrigatório!');
-        return;
-      }
-      
-      // Imagem é obrigatória apenas no modo de criação
-      if (!isEditMode && !formData.imagem) {
-        setError('Imagem é obrigatória!');
+
+      const isValid = validateForm(formData, validationRules);
+      if (!isValid) {
         return;
       }
     }
@@ -668,8 +792,7 @@ const FormProduct = ({ produto = null, onStateChange }) => {
 
       formDataToSend.append('habilita_estoque', formData.estoqueEnabled);
       formDataToSend.append('estoque_qtd', formData.estoque || '0');
-      formDataToSend.append('habilita_tempo_preparo', formData.tempoPreparoEnabled);
-      formDataToSend.append('tempo_preparo_min', formData.tempoPreparo || '');
+      formDataToSend.append('tempo_preparo_min', formData.tempoPreparoEnabled ? formData.tempoPreparo || '' : '');
       
       if (isEditMode) {
         // Modo de edição
@@ -769,17 +892,16 @@ const FormProduct = ({ produto = null, onStateChange }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="h-full flex flex-col modal-form">
-      {/* Header do formulário - fixo */}
-      <div className="border-b border-gray-200 pb-4 mb-6 sticky top-0 z-20 bg-white shadow-sm">
-        <div className="flex bg-gray-50 rounded-lg overflow-hidden">
+    <form onSubmit={handleSubmit} className="h-full w-full flex flex-col modal-form bg-white">
+      {/* Tabs Navigation */}
+      <div className="flex gap-2 p-2 bg-gray-50">
           <button
             type="button"
             onClick={() => setActiveFormTab('detalhes')}
-            className={`flex-1 px-4 py-2 text-sm font-medium transition-colors duration-200 ${
+          className={`flex-1 py-2 px-3 text-xs sm:text-sm font-medium transition-colors rounded-lg ${
               activeFormTab === 'detalhes'
-                ? 'bg-blue-500 text-white'
-                : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+              ? 'bg-blue-600 text-white shadow-md'
+              : 'text-gray-600 hover:text-blue-600'
             }`}
           >
             Detalhes
@@ -787,10 +909,10 @@ const FormProduct = ({ produto = null, onStateChange }) => {
           <button
             type="button"
             onClick={() => setActiveFormTab('complementos')}
-            className={`flex-1 px-4 py-2 text-sm font-medium transition-colors duration-200 ${
+          className={`flex-1 py-2 px-3 text-xs sm:text-sm font-medium transition-colors rounded-lg ${
               activeFormTab === 'complementos'
-                ? 'bg-blue-500 text-white'
-                : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+              ? 'bg-blue-600 text-white shadow-md'
+              : 'text-gray-600 hover:text-blue-600'
             }`}
           >
             Complementos
@@ -798,74 +920,115 @@ const FormProduct = ({ produto = null, onStateChange }) => {
           <button
             type="button"
             onClick={() => setActiveFormTab('receita')}
-            className={`flex-1 px-4 py-2 text-sm font-medium transition-colors duration-200 ${
+          className={`flex-1 py-2 px-3 text-xs sm:text-sm font-medium transition-colors rounded-lg ${
               activeFormTab === 'receita'
-                ? 'bg-blue-500 text-white'
-                : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+              ? 'bg-blue-600 text-white shadow-md'
+              : 'text-gray-600 hover:text-blue-600'
             }`}
           >
             Receita
           </button>
-        </div>
       </div>
 
       {/* Conteúdo do formulário baseado na aba ativa */}
-      <div className="flex-1 space-y-6">
+      <div className="p-2 sm:p-4 max-h-96 overflow-y-auto scrollbar-hide">
         {activeFormTab === 'detalhes' && (
-          <>
-        {/* Nome e Categoria (esquerda) + Imagem (direita) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-          {/* Coluna esquerda: Nome e Categoria */}
-          <div className="space-y-4">
-            {/* Nome - Obrigatório */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Nome <span className="text-red-500">*</span>
+          <div className="space-y-4 sm:space-y-6">
+            {/* Nome do Produto - largura total */}
+            <div className="space-y-2 sm:space-y-3">
+              <label className="block text-xs sm:text-sm font-semibold text-gray-700">
+                Nome do Produto
               </label>
               <input
                 type="text"
-                required
                 value={formData.nome}
-                onChange={(e) => handleInputChange('nome', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Nome do produto"
+                onChange={(e) => {
+                  handleInputChange('nome', e.target.value);
+                  clearError('nome');
+                }}
+                className={`w-full px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+                  getFieldError('nome') ? 'border-red-500' : 'border-gray-300'
+                }`}
+                placeholder="Digite o nome do produto"
+                disabled={isLoading}
               />
-            </div>
-
-            {/* Categoria - Obrigatório */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Categoria <span className="text-red-500">*</span>
-              </label>
-
-              <select
-                required
-                value={formData.categoria}
-                onChange={(e) => handleInputChange('categoria', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                disabled={loadingCategorias}
-              >
-                <option value="">
-                  {loadingCategorias ? 'Carregando categorias...' : 'Selecione uma categoria'}
-                </option>
-                {categorias.map(cat => (
-                  <option key={cat.id} value={cat.id.toString()}>{cat.nome}</option>
-                ))}
-              </select>
-              {categorias.length === 0 && !loadingCategorias && (
-                <p className="text-xs text-orange-600 mt-1">
-                  Nenhuma categoria encontrada. Cadastre uma categoria primeiro.
-                </p>
+              {getFieldError('nome') && (
+                <p className="text-xs text-red-500 mt-1">{getFieldError('nome')}</p>
               )}
             </div>
+
+            {/* Categoria - em cima da imagem */}
+            <div>
+              <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
+                Categoria
+              </label>
+              <div className="relative">
+              <select
+                value={formData.categoria}
+                  onChange={(e) => {
+                    handleInputChange('categoria', e.target.value);
+                    clearError('categoria');
+                  }}
+                  className={`w-full px-4 py-3 text-sm border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 appearance-none cursor-pointer bg-white ${
+                    getFieldError('categoria') 
+                      ? 'border-red-400 bg-red-50' 
+                      : 'border-gray-300 hover:border-gray-400'
+                  } ${loadingCategorias ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={loadingCategorias}
+              >
+                  <option value="" className="text-gray-500 font-light">
+                    {loadingCategorias ? 'Carregando...' : 'Selecione uma categoria'}
+                </option>
+                {categorias.map(cat => (
+                    <option 
+                      key={cat.id} 
+                      value={cat.id.toString()}
+                      className="text-gray-700 font-light py-2"
+                    >
+                      {cat.nome}
+                    </option>
+                ))}
+              </select>
+                
+                {/* Ícone de dropdown customizado */}
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                  <svg 
+                    className="w-5 h-5 text-gray-400 transition-transform duration-200" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </div>
+              
+              {getFieldError('categoria') && (
+                <p className="text-xs text-red-500 mt-2 flex items-center">
+                  <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  {getFieldError('categoria')}
+                </p>
+              )}
+              
+              {categorias.length === 0 && !loadingCategorias && (
+                <p className="text-xs text-orange-600 mt-2 flex items-center">
+                  <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  Nenhuma categoria encontrada.
+                </p>
+              )}
           </div>
 
-          {/* Coluna direita: Imagem */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Imagem do Produto {!isEditMode && <span className="text-red-500">*</span>}
+            {/* Componente Pai - Container principal */}
+            <div className="flex flex-row gap-2">
+              {/* Filho 1 - Imagem do Produto (lado esquerdo) */}
+              <div className="flex-shrink-0 relative">
+                <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">
+                  Imagem do Produto
             </label>
-            <div className="flex justify-center">
               <div className="relative">
                 <input
                   type="file"
@@ -876,7 +1039,7 @@ const FormProduct = ({ produto = null, onStateChange }) => {
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                   disabled={isLoading}
                 />
-                <div className="w-40 h-40 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center hover:border-blue-400 hover:bg-blue-50 transition-all duration-200 overflow-hidden bg-gray-50">
+                  <div className="w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center hover:border-blue-400 hover:bg-blue-50 transition-all duration-200 overflow-hidden bg-gray-50">
                   {formData.imagem ? (
                     <div className="w-full h-full relative">
                       <img
@@ -894,18 +1057,62 @@ const FormProduct = ({ produto = null, onStateChange }) => {
                       />
                     </div>
                   ) : (
-                    <div className="flex flex-col items-center text-gray-500 p-4 text-center">
-                      <ImageIcon className="w-10 h-10 mb-3 text-gray-400" />
-                      <span className="text-sm font-medium">Clique para selecionar</span>
-                      <span className="text-xs text-gray-400 mt-1">ou arraste uma imagem aqui</span>
+                      <div className="flex flex-col items-center text-gray-500 p-1 sm:p-2 md:p-4 text-center">
+                        <ImageIcon className="w-4 h-4 sm:w-6 sm:h-6 md:w-10 md:h-10 mb-1 sm:mb-2 md:mb-3 text-gray-400" />
+                        <span className="text-[10px] sm:text-xs md:text-sm font-medium">Clique para selecionar</span>
+                        <span className="text-[8px] sm:text-xs text-gray-400 mt-0.5 sm:mt-1">PNG, JPG até 5MB</span>
                     </div>
                   )}
                 </div>
               </div>
             </div>
-            <p className="text-xs text-gray-500 text-center mt-2">
-              {isEditMode && produto?.imagem_url ? 'Deixe em branco para manter a imagem atual' : 'Formatos aceitos: PNG, JPG, JPEG (máx. 5MB)'}
-            </p>
+
+              {/* Filho 2 - Container dos valores (lado direito) */}
+              <div className="flex-1 space-y-1 sm:space-y-2">
+                {/* Valores (valor venda e valor custo em coluna) */}
+                <div className="space-y-1 sm:space-y-2">
+                  {/* Valor Venda */}
+                  <div>
+                    <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">
+                      Valor Venda
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-2 sm:left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium text-xs sm:text-sm">R$</span>
+                      <input
+                        type="text"
+                        value={formData.valorVenda}
+                        onChange={(e) => {
+                          handleInputChange('valorVenda', e.target.value);
+                          clearError('valorVenda');
+                        }}
+                        className={`w-full pl-6 sm:pl-8 md:pl-12 pr-2 sm:pr-4 py-1.5 sm:py-2 md:py-3 text-xs sm:text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+                          getFieldError('valorVenda') ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                        placeholder="0,00"
+                      />
+                    </div>
+                    {getFieldError('valorVenda') && (
+                      <p className="text-xs text-red-500 mt-1">{getFieldError('valorVenda')}</p>
+                    )}
+                  </div>
+                  
+                  {/* Valor Custo */}
+                  <div>
+                    <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">
+                      Valor Custo
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-2 sm:left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium text-xs sm:text-sm">R$</span>
+                      <input
+                        type="text"
+                        value={formData.valorCusto}
+                        onChange={(e) => handleInputChange('valorCusto', e.target.value)}
+                        className="w-full pl-6 sm:pl-8 md:pl-12 pr-2 sm:pr-4 py-1.5 sm:py-2 md:py-3 text-xs sm:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                        placeholder="0,00"
+                      />
+                    </div>
+                  </div>
+                </div>
           </div>
         </div>
 
@@ -1018,70 +1225,71 @@ const FormProduct = ({ produto = null, onStateChange }) => {
           </div>
         )}
 
-        {/* Grid de 2 colunas para os outros campos */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Valor de Venda - Obrigatório */}
+
+            {/* Código PDV */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Valor de Venda <span className="text-red-500">*</span>
+              <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">
+                Código PDV
             </label>
             <input
               type="text"
-              required
-              value={formData.valorVenda}
-              onChange={(e) => handleInputChange('valorVenda', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="R$ 0,00"
+                value={formData.codigoPdv}
+                onChange={(e) => handleInputChange('codigoPdv', e.target.value)}
+                className="w-full px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                placeholder="Código PDV"
             />
           </div>
 
-          {/* Valor de Custo */}
+            {/* Tempo de Preparo - com toggle */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Valor de Custo
-            </label>
+              <div className="flex items-center justify-between">
+                <label className="text-xs sm:text-sm font-semibold text-gray-700">Tempo de Preparo</label>
+                <label className="relative inline-flex items-center cursor-pointer">
             <input
-              type="text"
-              value={formData.valorCusto}
-              onChange={(e) => handleInputChange('valorCusto', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="R$ 0,00"
-            />
+                    type="checkbox"
+                    id="tempoPreparoEnabled"
+                    checked={formData.tempoPreparoEnabled}
+                    onChange={() => handleCheckboxChange('tempoPreparoEnabled')}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 sm:w-11 sm:h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 sm:after:h-5 sm:after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
           </div>
 
-          {/* Código PDV */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Código PDV
-            </label>
+              {/* Input do tempo de preparo - só aparece se habilitado */}
+              {formData.tempoPreparoEnabled && (
+                <div className="mt-2">
             <input
-              type="text"
-              value={formData.codigoPdv}
-              onChange={(e) => handleInputChange('codigoPdv', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Código do produto"
+                    type="number"
+                    min="1"
+                    value={formData.tempoPreparo}
+                    onChange={(e) => handleInputChange('tempoPreparo', e.target.value)}
+                    className="w-full px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    placeholder="Minutos"
             />
           </div>
+              )}
         </div>
 
-        {/* Estoque - Opcional (largura total) */}
-        <div className="space-y-3">
-          <div className="flex items-center">
+            {/* Controle de Estoque */}
+            <div className="flex items-center justify-between">
+              <label className="text-xs sm:text-sm font-semibold text-gray-700">Controle de Estoque</label>
+              <label className="relative inline-flex items-center cursor-pointer">
             <input
               type="checkbox"
               id="estoqueEnabled"
               checked={formData.estoqueEnabled}
               onChange={() => handleCheckboxChange('estoqueEnabled')}
-              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  className="sr-only peer"
             />
-            <label htmlFor="estoqueEnabled" className="ml-2 text-sm font-medium text-gray-700">
-              Habilitar Controle de Estoque
+                <div className="w-9 h-5 sm:w-11 sm:h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 sm:after:h-5 sm:after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
             </label>
           </div>
           
+            {/* Quantidade de Estoque */}
           {formData.estoqueEnabled && (
-            <div className="ml-6">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <div>
+                <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">
                 Quantidade em Estoque
               </label>
               <input
@@ -1089,44 +1297,11 @@ const FormProduct = ({ produto = null, onStateChange }) => {
                 min="0"
                 value={formData.estoque}
                 onChange={(e) => handleInputChange('estoque', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 placeholder="0"
               />
             </div>
           )}
-        </div>
-
-        {/* Tempo de Preparo - Opcional (largura total) */}
-        <div className="space-y-3">
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="tempoPreparoEnabled"
-              checked={formData.tempoPreparoEnabled}
-              onChange={() => handleCheckboxChange('tempoPreparoEnabled')}
-              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-            />
-            <label htmlFor="tempoPreparoEnabled" className="ml-2 text-sm font-medium text-gray-700">
-              Habilitar Tempo de Preparo
-            </label>
-          </div>
-          
-          {formData.tempoPreparoEnabled && (
-            <div className="ml-6">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Tempo de Preparo (em minutos)
-              </label>
-              <input
-                type="number"
-                min="1"
-                value={formData.tempoPreparo}
-                onChange={(e) => handleInputChange('tempoPreparo', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="30"
-              />
-            </div>
-          )}
-        </div>
         
         {/* Mensagem de erro */}
         {error && (
@@ -1141,11 +1316,11 @@ const FormProduct = ({ produto = null, onStateChange }) => {
             </div>
           </div>
         )}
-          </>
+          </div>
         )}
 
         {activeFormTab === 'complementos' && (
-          <div className="space-y-6">
+          <div className="space-y-4">
             {/* Se estiver mostrando a listagem de complementos, esconder tudo */}
             {showComplementoForm ? (
               <div className="space-y-4">
@@ -1175,23 +1350,81 @@ const FormProduct = ({ produto = null, onStateChange }) => {
                   ))}
                 </div>
               </div>
+            ) : showCopyComplementos ? (
+              <div className="space-y-4">
+                {/* Cabeçalho cinza com botão de voltar */}
+                <div className="bg-gray-100 rounded-lg py-2 px-4 flex items-center justify-between">
+                  <h3 className="text-base font-semibold text-gray-800">Produtos</h3>
+                  <button
+                    onClick={() => {
+                      setShowCopyComplementos(false);
+                      setProdutoSelecionadoParaCopiar(null);
+                    }}
+                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Listagem de produtos com checkboxes - sem bordas */}
+                <div className="space-y-2">
+                  {loadingProdutos ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="w-6 h-6 animate-spin text-gray-500" />
+                      <span className="ml-2 text-gray-600">Carregando produtos...</span>
+                    </div>
+                  ) : produtosComComplementos.length > 0 ? (
+                    produtosComComplementos.map((produto) => (
+                      <div key={produto.id} className="flex items-center space-x-4 py-3 hover:bg-gray-50 rounded-lg transition-colors">
+                        <input
+                          type="checkbox"
+                          id={`produto-${produto.id}`}
+                          checked={produtoSelecionadoParaCopiar?.id === produto.id}
+                          onChange={() => handleSelecionarProdutoParaCopiar(produto)}
+                          className="h-5 w-5 appearance-none rounded-full border-2 border-blue-500 checked:bg-blue-600 checked:border-blue-600 cursor-pointer"
+                        />
+                        <label 
+                          htmlFor={`produto-${produto.id}`}
+                          className="flex-1 text-sm font-light text-gray-700 cursor-pointer tracking-wide"
+                        >
+                          {produto.nome}
+                        </label>
+                        <span className="text-xs text-gray-500">
+                          {produto.categorias_count} {produto.categorias_count === 1 ? 'categoria' : 'categorias'}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8">
+                      <Package className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                      <p className="text-gray-600">Nenhum produto com categorias de complementos encontrado</p>
+                    </div>
+                  )}
+                </div>
+
+              </div>
             ) : (
               <>
-                {/* Botões de ação */}
-                <div className={`flex flex-row gap-3 ${produto?.id ? 'border-b border-gray-200 pb-4' : ''}`}>
-                  <AddButton 
-                    text="Adicionar Categoria"
-                    color="blue"
+                {/* Botões de ação - só aparecem quando não estiver em modo de cópia */}
+                <div className="flex space-x-1 sm:space-x-3">
+                  <button 
                     onClick={() => setShowCategoriaForm(true)}
-                    className="h-10 text-xs font-medium flex-1 justify-center py-2 whitespace-nowrap"
-                  />
-                  <CopyButton 
-                    text="Copiar Complementos"
-                    color="blue"
-                    onClick={() => console.log('Copiar complementos')}
-                    className="h-10 text-xs font-medium flex-1 justify-center py-2 whitespace-nowrap"
-                  />
+                    className="bg-blue-600 text-white px-2 sm:px-4 py-2 rounded-md hover:bg-blue-700 transition-colors flex items-center space-x-1 sm:space-x-2 flex-1"
+                  >
+                    <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <span className="text-xs sm:text-sm">Adicionar Categoria</span>
+                  </button>
+                  <button 
+                    onClick={handleCopiarComplementos}
+                    className="bg-gray-600 text-white px-2 sm:px-4 py-2 rounded-md hover:bg-gray-700 transition-colors flex items-center space-x-1 sm:space-x-2 flex-1"
+                  >
+                    <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                    </svg>
+                    <span className="text-xs sm:text-sm">Copiar Complementos</span>
+                  </button>
                 </div>
+
 
                 {/* Formulário de categoria de complementos - aparece acima da listagem */}
                 {showCategoriaForm && (
@@ -1231,12 +1464,9 @@ const FormProduct = ({ produto = null, onStateChange }) => {
 
                 {/* Área de conteúdo vazia - só mostra se não tiver categoria e não estiver editando */}
                 {!showCategoriaForm && !produto?.id && (
-                  <div className="text-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
-                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Plus className="w-8 h-8 text-gray-400" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-gray-700 mb-2">Ainda não foi adicionado nenhum complemento</h3>
-                    <p className="text-gray-500">Use os botões acima para adicionar ou copiar complementos</p>
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                    <p className="text-gray-500">Nenhum complemento adicionado ainda</p>
+                    <p className="text-sm text-gray-400 mt-1">Use os botões acima para adicionar complementos</p>
                   </div>
                 )}
               </>
@@ -1245,10 +1475,10 @@ const FormProduct = ({ produto = null, onStateChange }) => {
         )}
 
         {activeFormTab === 'receita' && (
-          <div className="text-center py-12">
-            <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <div className="text-center py-8 sm:py-12">
+            <Package className="w-12 h-12 sm:w-16 sm:h-16 text-gray-300 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-700 mb-2">Receita</h3>
-            <p className="text-gray-500">Aqui será adicionada a receita do produto</p>
+            <p className="text-gray-500 text-sm sm:text-base">Aqui será adicionada a receita do produto</p>
           </div>
         )}
       </div>
@@ -1261,6 +1491,14 @@ const FormProduct = ({ produto = null, onStateChange }) => {
           onClose={() => setNotification({ show: false, message: '', type: 'success' })}
         />
       )}
+
+      {/* Notificação de Validação */}
+      <ValidationNotification
+        isOpen={showValidationNotification}
+        onClose={() => setShowValidationNotification(false)}
+        errors={errors}
+        title="Campos obrigatórios não preenchidos"
+      />
     </form>
   );
 };

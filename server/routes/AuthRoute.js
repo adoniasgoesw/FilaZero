@@ -8,6 +8,7 @@ import fetch from 'node-fetch';
 import * as atendimentosController from '../controllers/atendimentos.js';
 import * as pedidosController from '../controllers/pedidos.js';
 import registerController from '../controllers/register.js';
+import caixasController from '../controllers/caixas.js';
 
 const router = express.Router();
 
@@ -55,6 +56,9 @@ router.delete('/produtos/:id', loginController.verificarToken, produtosControlle
 // Rota para alterar status do produto (requer autenticação)
 router.put('/produtos/:id/status', loginController.verificarToken, produtosController.alterarStatus);
 
+// Rota para listar produtos com categorias de complementos (para cópia)
+router.get('/produtos-com-categorias-complementos/:estabelecimento_id', loginController.verificarToken, produtosController.listarProdutosComCategoriasComplementos);
+
 // ===== ROTAS DE CONFIGURAÇÃO DE PONTOS DE ATENDIMENTO =====
 // Obter configuração por estabelecimento
 router.get('/pontos-atendimento/config/:estabelecimento_id', loginController.verificarToken, pontosConfigController.getConfig);
@@ -80,11 +84,16 @@ router.get('/atendimentos/:estabelecimento_id/:identificador/status', atendiment
 router.put('/atendimentos/:estabelecimento_id/:identificador/status', atendimentosController.setStatus);
 
 // ===== ROTAS DE PEDIDOS =====
+// Detalhes de um pedido específico (DEVE VIR ANTES das rotas genéricas)
+router.get('/pedidos/detalhes/:pedido_id', loginController.verificarToken, pedidosController.getDetalhesPedido);
 // Tornar rotas de pedidos públicas para permitir uso sem autenticação no PDV
 router.put('/pedidos/:estabelecimento_id/:identificador', pedidosController.upsertPedido);
 router.get('/pedidos/:estabelecimento_id/:identificador', pedidosController.getPedido);
 router.delete('/pedidos/itens/:item_id', pedidosController.deleteItem);
 router.delete('/pedidos/:estabelecimento_id/:identificador', pedidosController.deletePedido);
+router.post('/pedidos/:estabelecimento_id/:identificador/finalizar', pedidosController.finalizarPedido);
+// Histórico de pedidos por estabelecimento (opcionalmente a partir de uma data)
+router.get('/historico-pedidos/:estabelecimento_id', loginController.verificarToken, pedidosController.listarHistorico);
 
 // Complementos dos itens do pedido
 router.post('/pedidos/itens/:item_pedido_id/complementos', pedidosController.addItemComplementos);
@@ -128,6 +137,14 @@ router.get('/itens-complementos/categoria/:categoria_id', produtosController.lis
 
 // Rota para deletar um item complemento específico
 router.delete('/itens-complementos/:id', loginController.verificarToken, produtosController.deletarItemComplemento);
+
+// ===== ROTAS DE CAIXAS (HISTÓRICO) =====
+router.post('/caixas', loginController.verificarToken, caixasController.abrir);
+router.get('/caixas/:estabelecimento_id', loginController.verificarToken, caixasController.listarPorEstabelecimento);
+router.get('/caixas/aberto/:estabelecimento_id', loginController.verificarToken, caixasController.getAberto);
+router.post('/caixas/fechar', loginController.verificarToken, caixasController.fechar);
+router.post('/caixas/entrada', loginController.verificarToken, caixasController.adicionarEntrada);
+router.post('/caixas/saida', loginController.verificarToken, caixasController.adicionarSaida);
 
 // ===== ROTA PARA BUSCAR IMAGENS =====
 // Rota para buscar sugestões de imagens via Google Custom Search

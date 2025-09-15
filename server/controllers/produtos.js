@@ -140,8 +140,11 @@ const produtosController = {
     try {
       const { estabelecimento_id } = req.params;
       const { page = 1, limit = 10 } = req.query;
-      
-      const offset = (page - 1) * limit;
+
+      // Garantir tipos numéricos para paginação
+      const pageNum = Number.parseInt(page, 10) || 1;
+      const pageSize = Number.parseInt(limit, 10) || 10;
+      const offset = (pageNum - 1) * pageSize;
 
       // Query para contar total de produtos
       const countQuery = `
@@ -176,23 +179,28 @@ const produtosController = {
         LIMIT $2 OFFSET $3
       `;
 
-      // Executar queries em paralelo
-      const [countResult, result] = await Promise.all([
-        pool.query(countQuery, [estabelecimento_id]),
-        pool.query(query, [estabelecimento_id, limit, offset])
-      ]);
-
-      const total = parseInt(countResult.rows[0].total);
-      const totalPages = Math.ceil(total / limit);
+      // Usar um único cliente do pool para reduzir falhas por timeout/terminação de conexão
+      const client = await pool.connect();
+      let total = 0;
+      let totalPages = 0;
+      let result;
+      try {
+        const countResult = await client.query(countQuery, [estabelecimento_id]);
+        total = Number.parseInt(countResult.rows[0].total, 10) || 0;
+        totalPages = Math.ceil(total / pageSize);
+        result = await client.query(query, [estabelecimento_id, pageSize, offset]);
+      } finally {
+        client.release();
+      }
 
       res.status(200).json({
         success: true,
         data: {
           produtos: result.rows,
           total,
-          page: parseInt(page),
+          page: pageNum,
           totalPages,
-          hasMore: page < totalPages
+          hasMore: pageNum < totalPages
         }
       });
 
@@ -675,10 +683,13 @@ const produtosController = {
         });
       }
 
-      // Soft delete - marcar como inativo
+      // Deletar categoria e seus itens relacionados
+      // Primeiro deletar os itens de complementos da categoria
+      await pool.query('DELETE FROM itens_complementos WHERE categoria_id = $1', [id]);
+      
+      // Depois deletar a categoria
       const query = `
-        UPDATE categorias_complementos 
-        SET status = false
+        DELETE FROM categorias_complementos 
         WHERE id = $1
         RETURNING id, nome
       `;
@@ -1004,6 +1015,127 @@ const produtosController = {
         success: false,
         message: 'Erro interno do servidor',
         error: error.message
+      });
+    }
+  },
+
+  // Listar produtos que têm complementos por estabelecimento
+  async listarProdutosComComplementos(req, res) {
+    try {
+      const { estabelecimento_id } = req.params;
+      const { page = 1, limit = 10 } = req.query;
+      
+      const offset = (page - 1) * limit;
+
+      // Query para contar total de produtos com complementos
+      const countQuery = `
+        SELECT COUNT(DISTINCT p.id) as total
+        FROM produtos p
+        INNER JOIN categorias_complementos cc ON p.id = cc.produto_id
+        WHERE p.estabelecimento_id = $1 
+          AND p.status = true 
+          AND cc.status = true
+      `;
+
+      // Query para buscar produtos com complementos
+      const query = `
+        SELECT DISTINCT
+          p.id,
+          p.nome,
+          p.descricao,
+          p.valor_venda,
+          p.valor_custo,
+          p.imagem_url,
+          p.habilita_estoque,
+          p.estoque_qtd,
+          p.habilita_tempo_preparo,
+          p.tempo_preparo_min,
+          p.status,
+          p.criado_em,
+          p.categoria_id,
+          c.nome as categoria_nome,
+          c.imagem_url as categoria_imagem_url,
+          c.status as categoria_status,
+          COUNT(cc.id) as total_categorias_complementos
+        FROM produtos p
+        LEFT JOIN categorias c ON p.categoria_id = c.id
+        INNER JOIN categorias_complementos cc ON p.id = cc.produto_id
+        WHERE p.estabelecimento_id = $1 
+          AND p.status = true 
+          AND cc.status = true
+        GROUP BY p.id, p.nome, p.descricao, p.valor_venda, p.valor_custo, 
+                 p.imagem_url, p.habilita_estoque, p.estoque_qtd, 
+                 p.habilita_tempo_preparo, p.tempo_preparo_min, p.status, 
+                 p.criado_em, p.categoria_id, c.nome, c.imagem_url, c.status
+        ORDER BY p.nome ASC
+        LIMIT $2 OFFSET $3
+      `;
+
+      // Executar queries em paralelo
+      const [countResult, result] = await Promise.all([
+        pool.query(countQuery, [estabelecimento_id]),
+        pool.query(query, [estabelecimento_id, limit, offset])
+      ]);
+
+      const total = parseInt(countResult.rows[0].total);
+      const totalPages = Math.ceil(total / limit);
+
+      res.status(200).json({
+        success: true,
+        data: {
+          produtos: result.rows,
+          total,
+          page: parseInt(page),
+          totalPages,
+          hasMore: page < totalPages
+        }
+      });
+
+    } catch (error) {
+      console.error('Erro ao listar produtos com complementos:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Erro interno do servidor',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  },
+
+  // Listar produtos com categorias de complementos (para cópia)
+  async listarProdutosComCategoriasComplementos(req, res) {
+    try {
+      const { estabelecimento_id } = req.params;
+
+      // Query para buscar produtos que possuem categorias de complementos
+      const query = `
+        SELECT DISTINCT
+          p.id,
+          p.nome,
+          p.valor_venda,
+          p.imagem_url,
+          COUNT(cc.id) as categorias_count
+        FROM produtos p
+        INNER JOIN categorias_complementos cc ON p.id = cc.produto_id
+        WHERE p.estabelecimento_id = $1 
+          AND p.status = true 
+          AND cc.status = true
+        GROUP BY p.id, p.nome, p.valor_venda, p.imagem_url
+        ORDER BY p.nome ASC
+      `;
+
+      const result = await pool.query(query, [estabelecimento_id]);
+
+      res.status(200).json({
+        success: true,
+        data: result.rows
+      });
+
+    } catch (error) {
+      console.error('Erro ao listar produtos com categorias de complementos:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Erro interno do servidor',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
   }

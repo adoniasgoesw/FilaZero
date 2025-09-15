@@ -55,6 +55,19 @@ function PontoAtendimento() {
           if (!Number.isNaN(parsedStorage)) estId = parsedStorage;
         }
         if (estId === null) return;
+        // Verificar se há caixa aberto; se não, redirecionar para Home com aviso
+        try {
+          const res = await api.get(`/caixas/aberto/${estId}`);
+          const aberto = res && res.success ? res.data : null;
+          if (!aberto) {
+            window.location.assign('/home?caixa_fechado=1');
+            return;
+          }
+        } catch {
+          // Se falhar, por segurança não permite prosseguir
+          window.location.assign('/home?caixa_fechado=1');
+          return;
+        }
 
         const identificador = String(id || '').toLowerCase();
         if (!identificador) return;
@@ -81,6 +94,28 @@ function PontoAtendimento() {
 
   const handleSave = async () => {
     try {
+      // Bloquear salvar se caixa fechado
+      let estIdCheck = null;
+      const parsedA = parseInt(id, 10);
+      if (!Number.isNaN(parsedA)) estIdCheck = parsedA;
+      if (estIdCheck === null) {
+        const fromStorageA = localStorage.getItem('estabelecimentoId');
+        const parsedStorageA = parseInt(fromStorageA, 10);
+        if (!Number.isNaN(parsedStorageA)) estIdCheck = parsedStorageA;
+      }
+      if (estIdCheck) {
+        try {
+          const res = await api.get(`/caixas/aberto/${estIdCheck}`);
+          const aberto = res && res.success ? res.data : null;
+          if (!aberto) {
+            window.location.assign('/home?caixa_fechado=1');
+            return;
+          }
+        } catch {
+          window.location.assign('/home?caixa_fechado=1');
+          return;
+        }
+      }
       // Resolve establishment id and identificador
       let estId = null;
       const parsed = parseInt(id, 10);

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Image as ImageIcon, Package } from 'lucide-react';
+import { Image as ImageIcon, Package, MoreHorizontal, Check, X, ToggleLeft, ToggleRight } from 'lucide-react';
 import api from '../../services/api';
 import { readCache, writeCache } from '../../services/cache';
 import EditButton from '../buttons/Edit';
@@ -7,7 +7,14 @@ import DeleteButton from '../buttons/Delete';
 import StatusButton from '../buttons/Status';
 import ConfirmDelete from '../elements/ConfirmDelete';
 
-const ListProduct = ({ estabelecimentoId, onProductDelete, onProductEdit, activeTab, setActiveTab, showHeader = true, searchQuery = '' }) => {
+const ListProduct = ({ 
+  estabelecimentoId, 
+  onProductDelete, 
+  onProductEdit, 
+  searchQuery = '',
+  selectedProducts: externalSelectedProducts = [],
+  onSelectionChange
+}) => {
   const [produtos, setProdutos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -18,6 +25,14 @@ const ListProduct = ({ estabelecimentoId, onProductDelete, onProductEdit, active
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  
+  // Estados para seleção múltipla
+  const [selectAll, setSelectAll] = useState(false);
+  
+  // Estados para dropdown de ações
+  const [showActionsDropdown, setShowActionsDropdown] = useState(false);
+  const [bulkDeleteModal, setBulkDeleteModal] = useState({ isOpen: false, produtos: [] });
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   const itemsPerPage = 10;
 
@@ -101,6 +116,11 @@ const ListProduct = ({ estabelecimentoId, onProductDelete, onProductEdit, active
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [estabelecimentoId]);
 
+  // Controlar seleção baseada nos produtos selecionados externos
+  useEffect(() => {
+    setSelectAll(externalSelectedProducts.length === displayedProdutos.length && displayedProdutos.length > 0);
+  }, [externalSelectedProducts.length, displayedProdutos.length]);
+
   // Função para carregar mais produtos
   const loadMore = useCallback(() => {
     if (hasMore && !loadingMore && !loading) {
@@ -138,6 +158,69 @@ const ListProduct = ({ estabelecimentoId, onProductDelete, onProductEdit, active
     }
   };
 
+  // Função para selecionar/deselecionar produto individual
+  const handleProductSelect = (produto) => {
+    if (onSelectionChange) {
+      const isSelected = externalSelectedProducts.some(p => p.id === produto.id);
+      if (isSelected) {
+        onSelectionChange(externalSelectedProducts.filter(p => p.id !== produto.id));
+      } else {
+        onSelectionChange([...externalSelectedProducts, produto]);
+      }
+    }
+  };
+
+  // Função para selecionar/deselecionar todos os produtos
+  const handleSelectAll = () => {
+    if (onSelectionChange) {
+      if (selectAll) {
+        onSelectionChange([]);
+      } else {
+        onSelectionChange([...displayedProdutos]);
+      }
+    }
+  };
+
+  // Função para clicar no produto (abrir modal de edição)
+  const handleProductClick = (produto) => {
+    onProductEdit(produto);
+  };
+
+  // Ações em lote agora são controladas no cabeçalho da página
+
+  // Função para deletar múltiplos produtos
+  const handleBulkDelete = async () => {
+    try {
+      setBulkDeleting(true);
+      
+      const promises = externalSelectedProducts.map(produto => 
+        api.delete(`/produtos/${produto.id}`)
+      );
+      
+      await Promise.all(promises);
+      
+      // Remover produtos da lista
+      const selectedIds = externalSelectedProducts.map(p => p.id);
+      setProdutos(prev => prev.filter(p => !selectedIds.includes(p.id)));
+      
+      // Fechar modal e limpar seleção
+      setBulkDeleteModal({ isOpen: false, produtos: [] });
+      onSelectionChange([]);
+      setShowActionsDropdown(false);
+      
+      console.log(`✅ ${externalSelectedProducts.length} produtos deletados`);
+    } catch (error) {
+      console.error('❌ Erro ao deletar produtos em lote:', error);
+      setError('Erro ao deletar produtos');
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
+  // Função para obter opções do dropdown baseadas nos produtos selecionados
+  // Dropdown removido do corpo da lista; opções de ação agora são controladas no cabeçalho
+
+
   // Função para deletar produto
   const handleDelete = async (produto) => {
     try {
@@ -170,13 +253,11 @@ const ListProduct = ({ estabelecimentoId, onProductDelete, onProductEdit, active
 
   // Função para formatar moeda
   const formatCurrency = (value) => {
-    if (!value) return '$ 0,00';
-    const formatted = new Intl.NumberFormat('pt-BR', {
+    if (!value) return 'R$ 0,00';
+    return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL'
     }).format(value);
-    // Substitui o prefixo "R$" (com espaço normal ou NBSP) por "$"
-    return formatted.replace(/^R\$[\s\u00A0]?/, '$ ');
   };
 
   // Função para obter URL da imagem
@@ -217,6 +298,18 @@ const ListProduct = ({ estabelecimentoId, onProductDelete, onProductEdit, active
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, [loadMore]);
+
+  // Efeito para fechar dropdown quando clicar fora
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showActionsDropdown && !event.target.closest('.relative')) {
+        setShowActionsDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showActionsDropdown]);
 
   if (loading && produtos.length === 0) {
     return (
@@ -264,59 +357,57 @@ const ListProduct = ({ estabelecimentoId, onProductDelete, onProductEdit, active
   }
 
   return (
-    <div className="mt-16 md:mt-6">
-      {/* Header para mobile - ocultável quando a página já fornece um header sticky */}
-      {showHeader && (
-        <div className="block lg:hidden mb-4">
-          <div className="">
-            <div className="flex">
-              <button
-                onClick={() => setActiveTab('produtos')}
-                className={`flex-1 px-4 py-3 text-sm font-medium transition-all duration-200 rounded-tl-lg ${
-                  activeTab === 'produtos'
-                    ? 'bg-gray-400 text-white shadow-sm'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                Produtos
-              </button>
-              <button
-                onClick={() => setActiveTab('complementos')}
-                className={`flex-1 px-4 py-3 text-sm font-medium transition-all duration-200 rounded-tr-lg ${
-                  activeTab === 'complementos'
-                    ? 'bg-gray-400 text-white shadow-sm'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                Complementos
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+    <div>
+      {/* Removida barra de ações duplicada dentro da lista (movida para o cabeçalho da página) */}
 
-      <div className="bg-white rounded-xl overflow-hidden">
-        {/* Layout responsivo: Cards para mobile/tablet, Tabela para desktop */}
-        
-        {/* Cards para mobile e tablet */}
-        <div className="block lg:hidden">
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
+      {/* Tabela responsiva */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full">
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="px-1 py-4 text-left">
+                  <div className="flex items-center h-6">
+                    <input 
+                      type="checkbox" 
+                      checked={selectAll}
+                      onChange={handleSelectAll}
+                      className="w-4 h-4 text-blue-600 bg-white border-2 border-blue-500 rounded-full focus:ring-blue-500 focus:ring-2 checked:bg-blue-500 checked:border-blue-500" 
+                    />
+                  </div>
+                </th>
+                <th className="px-1 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Produto</th>
+                <th className="px-3 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden sm:table-cell">Categoria</th>
+                <th className="px-3 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Preço</th>
+                <th className="px-3 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden md:table-cell">Status</th>
+                <th className="px-3 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden lg:table-cell">Ações</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
           {displayedProdutos.map((produto) => (
-            <div
+                <tr 
               key={produto.id}
-              className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow duration-200 h-20"
-            >
-              {/* Layout: Imagem (20%) + Conteúdo (80%) */}
-              <div className="flex h-full">
-                {/* Imagem - 20% da largura, com padding e bordas arredondadas */}
-                <div className="w-1/5 h-full flex items-center justify-center p-2">
-                  <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 shadow-sm">
+                  className="transition-colors cursor-pointer"
+                  onClick={() => handleProductClick(produto)}
+                >
+                    <td className="px-1 py-6" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center h-6">
+                        <input 
+                          type="checkbox" 
+                          checked={externalSelectedProducts.some(p => p.id === produto.id)}
+                          onChange={() => handleProductSelect(produto)}
+                          className="w-4 h-4 text-blue-600 bg-white border-2 border-blue-500 rounded-full focus:ring-blue-500 focus:ring-2 checked:bg-blue-500 checked:border-blue-500" 
+                        />
+                      </div>
+                    </td>
+                  <td className="px-1 py-6">
+                    <div className="flex items-center">
+                      <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-xl flex items-center justify-center mr-2 shadow-sm flex-shrink-0">
                     {getImageUrl(produto.imagem_url) ? (
                       <img
                         src={getImageUrl(produto.imagem_url)}
                         alt={produto.nome}
-                        className="w-full h-full object-cover"
+                            className="w-full h-full object-cover rounded-xl"
                         onError={(e) => {
                           e.target.style.display = 'none';
                           e.target.nextSibling.style.display = 'flex';
@@ -324,179 +415,72 @@ const ListProduct = ({ estabelecimentoId, onProductDelete, onProductEdit, active
                       />
                     ) : null}
                     <div 
-                      className="w-full h-full flex items-center justify-center text-gray-400"
+                          className="w-full h-full flex items-center justify-center text-white"
                       style={{ display: getImageUrl(produto.imagem_url) ? 'none' : 'flex' }}
                     >
-                      <ImageIcon size={16} />
+                          <Package className="w-5 h-5" />
                     </div>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-semibold text-gray-900 truncate">{produto.nome}</div>
+                        <div className="text-xs text-gray-500 truncate">
+                          {produto.descricao || 'Produto do cardápio'}
                   </div>
                 </div>
-                
-                {/* Conteúdo - 80% da largura */}
-                <div className="flex-1 p-3 relative">
-                  {/* Nome e Preço alinhados */}
-                  <div className="mb-2">
-                    <h3 className="text-sm font-medium text-gray-900 truncate">
-                      {produto.nome}
-                    </h3>
-                    <div className="text-sm font-medium text-gray-900">
-                      {formatCurrency(produto.valor_venda)}
                     </div>
-                  </div>
-                  
-                  {/* Status no canto superior direito */}
-                  <div className="absolute top-2 right-2">
+                  </td>
+                  <td className="px-3 py-6 hidden sm:table-cell">
+                    <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                      {produto.categoria_nome || 'Sem categoria'}
+                    </span>
+                  </td>
+                  <td className="px-3 py-6 whitespace-nowrap">
+                    <span className="text-sm font-bold text-gray-400">{formatCurrency(produto.valor_venda)}</span>
+                  </td>
+                  <td className="px-3 py-6 hidden md:table-cell">
                     <span
-                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                      className={`px-2 py-1 text-xs font-medium rounded-full ${
                         produto.status
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-red-100 text-red-800'
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-orange-100 text-orange-700'
                       }`}
                     >
-                      {produto.status ? 'Ativo' : 'Inativo'}
+                      {produto.status ? 'Habilitado' : 'Desabilitado'}
                     </span>
-                  </div>
-                  
-                  {/* Botões no canto inferior direito */}
-                  <div className="absolute bottom-2 right-2 flex items-center gap-1">
-                    <StatusButton
-                      isActive={produto.status}
-                      onClick={() => toggleStatus(produto)}
-                      size="sm"
-                    />
-                    <EditButton onClick={() => onProductEdit(produto)} size="sm" />
-                    <DeleteButton onClick={() => setDeleteModal({ isOpen: true, produto })} size="sm" />
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Tabela para desktop com cabeçalho fixo */}
-      <div className="hidden lg:block">
-        <div className="overflow-x-auto">
-          {/* Cabeçalho fixo da tabela */}
-          <div className="sticky top-0 z-10 bg-gray-50 border-b border-gray-200">
-            <table className="w-full">
-              <thead>
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/3">
-                    Produto
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
-                    Categoria
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
-                    Preço
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
-                    Ações
-                  </th>
-                </tr>
-              </thead>
-            </table>
-          </div>
-          
-          {/* Corpo da tabela com scroll */}
-          <div className="max-h-96 overflow-y-auto">
-            <table className="w-full">
-              <tbody className="bg-white divide-y divide-gray-200">
-                {displayedProdutos.map((produto) => (
-                  <tr key={produto.id} className="hover:bg-gray-50 transition-colors duration-150">
-                    {/* Coluna Produto (Imagem + Nome) */}
-                    <td className="px-4 py-4 w-1/3">
-                      <div className="flex items-center space-x-3">
-                        {/* Imagem do produto */}
-                        <div className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-gray-100">
-                          {getImageUrl(produto.imagem_url) ? (
-                            <img
-                              src={getImageUrl(produto.imagem_url)}
-                              alt={produto.nome}
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                e.target.style.display = 'none';
-                                e.target.nextSibling.style.display = 'flex';
-                              }}
-                            />
-                          ) : null}
-                          <div 
-                            className="w-full h-full flex items-center justify-center text-gray-400"
-                            style={{ display: getImageUrl(produto.imagem_url) ? 'none' : 'flex' }}
-                          >
-                            <ImageIcon size={16} />
-                          </div>
-                        </div>
-                        
-                        {/* Nome do produto */}
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-gray-900 truncate">
-                            {produto.nome}
-                          </p>
-                          {produto.descricao && (
-                            <p className="text-xs text-gray-500 truncate">
-                              {produto.descricao}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* Coluna Categoria */}
-                    <td className="px-4 py-4 w-1/6">
-                      <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">
-                        {produto.categoria_nome || 'Sem categoria'}
-                      </span>
-                    </td>
-
-                    {/* Coluna Preço */}
-                    <td className="px-4 py-4 w-1/6">
-                      <div className="text-sm text-gray-900">
-                        <div className="font-medium">
-                          {formatCurrency(produto.valor_venda)}
-                        </div>
-                        {produto.valor_custo && (
-                          <div className="text-xs text-gray-500">
-                            Custo: {formatCurrency(produto.valor_custo)}
-                          </div>
-                        )}
-                      </div>
-                    </td>
-
-                    {/* Coluna Status */}
-                    <td className="px-4 py-4 w-1/6">
-                      <span
-                        className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${
-                          produto.status
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-red-100 text-red-800'
-                        }`}
+                  </td>
+                  <td className="px-3 py-6 hidden lg:table-cell" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-center gap-1">
+                      <button
+                        onClick={() => toggleStatus(produto)}
+                        className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors ${produto.status ? 'bg-green-50 hover:bg-green-100' : 'bg-orange-50 hover:bg-orange-100'}`}
+                        title={produto.status ? 'Desabilitar' : 'Habilitar'}
                       >
-                        {produto.status ? 'Ativo' : 'Inativo'}
-                      </span>
-                    </td>
-
-                    {/* Coluna Ações */}
-                    <td className="px-4 py-4 w-1/6">
-                      <div className="flex items-center justify-center gap-1">
-                        <StatusButton
-                          isActive={produto.status}
-                          onClick={() => toggleStatus(produto)}
-                          size="sm"
-                        />
-                        <EditButton onClick={() => onProductEdit(produto)} size="sm" />
-                        <DeleteButton onClick={() => setDeleteModal({ isOpen: true, produto })} size="sm" />
+                        {produto.status ? (
+                          <ToggleRight className="w-5 h-5 text-green-600" />
+                        ) : (
+                          <ToggleLeft className="w-5 h-5 text-orange-500" />
+                        )}
+                      </button>
+                      <EditButton 
+                        onClick={() => onProductEdit(produto)} 
+                        size="sm"
+                        variant="soft"
+                        className="w-7 h-7 rounded-full flex items-center justify-center transition-colors"
+                        title="Editar"
+                      />
+                      <DeleteButton 
+                        onClick={() => setDeleteModal({ isOpen: true, produto })} 
+                        size="sm"
+                        variant="soft"
+                        className="w-7 h-7 rounded-full flex items-center justify-center transition-colors"
+                        title="Deletar"
+                      />
                       </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
         </div>
       </div>
 
@@ -517,7 +501,16 @@ const ListProduct = ({ estabelecimentoId, onProductDelete, onProductEdit, active
           message={`Tem certeza que deseja excluir o produto "${deleteModal.produto?.nome}"? Esta ação não pode ser desfeita.`}
           isLoading={deleting}
         />
-      </div>
+
+        {/* Modal de confirmação de exclusão em lote */}
+        <ConfirmDelete
+          isOpen={bulkDeleteModal.isOpen}
+          onClose={() => setBulkDeleteModal({ isOpen: false, produtos: [] })}
+          onConfirm={handleBulkDelete}
+          title="Excluir Produtos"
+          message={`Tem certeza que deseja excluir ${bulkDeleteModal.produtos.length} produto${bulkDeleteModal.produtos.length > 1 ? 's' : ''}? Esta ação não pode ser desfeita.`}
+          isLoading={bulkDeleting}
+        />
     </div>
   );
 };
