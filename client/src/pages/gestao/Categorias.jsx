@@ -3,10 +3,14 @@ import { Tag } from 'lucide-react'; // Icon for page and modal title
 import SearchBar from '../../components/layout/SeachBar';
 import BackButton from '../../components/buttons/Back';
 import AddButton from '../../components/buttons/Add';
+import ReorderButton from '../../components/buttons/Reorder';
+import SaveButton from '../../components/buttons/Save';
 import BaseModal from '../../components/modals/Base';
 import FormCategory from '../../components/forms/FormCategory';
 import ListCategory from '../../components/list/ListCategory';
 import Notification from '../../components/elements/Notification';
+import { useCategorias } from '../../contexts/CacheContext';
+import api from '../../services/api';
 
 function Categorias() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -17,9 +21,12 @@ function Categorias() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [categoriaToEdit, setCategoriaToEdit] = useState(null);
   const [estabelecimentoId, setEstabelecimentoId] = useState(null);
-  const [refreshList, setRefreshList] = useState(0);
   const [notification, setNotification] = useState({ isOpen: false, type: 'success', title: '', message: '' });
   const [search, setSearch] = useState('');
+  const [isReordering, setIsReordering] = useState(false);
+
+  // Usar hook de cache para categorias
+  const { addCategoria, updateCategoria, removeCategoria } = useCategorias(estabelecimentoId);
 
   useEffect(() => {
     // Buscar o ID do estabelecimento do localStorage
@@ -48,12 +55,40 @@ function Categorias() {
     setNotification(prev => ({ ...prev, isOpen: false }));
   };
 
+  const handleToggleReorder = () => {
+    setIsReordering(true);
+  };
+
+  const handleSaveOrder = async () => {
+    try {
+      console.log('💾 Salvando ordem das categorias...');
+      
+      // Usar a função de salvamento do ListCategory
+      if (window.saveCategoriesOrder) {
+        await window.saveCategoriesOrder();
+        
+        // Desativar modo de reordenação
+        setIsReordering(false);
+        
+        // Mostrar notificação de sucesso
+        showNotification('success', 'Sucesso!', 'Ordem das categorias atualizada!');
+      } else {
+        console.log('⚠️ Função de salvamento não disponível');
+        setIsReordering(false);
+      }
+    } catch (error) {
+      console.error('❌ Erro ao salvar ordem:', error);
+      showNotification('error', 'Erro!', 'Não foi possível salvar a ordem das categorias.');
+    }
+  };
+
   const handleCategorySave = (data) => {
-    console.log('Categoria salva:', data);
+    console.log('🎉 Categoria salva:', data);
+    // Adicionar categoria ao cache
+    addCategoria(data);
+    console.log('✅ Categoria adicionada ao cache');
     // Fechar modal primeiro
     setIsAddModalOpen(false);
-    // Forçar atualização da lista
-    setRefreshList(prev => prev + 1);
     // Mostrar notificação de sucesso
     showNotification('success', 'Sucesso!', 'Categoria cadastrada com sucesso!');
   };
@@ -64,6 +99,8 @@ function Categorias() {
   };
 
   const handleCategoryDelete = (categoria) => {
+    // Remover categoria do cache
+    removeCategoria(categoria.id);
     // Mostrar notificação de sucesso após deletar
     showNotification('success', 'Excluído!', `Categoria "${categoria.nome}" foi excluída com sucesso!`);
   };
@@ -75,12 +112,15 @@ function Categorias() {
   };
 
   const handleCategoryEditSave = (data) => {
-    console.log('Categoria editada:', data);
+    console.log('🎉 Categoria editada:', data);
+    console.log('🔍 ID da categoria:', data.id);
+    console.log('🔍 Dados da categoria:', data);
+    // Atualizar categoria no cache
+    updateCategoria(data.id, data);
+    console.log('✅ Categoria atualizada no cache');
     // Fechar modal primeiro
     setIsEditModalOpen(false);
     setCategoriaToEdit(null);
-    // Forçar atualização da lista
-    setRefreshList(prev => prev + 1);
     // Mostrar notificação de sucesso
     showNotification('success', 'Atualizado!', 'Categoria atualizada com sucesso!');
   };
@@ -114,21 +154,35 @@ function Categorias() {
 
       {/* Título - fixo apenas em mobile */}
       <div className="fixed md:relative top-16 md:top-auto left-0 right-0 md:left-auto md:right-auto z-40 md:z-auto bg-white px-4 md:px-6 py-4">
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <Tag className="w-6 h-6 text-orange-500" />
-          Categorias
-        </h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <Tag className="w-6 h-6 text-orange-500" />
+            Categorias
+          </h1>
+          {isReordering ? (
+            <SaveButton 
+              onClick={handleSaveOrder}
+              className="ml-4"
+              iconOnly={true}
+            />
+          ) : (
+            <ReorderButton 
+              onClick={handleToggleReorder}
+              className="ml-4"
+            />
+          )}
+        </div>
       </div>
 
       {/* Área de conteúdo com rolagem */}
       <div ref={contentRef} className="flex-1 overflow-y-auto px-4 md:px-6 py-6 mt-32 md:mt-0">
         {estabelecimentoId ? (
           <ListCategory 
-            key={refreshList} 
             estabelecimentoId={estabelecimentoId}
             onCategoryDelete={handleCategoryDelete}
             onCategoryEdit={handleCategoryEdit}
             searchQuery={search}
+            isReordering={isReordering}
           />
         ) : (
           <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">

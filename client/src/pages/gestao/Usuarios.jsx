@@ -1,13 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User } from 'lucide-react'; // Icon for page and modal title
 import SearchBar from '../../components/layout/SeachBar';
 import BackButton from '../../components/buttons/Back';
 import AddButton from '../../components/buttons/Add';
 import BaseModal from '../../components/modals/Base';
 import FormUser from '../../components/forms/FormUser';
+import DevelopmentDialog from '../../components/elements/DevelopmentDialog';
 
 function Usuarios() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [showDevelopmentDialog, setShowDevelopmentDialog] = useState(false);
+
+  // Mostrar o diálogo de desenvolvimento automaticamente
+  useEffect(() => {
+    setShowDevelopmentDialog(true);
+  }, []);
 
   const handleUserSave = (data) => {
     console.log('Usuário salvo:', data);
@@ -69,6 +76,14 @@ function Usuarios() {
           onSave={handleUserSave}
         />
       </BaseModal>
+
+      {/* Diálogo de desenvolvimento */}
+      <DevelopmentDialog
+        isOpen={showDevelopmentDialog}
+        onClose={() => setShowDevelopmentDialog(false)}
+        title="Área de Usuários em Desenvolvimento"
+        message="A funcionalidade de gerenciamento de usuários está sendo desenvolvida e incluirá cadastro de funcionários, controle de permissões, gestão de acessos e muito mais."
+      />
     </div>
   );
 }

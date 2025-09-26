@@ -7,13 +7,16 @@ const ConfirmDialog = ({
   onClose,
   onPrimary,
   onSecondary,
+  onTertiary,
   title = 'Atenção',
   message = '',
   primaryLabel = 'Confirmar',
   secondaryLabel = 'Cancelar',
+  tertiaryLabel = 'Tertiary',
   isLoading = false,
   variant = 'info', // info | warning | error | success
   rightAlign = false,
+  customIcon = null,
 }) => {
   if (!isOpen) return null;
 
@@ -52,6 +55,17 @@ const ConfirmDialog = ({
           headerBorderClass: 'border-b border-gray-200',
           footerBorderClass: 'border-t border-gray-200'
         };
+      case 'dark':
+        return {
+          headerIconBg: 'bg-gray-100',
+          headerIconColor: 'text-gray-600',
+          primaryBtn: 'bg-gray-900 hover:bg-gray-800 text-white',
+          secondaryBtn: 'border border-gray-300 text-gray-700 hover:bg-gray-50',
+          wrapperBg: 'bg-white',
+          wrapperBorder: 'border border-gray-200',
+          headerBorderClass: 'border-b border-gray-200',
+          footerBorderClass: 'border-t border-gray-200'
+        };
       default:
         return {
           headerIconBg: 'bg-blue-100',
@@ -75,7 +89,13 @@ const ConfirmDialog = ({
         <div className={`flex items-center justify-between p-6 ${styles.headerBorderClass}`}>
           <div className="flex items-center gap-3">
             <div className={`w-10 h-10 ${styles.headerIconBg} rounded-full flex items-center justify-center`}>
-              <Info className={`w-5 h-5 ${styles.headerIconColor}`} />
+              {customIcon ? (
+                <div className="animate-bounce">
+                  {customIcon}
+                </div>
+              ) : (
+                <Info className={`w-5 h-5 ${styles.headerIconColor}`} />
+              )}
             </div>
             <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
           </div>
@@ -97,17 +117,19 @@ const ConfirmDialog = ({
 
         {/* Footer */}
         <div className={`flex gap-3 p-6 ${styles.footerBorderClass} ${rightAlign ? 'justify-end' : ''}`}>
-          <button
-            onClick={onSecondary}
-            disabled={isLoading}
-            className={`${rightAlign ? '' : 'flex-1'} px-4 py-2 ${styles.secondaryBtn} rounded-lg transition-colors disabled:opacity-50`}
-          >
-            {secondaryLabel}
-          </button>
+          {secondaryLabel && (
+            <button
+              onClick={onSecondary}
+              disabled={isLoading}
+              className={`${rightAlign ? '' : 'flex-1'} px-4 py-2 ${styles.secondaryBtn} rounded-lg transition-colors disabled:opacity-50`}
+            >
+              {secondaryLabel}
+            </button>
+          )}
           <button
             onClick={onPrimary}
             disabled={isLoading}
-            className={`${rightAlign ? '' : 'flex-1'} px-4 py-2 ${styles.primaryBtn} rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2`}
+            className={`${rightAlign ? '' : 'flex-1'} px-4 py-2 ${onTertiary ? 'bg-green-600 hover:bg-green-700' : styles.primaryBtn} text-white rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2`}
           >
             {isLoading ? (
               <>

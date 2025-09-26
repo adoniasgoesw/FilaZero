@@ -1,6 +1,6 @@
 import React from 'react';
-import Dashboard from '../elements/Dashboard';
 import AccessButton from '../buttons/Access';
+import paineisImage from '../../assets/paineis.png';
 
 const HeroSect = ({ onPrimaryClick }) => {
   return (
@@ -39,7 +39,38 @@ const HeroSect = ({ onPrimaryClick }) => {
           </div>
 
           <div className="lg:w-1/2 flex justify-center">
-            <Dashboard />
+            <div className="relative perspective-1000">
+              {/* Moldura do computador/tablet */}
+              <div className="relative transform rotate-y-12 rotate-x-6 hover:rotate-y-6 hover:rotate-x-3 transition-transform duration-700 ease-out">
+                {/* Tela do computador */}
+                <div className="bg-gray-800 rounded-2xl p-4 shadow-2xl">
+                  {/* Barra superior do computador */}
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex space-x-2">
+                      <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                      <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                      <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                    </div>
+                    <div className="text-white text-sm font-medium">FilaZero - Ponto de Atendimento</div>
+                    <div className="text-white text-sm">{new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</div>
+                  </div>
+
+                  {/* Conteúdo da tela - Imagem do painel */}
+                  <div className="bg-white rounded-lg overflow-hidden h-[420px]">
+                    <img 
+                      src={paineisImage} 
+                      alt="Painel de Atendimento FilaZero" 
+                      className="w-full h-full object-cover"
+                      style={{ objectPosition: '70% top' }}
+                    />
+                  </div>
+                </div>
+
+                {/* Elementos decorativos */}
+                <div className="absolute -top-4 -right-4 w-8 h-8 bg-blue-500/20 rounded-full animate-float" />
+                <div className="absolute -bottom-2 -left-2 w-6 h-6 bg-green-500/20 rounded-full animate-float-delayed" />
+              </div>
+            </div>
           </div>
         </div>
       </div>

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import Sidebar from '../components/layout/Sidebar';
 import PanelDetalhes from '../components/panels/PanelDetalhes';
+import PanelPagamentos from '../components/panels/PanelPagamentos';
 import PanelItens from '../components/panels/PanelItens';
 import api from '../services/api';
 
@@ -13,6 +14,9 @@ function PontoAtendimento() {
     return window.innerWidth <= 899;
   });
   const [mobileDetailsOpen, setMobileDetailsOpen] = useState(false);
+  const [showPaymentPanel, setShowPaymentPanel] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [currentPedido, setCurrentPedido] = useState(null);
   // Itens persistidos (carregados do banco)
   const [orderItems, setOrderItems] = useState([]);
   // Seleções pendentes nesta sessão (contadores)
@@ -41,9 +45,37 @@ function PontoAtendimento() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Garantir atendimento criado na primeira abertura
+  // Carregar usuário atual do localStorage
   useEffect(() => {
-    async function ensureAtendimento() {
+    try {
+      const usuarioRaw = localStorage.getItem('usuario');
+      if (usuarioRaw) {
+        const usuario = JSON.parse(usuarioRaw);
+        setCurrentUser(usuario);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar usuário do localStorage:', error);
+    }
+  }, []);
+
+  // Escutar evento de pagamento atualizado para limpar itens pendentes
+  useEffect(() => {
+    const handlePaymentUpdated = () => {
+      console.log('🧹 Pagamento atualizado - limpando itens pendentes');
+      setPendingCounts({});
+      setPendingPricesById({});
+      setPendingNamesById({});
+      setPendingCombosByProductId({});
+    };
+
+    window.addEventListener('paymentUpdated', handlePaymentUpdated);
+    return () => window.removeEventListener('paymentUpdated', handlePaymentUpdated);
+  }, []);
+
+  // Garantir atendimento e pedido criados na primeira abertura
+  useEffect(() => {
+    let isMounted = true;
+    async function ensureAtendimentoAndPedido() {
       try {
         // Resolver estabelecimentoId numericamente (similar a PanelItens)
         let estId = null;
@@ -55,6 +87,7 @@ function PontoAtendimento() {
           if (!Number.isNaN(parsedStorage)) estId = parsedStorage;
         }
         if (estId === null) return;
+        
         // Verificar se há caixa aberto; se não, redirecionar para Home com aviso
         try {
           const res = await api.get(`/caixas/aberto/${estId}`);
@@ -71,15 +104,38 @@ function PontoAtendimento() {
 
         const identificador = String(id || '').toLowerCase();
         if (!identificador) return;
-        const key = `att:ensure:${estId}:${identificador}`;
-        if (sessionStorage.getItem(key)) return;
-        sessionStorage.setItem(key, 'inflight');
-        await api.post(`/atendimentos/ensure/${estId}/${encodeURIComponent(identificador)}`, { nome_ponto: '' });
-        await api.put(`/atendimentos/${estId}/${encodeURIComponent(identificador)}/status`, { status: 'aberto' });
-        sessionStorage.setItem(key, 'done');
+        
+        console.log(`🚀 Acessando ponto de atendimento: ${identificador} (Estabelecimento: ${estId})`);
+        
+        // Criar atendimento e pedido vazio automaticamente
+        console.log('📝 Criando atendimento...');
+        const atendimentoResponse = await api.post(`/atendimentos/ensure/${estId}/${encodeURIComponent(identificador)}`, { nome_ponto: '' });
+        console.log('Atendimento response:', atendimentoResponse);
+        
+        console.log('📝 Criando/obtendo pedido...');
+        const pedidoResponse = await api.post(`/pedidos/${estId}/${encodeURIComponent(identificador)}/criar`, { nome_ponto: '' });
+        console.log('Pedido response:', pedidoResponse);
+        
+        if (pedidoResponse.success) {
+          console.log('✅ Pedido processado com sucesso:', pedidoResponse.data);
+          if (pedidoResponse.data.created) {
+            console.log('🆕 Novo pedido criado');
+          } else {
+            console.log('📋 Usando pedido existente');
+          }
+        } else {
+          console.error('❌ Erro ao processar pedido:', pedidoResponse);
+        }
+        
+        // Carregar itens do pedido existente após criar
+        if (isMounted) {
+          await loadExistingOrderItems(estId, identificador);
+        }
+        
+        console.log('✅ Atendimento e pedido processados automaticamente');
       } catch (e) {
         // Silenciar falhas de ensure para não travar a UI
-        console.warn('Falha ao garantir atendimento', e);
+        console.warn('Falha ao garantir atendimento e pedido', e);
         // Liberar para tentar novamente em caso de erro
         try {
           const estId = parseInt(id, 10);
@@ -89,8 +145,46 @@ function PontoAtendimento() {
         } catch {}
       }
     }
-    ensureAtendimento();
+    ensureAtendimentoAndPedido();
+    return () => { 
+      isMounted = false;
+    };
   }, [id]);
+
+  // Função para carregar itens do pedido existente
+  const loadExistingOrderItems = async (estId, identificador) => {
+    try {
+      // Usar a nova rota que busca diretamente do banco
+      const res = await api.get(`/pedidos/${estId}/${encodeURIComponent(identificador)}/itens`);
+      if (res.success && res.data) {
+        const itens = Array.isArray(res.data.itens) ? res.data.itens : [];
+        const itensMapped = itens.map((item) => ({
+          id: item.produto_id,
+          qty: Number(item.quantidade) || 0,
+          name: item.produto_nome || `Produto ${item.produto_id}`,
+          unitPrice: Number(item.valor_unitario) || 0,
+          complements: Array.isArray(item.complementos)
+            ? item.complementos.map((c) => ({
+                id: Number(c.complemento_id),
+                name: String(c.nome_complemento || ''),
+                unitPrice: Number(c.valor_unitario) || 0,
+                qty: Number(c.quantidade) || 0
+              }))
+            : []
+        }));
+        setOrderItems(itensMapped);
+        
+        // Carregar dados do pedido se disponível
+        if (res.data.pedido) {
+          setCurrentPedido(res.data.pedido);
+        }
+        
+        console.log('✅ Itens do pedido carregados diretamente do banco:', itensMapped);
+      }
+    } catch (e) {
+      console.warn('Erro ao carregar itens do pedido existente:', e);
+    }
+  };
 
   const handleSave = async () => {
     try {
@@ -128,9 +222,10 @@ function PontoAtendimento() {
       if (estId === null) return;
       const identificador = String(id || '').toLowerCase();
 
-      // Constrói payload preservando separação por complementos
-      // 1) Começa dos itens já salvos (cada entrada pode ter complementos específicos)
+      // Constrói payload com TODOS os itens (existentes + pendentes)
       const itensPayload = [];
+      
+      // 1) Adiciona itens já salvos (existentes no pedido)
       for (const it of orderItems) {
         const base = {
           produto_id: Number(it.id),
@@ -148,7 +243,7 @@ function PontoAtendimento() {
         itensPayload.push(base);
       }
 
-      // 2) Adiciona pendentes, mantendo complementos selecionados para aquele produto
+      // 2) Adiciona itens pendentes (selecionados nesta sessão)
       for (const [pidStr, addQtyRaw] of Object.entries(pendingCounts)) {
         const pid = Number(pidStr);
         const addQty = Math.max(1, Number(addQtyRaw) || 0);
@@ -163,7 +258,6 @@ function PontoAtendimento() {
           });
         } else {
           // Quando há complementos, divide em unidades por complemento selecionado
-          // Ex.: 2x Pizza Big com borda X e 1x Pizza Big com borda Y => duas entradas
           for (const combo of combos) {
             itensPayload.push({
               produto_id: pid,
@@ -192,7 +286,7 @@ function PontoAtendimento() {
         }
       }
 
-      // 3) Normaliza e filtra
+      // Normaliza e filtra
       const finalItens = itensPayload
         .map((i) => ({
           ...i,
@@ -209,25 +303,55 @@ function PontoAtendimento() {
         }))
         .filter((i) => !Number.isNaN(i.produto_id) && i.quantidade > 0);
 
+      // Atualiza o pedido com todos os itens (existentes + novos)
       const payload = {
         nome_ponto: orderName || '',
         valor_total: finalItens.reduce((s, i) => s + i.quantidade * i.valor_unitario, 0),
         itens: finalItens,
       };
       await api.put(`/pedidos/${estId}/${encodeURIComponent(identificador)}`, payload);
-      try {
-        await api.put(`/atendimentos/${estId}/${encodeURIComponent(identificador)}/status`, { status: 'ocupada' });
-      } catch {}
+      await api.put(`/atendimentos/${estId}/${encodeURIComponent(identificador)}/status`, { status: 'ocupada' });
+      console.log('✅ Pedido atualizado com todos os itens');
+      
+      // Disparar eventos para atualizar lista de pontos de atendimento
+      console.log('🔄 Disparando eventos de atualização...');
+      window.dispatchEvent(new CustomEvent('atendimentoChanged'));
+      window.dispatchEvent(new CustomEvent('pedidoUpdated'));
+      window.dispatchEvent(new CustomEvent('refreshPontosAtendimento'));
+      
       // Zerar contadores (seleções pendentes) após salvar
       setPendingCounts({});
       setPendingPricesById({});
       setPendingNamesById({});
+      setPendingCombosByProductId({});
+      
       // Voltar para Home ao salvar
       window.location.assign('/home');
     } catch (e) {
       console.warn('Falha ao salvar pedido', e);
     }
   };
+
+  const handleShowPaymentPanel = () => {
+    setShowPaymentPanel(true);
+  };
+
+  const handleBackFromPayment = () => {
+    setShowPaymentPanel(false);
+  };
+
+  const handleFinalizeOrder = () => {
+    // Limpar tudo e voltar ao painel de itens
+    setOrderItems([]);
+    setOrderName('');
+    setPendingCounts({});
+    setPendingPricesById({});
+    setPendingNamesById({});
+    setPendingCombosByProductId({});
+    setShowPaymentPanel(false);
+    setMobileDetailsOpen(false);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Sidebar hideMobileFooter />
@@ -257,67 +381,108 @@ function PontoAtendimento() {
         selectedCounts={selectedCounts}
         totalSelectedCount={totalItemsCount}
         mobileHidden={isSmallScreen && mobileDetailsOpen}
-      />
-      <PanelDetalhes 
+        disabled={showPaymentPanel}
+        isBalcao={String(id || '').toLowerCase().startsWith('balcao-')}
         identificacao={id}
-        onBack={() => {
-          if (isSmallScreen) setMobileDetailsOpen(false);
-          else window.history.back();
-        }}
-        onSave={handleSave}
-        mobileVisible={isSmallScreen && mobileDetailsOpen}
-        orderName={orderName}
-        onOrderNameChange={setOrderName}
-        items={orderItems}
-        pendingItems={(() => {
-          const list = [];
-          for (const [pidStr, combos] of Object.entries(pendingCombosByProductId)) {
-            const pid = Number(pidStr);
-            const name = pendingNamesById[pid] || `Produto ${pid}`;
-            const unitPrice = pendingPricesById[pid] || 0;
-            const arr = Array.isArray(combos) ? combos : [];
-            for (const combo of arr) {
-              list.push({
-                id: pid,
-                qty: 1,
-                name,
-                unitPrice,
-                complements: Array.isArray(combo) ? combo : []
-              });
-            }
-          }
-          return list;
-        })()}
-        displayItems={orderItems}
-        onPendingDecrementOrDelete={(produtoId, signature) => {
-          // Remove um combo que corresponda a esta assinatura
-          const buildSignature = (complements) => {
-            const list = Array.isArray(complements) ? complements : [];
-            const normalized = list
-              .map((c) => ({ id: Number(c.id), qty: Math.max(1, Number(c.qty) || 1) }))
-              .filter((c) => c.id)
-              .sort((a, b) => a.id - b.id)
-              .map((c) => `${c.id}x${c.qty}`);
-            return normalized.length ? normalized.join(',') : 'none';
-          };
-          setPendingCombosByProductId((prev) => {
-            const next = { ...prev };
-            const arr = Array.isArray(next[produtoId]) ? [...next[produtoId]] : [];
-            const idx = arr.findIndex((combo) => buildSignature(combo) === signature);
-            if (idx !== -1) arr.splice(idx, 1);
-            if (arr.length === 0) delete next[produtoId]; else next[produtoId] = arr;
-            return next;
-          });
-          setPendingCounts((prev) => {
-            const next = { ...prev };
-            const current = Number(next[produtoId] || 0);
-            if (current <= 1) delete next[produtoId]; else next[produtoId] = current - 1;
-            return next;
-          });
-        }}
-        onItemsChange={setOrderItems}
-        isSmallScreen={isSmallScreen}
+        nomePonto={orderName}
+        vendedor={currentUser?.nome || 'Sistema'}
+        usuarioId={currentUser?.id}
+        pedido={currentPedido}
+        pendingCombosByProductId={pendingCombosByProductId}
       />
+      {!showPaymentPanel ? (
+        <PanelDetalhes 
+          identificacao={id}
+          onBack={() => {
+            if (isSmallScreen) setMobileDetailsOpen(false);
+            else window.history.back();
+          }}
+          onSave={handleSave}
+          mobileVisible={isSmallScreen && mobileDetailsOpen}
+          orderName={orderName}
+          onOrderNameChange={setOrderName}
+          items={orderItems}
+          pendingItems={(() => {
+            const list = [];
+            for (const [pidStr, combos] of Object.entries(pendingCombosByProductId)) {
+              const pid = Number(pidStr);
+              const name = pendingNamesById[pid] || `Produto ${pid}`;
+              const unitPrice = pendingPricesById[pid] || 0;
+              const arr = Array.isArray(combos) ? combos : [];
+              for (const combo of arr) {
+                list.push({
+                  id: pid,
+                  qty: 1,
+                  name,
+                  unitPrice,
+                  complements: Array.isArray(combo) ? combo : []
+                });
+              }
+            }
+            return list;
+          })()}
+          displayItems={orderItems}
+          onPendingDecrementOrDelete={(produtoId, signature) => {
+            // Remove um combo que corresponda a esta assinatura
+            const buildSignature = (complements) => {
+              const list = Array.isArray(complements) ? complements : [];
+              const normalized = list
+                .map((c) => ({ id: Number(c.id), qty: Math.max(1, Number(c.qty) || 1) }))
+                .filter((c) => c.id)
+                .sort((a, b) => a.id - b.id)
+                .map((c) => `${c.id}x${c.qty}`);
+              return normalized.length ? normalized.join(',') : 'none';
+            };
+            setPendingCombosByProductId((prev) => {
+              const next = { ...prev };
+              const arr = Array.isArray(next[produtoId]) ? [...next[produtoId]] : [];
+              const idx = arr.findIndex((combo) => buildSignature(combo) === signature);
+              if (idx !== -1) arr.splice(idx, 1);
+              if (arr.length === 0) delete next[produtoId]; else next[produtoId] = arr;
+              return next;
+            });
+            setPendingCounts((prev) => {
+              const next = { ...prev };
+              const current = Number(next[produtoId] || 0);
+              if (current <= 1) delete next[produtoId]; else next[produtoId] = current - 1;
+              return next;
+            });
+          }}
+          onItemsChange={setOrderItems}
+          isSmallScreen={isSmallScreen}
+          onShowPaymentPanel={handleShowPaymentPanel}
+        />
+      ) : (
+        <PanelPagamentos
+          identificacao={id}
+          onBack={handleBackFromPayment}
+          mobileVisible={isSmallScreen && mobileDetailsOpen}
+          orderName={orderName}
+          items={orderItems}
+          displayItems={orderItems}
+          pendingItems={(() => {
+            const list = [];
+            for (const [pidStr, combos] of Object.entries(pendingCombosByProductId)) {
+              const pid = Number(pidStr);
+              const name = pendingNamesById[pid] || `Produto ${pid}`;
+              const unitPrice = pendingPricesById[pid] || 0;
+              const arr = Array.isArray(combos) ? combos : [];
+              for (const combo of arr) {
+                list.push({
+                  id: pid,
+                  qty: 1,
+                  name,
+                  unitPrice,
+                  complements: Array.isArray(combo) ? combo : []
+                });
+              }
+            }
+            return list;
+          })()}
+          isSmallScreen={isSmallScreen}
+          onFinalizeOrder={handleFinalizeOrder}
+        />
+      )}
     </div>
   );
 }

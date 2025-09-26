@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Package } from 'lucide-react';
 import api from '../../services/api';
-import { readCache, writeCache } from '../../services/cache';
 import EditButton from '../buttons/Edit';
 import DeleteButton from '../buttons/Delete';
-import StatusButton from '../buttons/Status';
 import ConfirmDelete from '../elements/ConfirmDelete';
+import { ToggleLeft, ToggleRight } from 'lucide-react';
 
 const ListComplementos = ({ 
   estabelecimentoId, 
@@ -26,14 +25,7 @@ const ListComplementos = ({
 
   const fetchComplementos = useCallback(async () => {
     try {
-      const cacheKey = `complementos:${estabelecimentoId}:all`;
-      const cached = readCache(cacheKey);
-      if (cached && Array.isArray(cached)) {
-        setComplementos(cached);
-        setLoading(false);
-      } else {
-        setLoading(true);
-      }
+      setLoading(true);
       setError(null);
       
       console.log('🔍 Buscando complementos para estabelecimento:', estabelecimentoId);
@@ -44,7 +36,6 @@ const ListComplementos = ({
       
       if (response.success) {
         setComplementos(response.data);
-        writeCache(cacheKey, response.data);
         console.log('✅ Complementos carregados:', response.data.length);
       } else {
         throw new Error(response.message || 'Erro ao carregar complementos');
@@ -61,6 +52,22 @@ const ListComplementos = ({
     if (estabelecimentoId) {
       fetchComplementos();
     }
+  }, [estabelecimentoId, fetchComplementos]);
+
+  // Escutar eventos de atualização em tempo real
+  useEffect(() => {
+    const handleComplementoUpdate = () => {
+      console.log('🔄 ListComplementos - Evento de atualização recebido, recarregando complementos...');
+      if (estabelecimentoId) {
+        fetchComplementos();
+      }
+    };
+
+    window.addEventListener('complementoUpdated', handleComplementoUpdate);
+    
+    return () => {
+      window.removeEventListener('complementoUpdated', handleComplementoUpdate);
+    };
   }, [estabelecimentoId, fetchComplementos]);
 
   // Função para recarregar a lista
@@ -229,7 +236,7 @@ const ListComplementos = ({
             <thead className="bg-gray-100">
               <tr>
                 <th className="px-1 py-4 text-left">
-                  <div className="flex items-center h-6">
+                  <div className="flex items-center h-6 ml-2">
                     <input 
                       type="checkbox" 
                       checked={selectAll}
@@ -241,7 +248,7 @@ const ListComplementos = ({
                 <th className="px-1 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Complemento</th>
                 <th className="px-3 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Preço</th>
                 <th className="px-3 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden md:table-cell">Status</th>
-                <th className="px-3 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden lg:table-cell">Ações</th>
+                <th className="px-3 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider hidden lg:table-cell">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -252,7 +259,7 @@ const ListComplementos = ({
                   onClick={() => handleComplementoClick(complemento)}
                 >
                   <td className="px-1 py-6" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center h-6">
+                    <div className="flex items-center h-6 ml-2">
                       <input 
                         type="checkbox" 
                         checked={selectedComplementos.some(c => c.id === complemento.id)}
@@ -282,23 +289,29 @@ const ListComplementos = ({
                     </span>
                   </td>
                   <td className="px-3 py-6 hidden lg:table-cell" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center gap-1">
-                      <StatusButton
-                        isActive={complemento.status}
+                    <div className="flex items-center justify-center gap-1">
+                      <button
                         onClick={() => toggleStatus(complemento)}
-                        size="sm"
-                        className="w-7 h-7 rounded-full flex items-center justify-center transition-colors"
-                        title={complemento.status ? 'Desativar' : 'Ativar'}
-                      />
+                        className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors ${complemento.status ? 'bg-green-50 hover:bg-green-100' : 'bg-orange-50 hover:bg-orange-100'}`}
+                        title={complemento.status ? 'Desabilitar' : 'Habilitar'}
+                      >
+                        {complemento.status ? (
+                          <ToggleRight className="w-5 h-5 text-green-600" />
+                        ) : (
+                          <ToggleLeft className="w-5 h-5 text-orange-500" />
+                        )}
+                      </button>
                       <EditButton 
                         onClick={() => onComplementoEdit(complemento)} 
                         size="sm"
+                        variant="soft"
                         className="w-7 h-7 rounded-full flex items-center justify-center transition-colors"
                         title="Editar"
                       />
                       <DeleteButton 
                         onClick={() => setDeleteModal({ isOpen: true, complemento })} 
                         size="sm"
+                        variant="soft"
                         className="w-7 h-7 rounded-full flex items-center justify-center transition-colors"
                         title="Deletar"
                       />

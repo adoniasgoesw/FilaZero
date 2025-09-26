@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Image as ImageIcon, Package, MoreHorizontal, Check, X, ToggleLeft, ToggleRight } from 'lucide-react';
 import api from '../../services/api';
-import { readCache, writeCache } from '../../services/cache';
 import EditButton from '../buttons/Edit';
 import DeleteButton from '../buttons/Delete';
 import StatusButton from '../buttons/Status';
 import ConfirmDelete from '../elements/ConfirmDelete';
+import { useProdutos } from '../../contexts/CacheContext';
 
 const ListProduct = ({ 
   estabelecimentoId, 
@@ -15,9 +15,9 @@ const ListProduct = ({
   selectedProducts: externalSelectedProducts = [],
   onSelectionChange
 }) => {
-  const [produtos, setProdutos] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  // Usar hook de cache para produtos
+  const { produtos, loading, error, loadProdutos, addProduto, updateProduto, removeProduto } = useProdutos(estabelecimentoId);
+  
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, produto: null });
   const [deleting, setDeleting] = useState(false);
   
@@ -50,71 +50,68 @@ const ListProduct = ({
 
   const fetchProdutos = useCallback(async (page = 1, append = false) => {
     try {
+      console.log('🚀 fetchProdutos chamado:', { page, append, estabelecimentoId });
+      
       if (page === 1) {
-        // Fast-first paint from cache
-        const cached = readCache(`produtos:${estabelecimentoId}:p${itemsPerPage}`);
-        if (cached && Array.isArray(cached.produtos)) {
-          setProdutos(cached.produtos);
-          setHasMore(cached.hasMore ?? true);
-          setCurrentPage(cached.currentPage ?? 1);
-          setLoading(false);
-        } else {
-          setLoading(true);
-        }
+        // Para primeira página, usar cache
+        console.log('📦 Carregando produtos do cache...');
+        const cachedProdutos = await loadProdutos();
+        console.log('✅ Produtos carregados do cache:', cachedProdutos?.length || 0, 'produtos');
+        console.log('📋 Dados dos produtos:', cachedProdutos);
       } else {
         setLoadingMore(true);
-      }
-      setError(null);
-      
-      console.log('🔍 Buscando produtos para estabelecimento:', estabelecimentoId, 'Página:', page);
-      console.log('🔍 URL da API:', `${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/produtos/${estabelecimentoId}?page=${page}&limit=${itemsPerPage}`);
-      
-      const response = await api.get(`/produtos/${estabelecimentoId}?page=${page}&limit=${itemsPerPage}`);
-      
-      console.log('✅ Resposta da API:', response);
-      
-      if (response.success) {
-        const newProdutos = response.data.produtos || response.data;
-        const total = response.data.total || newProdutos.length;
-
         
-        if (append) {
-          setProdutos(prev => [...prev, ...newProdutos]);
+        console.log('🔍 Buscando mais produtos para estabelecimento:', estabelecimentoId, 'Página:', page);
+        const response = await api.get(`/produtos/${estabelecimentoId}?page=${page}&limit=${itemsPerPage}`);
+        
+        if (response.success) {
+          const newProdutos = response.data.produtos || response.data;
+          const total = response.data.total || newProdutos.length;
+          
+          // Adicionar novos produtos ao cache
+          newProdutos.forEach(produto => addProduto(produto));
+          
+          setCurrentPage(page);
+          setHasMore(page < Math.ceil(total / itemsPerPage));
+          
+          console.log('✅ Mais produtos carregados:', newProdutos.length, 'Total:', total);
         } else {
-          setProdutos(newProdutos);
+          throw new Error(response.message || 'Erro ao carregar produtos');
         }
-        
-
-        setCurrentPage(page);
-        setHasMore(page < Math.ceil(total / itemsPerPage));
-        
-        // Persist to cache for instant subsequent loads
-        if (page === 1) {
-          writeCache(`produtos:${estabelecimentoId}:p${itemsPerPage}`, {
-            produtos: newProdutos,
-            total,
-            currentPage: page,
-            hasMore: page < Math.ceil(total / itemsPerPage)
-          });
-        }
-        console.log('✅ Produtos carregados:', newProdutos.length, 'Total:', total, 'Páginas:', Math.ceil(total / itemsPerPage));
-      } else {
-        throw new Error(response.message || 'Erro ao carregar produtos');
       }
     } catch (error) {
       console.error('❌ Erro ao buscar produtos:', error);
-      setError(error.message || 'Erro ao carregar produtos');
     } finally {
-      setLoading(false);
       setLoadingMore(false);
     }
-  }, [estabelecimentoId, itemsPerPage]);
+  }, [estabelecimentoId, itemsPerPage, loadProdutos, addProduto]);
 
   useEffect(() => {
-    if (!estabelecimentoId) return;
+    console.log('🔄 useEffect ListProduct executado:', { estabelecimentoId, type: typeof estabelecimentoId });
+    if (!estabelecimentoId) {
+      console.log('❌ estabelecimentoId não disponível, não carregando produtos');
+      return;
+    }
+    console.log('✅ estabelecimentoId disponível, carregando produtos...');
     fetchProdutos(1, false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [estabelecimentoId]);
+
+  // Escutar eventos de atualização em tempo real
+  useEffect(() => {
+    const handleProdutoUpdate = () => {
+      console.log('🔄 ListProduct - Evento de atualização recebido, recarregando produtos...');
+      if (estabelecimentoId) {
+        loadProdutos(true); // Forçar recarregamento
+      }
+    };
+
+    window.addEventListener('produtoUpdated', handleProdutoUpdate);
+    
+    return () => {
+      window.removeEventListener('produtoUpdated', handleProdutoUpdate);
+    };
+  }, [estabelecimentoId, loadProdutos]);
 
   // Controlar seleção baseada nos produtos selecionados externos
   useEffect(() => {
@@ -141,12 +138,8 @@ const ListProduct = ({
       const response = await api.put(`/produtos/${produto.id}/status`);
       
       if (response.success) {
-        // Atualizar o produto na lista
-        setProdutos(prev => prev.map(p => 
-          p.id === produto.id 
-            ? { ...p, status: !p.status }
-            : p
-        ));
+        // Atualizar o produto no cache
+        updateProduto(produto.id, { status: !produto.status });
         
         console.log('✅ Status do produto alterado:', produto.nome, 'Novo status:', !produto.status);
       } else {
@@ -154,7 +147,6 @@ const ListProduct = ({
       }
     } catch (error) {
       console.error('❌ Erro ao alterar status:', error);
-      setError(error.message || 'Erro ao alterar status do produto');
     }
   };
 
@@ -199,9 +191,10 @@ const ListProduct = ({
       
       await Promise.all(promises);
       
-      // Remover produtos da lista
-      const selectedIds = externalSelectedProducts.map(p => p.id);
-      setProdutos(prev => prev.filter(p => !selectedIds.includes(p.id)));
+      // Remover produtos do cache
+      externalSelectedProducts.forEach(produto => {
+        removeProduto(produto.id);
+      });
       
       // Fechar modal e limpar seleção
       setBulkDeleteModal({ isOpen: false, produtos: [] });
@@ -211,7 +204,6 @@ const ListProduct = ({
       console.log(`✅ ${externalSelectedProducts.length} produtos deletados`);
     } catch (error) {
       console.error('❌ Erro ao deletar produtos em lote:', error);
-      setError('Erro ao deletar produtos');
     } finally {
       setBulkDeleting(false);
     }
@@ -228,8 +220,8 @@ const ListProduct = ({
       const response = await api.delete(`/produtos/${produto.id}`);
       
       if (response.success) {
-        // Remover produto da lista
-        setProdutos(prev => prev.filter(p => p.id !== produto.id));
+        // Remover produto do cache
+        removeProduto(produto.id);
         
         // Fechar modal
         setDeleteModal({ isOpen: false, produto: null });
@@ -245,7 +237,6 @@ const ListProduct = ({
       }
     } catch (error) {
       console.error('❌ Erro ao deletar produto:', error);
-      setError(error.message || 'Erro ao deletar produto');
     } finally {
       setDeleting(false);
     }
@@ -311,29 +302,40 @@ const ListProduct = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showActionsDropdown]);
 
-  if (loading && produtos.length === 0) {
+  // Debug: verificar estado dos produtos
+  console.log('🔍 ListProduct Debug:', {
+    estabelecimentoId,
+    produtos: produtos?.length || 0,
+    loading,
+    error,
+    displayedProdutos: displayedProdutos?.length || 0
+  });
+
+  // Mostrar loading se estiver carregando
+  if (loading) {
     return (
       <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8 min-h-[50vh] flex items-center justify-center">
-        <div className="flex items-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500"></div>
-          <span className="ml-3 text-gray-600">Carregando produtos...</span>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Carregando produtos...</p>
         </div>
       </div>
     );
   }
 
+  // Mostrar erro se houver
   if (error) {
     return (
       <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8 min-h-[50vh] flex items-center justify-center">
         <div className="text-center">
-          <div className="text-red-500 mb-4">
-            <Package className="w-12 h-12 mx-auto" />
+          <div className="text-red-400 mb-4">
+            <X className="w-12 h-12 mx-auto" />
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Erro ao carregar produtos</h3>
-          <p className="text-gray-600 mb-4">{error}</p>
-          <button
+          <p className="text-red-600 mb-2">Erro ao carregar produtos</p>
+          <p className="text-gray-500 text-sm">{error}</p>
+          <button 
             onClick={refreshList}
-            className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
             Tentar novamente
           </button>
@@ -342,15 +344,16 @@ const ListProduct = ({
     );
   }
 
-  if (produtos.length === 0) {
+  // Mostrar mensagem se não houver produtos
+  if (!produtos || produtos.length === 0) {
     return (
       <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8 min-h-[50vh] flex items-center justify-center">
         <div className="text-center">
           <div className="text-gray-400 mb-4">
             <Package className="w-12 h-12 mx-auto" />
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Nenhum produto encontrado</h3>
-          <p className="text-gray-600">Comece adicionando seu primeiro produto.</p>
+          <p className="text-gray-600">Nenhum produto encontrado</p>
+          <p className="text-gray-500 text-sm">Adicione um novo produto para começar</p>
         </div>
       </div>
     );
@@ -367,7 +370,7 @@ const ListProduct = ({
             <thead className="bg-gray-100">
               <tr>
                 <th className="px-1 py-4 text-left">
-                  <div className="flex items-center h-6">
+                  <div className="flex items-center h-6 ml-2">
                     <input 
                       type="checkbox" 
                       checked={selectAll}
@@ -380,7 +383,7 @@ const ListProduct = ({
                 <th className="px-3 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden sm:table-cell">Categoria</th>
                 <th className="px-3 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Preço</th>
                 <th className="px-3 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden md:table-cell">Status</th>
-                <th className="px-3 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden lg:table-cell">Ações</th>
+                <th className="px-3 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider hidden lg:table-cell">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -391,7 +394,7 @@ const ListProduct = ({
                   onClick={() => handleProductClick(produto)}
                 >
                     <td className="px-1 py-6" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center h-6">
+                      <div className="flex items-center h-6 ml-2">
                         <input 
                           type="checkbox" 
                           checked={externalSelectedProducts.some(p => p.id === produto.id)}
@@ -445,7 +448,7 @@ const ListProduct = ({
                           : 'bg-orange-100 text-orange-700'
                       }`}
                     >
-                      {produto.status ? 'Habilitado' : 'Desabilitado'}
+                      {produto.status ? 'Ativo' : 'Inativo'}
                     </span>
                   </td>
                   <td className="px-3 py-6 hidden lg:table-cell" onClick={(e) => e.stopPropagation()}>
@@ -453,7 +456,7 @@ const ListProduct = ({
                       <button
                         onClick={() => toggleStatus(produto)}
                         className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors ${produto.status ? 'bg-green-50 hover:bg-green-100' : 'bg-orange-50 hover:bg-orange-100'}`}
-                        title={produto.status ? 'Desabilitar' : 'Habilitar'}
+                        title={produto.status ? 'Desativar' : 'Ativar'}
                       >
                         {produto.status ? (
                           <ToggleRight className="w-5 h-5 text-green-600" />
@@ -475,8 +478,8 @@ const ListProduct = ({
                         className="w-7 h-7 rounded-full flex items-center justify-center transition-colors"
                         title="Deletar"
                       />
-                      </div>
-                    </td>
+                    </div>
+                  </td>
                   </tr>
                 ))}
               </tbody>

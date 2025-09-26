@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Calculator, Plus } from 'lucide-react';
+import { Calculator, DollarSign } from 'lucide-react';
 import api from '../../services/api';
-import AddButton from '../buttons/Add';
+import FormContainer from './FormContainer';
+import FormField from './FormField';
+import FormInput from './FormInput';
+import FormGrid from './FormGrid';
 
 const FormCaixa = ({ onSave }) => {
   const [formData, setFormData] = useState({
@@ -23,29 +26,115 @@ const FormCaixa = ({ onSave }) => {
   });
   const [showContagem, setShowContagem] = useState(false);
 
+  // Função para formatar moeda brasileira
+  const formatCurrency = (value) => {
+    if (!value) return '';
+    const num = Number(value) || 0;
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(num);
+  };
+
+  // Função para converter valor formatado para número
+  const parseCurrency = (value) => {
+    if (!value) return '';
+    // Remove R$, espaços, pontos (separadores de milhares) e substitui vírgula por ponto
+    const cleanValue = value.replace(/[R$\s]/g, '').replace(/\./g, '').replace(',', '.');
+    return cleanValue;
+  };
+
+  // Função para formatar valor durante a digitação (mais permissiva)
+  const formatCurrencyInput = (value) => {
+    if (!value) return '';
+    // Remove caracteres não numéricos exceto vírgula e ponto
+    const cleanValue = value.replace(/[^\d,.]/g, '');
+    
+    // Se tem vírgula, trata como decimal brasileiro
+    if (cleanValue.includes(',')) {
+      const parts = cleanValue.split(',');
+      if (parts.length === 2) {
+        // Formato: 123,45
+        const integer = parts[0].replace(/\./g, '');
+        const decimal = parts[1].substring(0, 2); // Máximo 2 casas decimais
+        return `R$ ${integer},${decimal}`;
+      }
+    }
+    
+    // Se tem ponto, trata como decimal americano
+    if (cleanValue.includes('.') && !cleanValue.includes(',')) {
+      const parts = cleanValue.split('.');
+      if (parts.length === 2) {
+        const integer = parts[0];
+        const decimal = parts[1].substring(0, 2);
+        return `R$ ${integer},${decimal}`;
+      }
+    }
+    
+    // Apenas números inteiros
+    const integer = cleanValue.replace(/[^\d]/g, '');
+    if (integer) {
+      return `R$ ${integer}`;
+    }
+    
+    return value;
+  };
+
   // Calcular valor de abertura automaticamente quando cédulas/moedas mudam
   useEffect(() => {
     if (showContagem) {
       let total = 0;
       
+      console.log('🧮 Calculando valor de abertura...');
+      console.log('📊 Cédulas atuais:', formData.cedulas);
+      
       // Soma das cédulas e moedas
       Object.entries(formData.cedulas).forEach(([valor, quantidade]) => {
         const qty = quantidade === '' ? 0 : (parseInt(quantidade) || 0);
-        total += parseFloat(valor) * qty;
+        const valorNumerico = parseFloat(valor);
+        const subtotal = valorNumerico * qty;
+        
+        console.log(`💰 R$ ${valor} x ${qty} = R$ ${subtotal.toFixed(2)}`);
+        total += subtotal;
       });
+      
+      console.log('💵 Total calculado:', total);
+      console.log('💵 Total formatado:', formatCurrency(total));
       
       setFormData(prev => ({
         ...prev,
-        valorAbertura: total.toFixed(2)
+        valorAbertura: formatCurrency(total)
       }));
     }
   }, [formData.cedulas, showContagem]);
 
   const handleInputChange = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    if (field === 'valorAbertura') {
+      // Formatar valor durante a digitação de forma mais permissiva
+      const formattedValue = formatCurrencyInput(value);
+      setFormData(prev => ({
+        ...prev,
+        [field]: formattedValue
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [field]: value
+      }));
+    }
+  };
+
+  const handleInputBlur = (field, value) => {
+    if (field === 'valorAbertura') {
+      // Formatar valor quando o usuário sair do campo
+      const numericValue = parseCurrency(value);
+      if (numericValue !== '' && !isNaN(numericValue) && parseFloat(numericValue) > 0) {
+        setFormData(prev => ({
+          ...prev,
+          [field]: formatCurrency(numericValue)
+        }));
+      }
+    }
   };
 
   const handleCedulaChange = (valor, quantidade) => {
@@ -62,10 +151,25 @@ const FormCaixa = ({ onSave }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.valorAbertura || parseFloat(formData.valorAbertura) <= 0) {
+    
+    console.log('💾 Submetendo caixa...');
+    console.log('📝 Valor de abertura (formato):', formData.valorAbertura);
+    
+    // Converter valor formatado para número
+    const valorNumerico = parseCurrency(formData.valorAbertura);
+    
+    console.log('🔢 Valor numérico convertido:', valorNumerico);
+    console.log('🔢 Valor como float:', parseFloat(valorNumerico));
+    console.log('🔍 Teste de conversão:');
+    console.log('  - R$ 1.000,00 ->', parseCurrency('R$ 1.000,00'));
+    console.log('  - R$ 2.500,00 ->', parseCurrency('R$ 2.500,00'));
+    console.log('  - R$ 12.750,00 ->', parseCurrency('R$ 12.750,00'));
+    
+    if (!valorNumerico || parseFloat(valorNumerico) <= 0) {
       alert('Valor de abertura é obrigatório e deve ser maior que zero!');
       return;
     }
+    
     try {
       const estabelecimentoId = Number(localStorage.getItem('estabelecimentoId')) || null;
       if (!estabelecimentoId) {
@@ -78,10 +182,14 @@ const FormCaixa = ({ onSave }) => {
         return;
       }
       
+      const valorFinal = parseFloat(valorNumerico);
+      console.log('🚀 Enviando para API - valor_abertura:', valorFinal);
+      
       const res = await api.post('/caixas', {
         estabelecimento_id: estabelecimentoId,
-        valor_abertura: parseFloat(formData.valorAbertura)
+        valor_abertura: valorFinal
       });
+      
       if (res.success) {
         if (onSave) onSave(res.data);
         window.dispatchEvent(new CustomEvent('modalSaveSuccess', { detail: res.data }));
@@ -96,71 +204,66 @@ const FormCaixa = ({ onSave }) => {
 
   return (
     <form onSubmit={handleSubmit} className="h-full flex flex-col modal-form bg-white">
-      {/* Conteúdo do formulário */}
-      <div className="flex-1 p-2 sm:p-4 max-h-96 overflow-y-auto scrollbar-hide space-y-4 sm:space-y-6">
+      <FormContainer>
         {/* Valor de Abertura */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Valor de Abertura <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="number"
-            step="0.01"
-            min="0"
+        <FormField 
+          label="Valor de Abertura" 
+          required
+          helpText="Valor inicial disponível no caixa"
+        >
+          <FormInput
+            type="text"
             required
             value={formData.valorAbertura}
             onChange={(e) => handleInputChange('valorAbertura', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            onBlur={(e) => handleInputBlur('valorAbertura', e.target.value)}
             placeholder="R$ 0,00"
+            icon={DollarSign}
           />
-        </div>
+        </FormField>
 
         {/* Botão Contagem em Cédulas */}
         {!showContagem && (
-          <div className="flex justify-center">
-            <AddButton
+          <div>
+            <button
+              type="button"
               onClick={() => setShowContagem(true)}
-              className="w-full max-w-xs"
-              title="Contagem em Cédulas"
+              className="w-full px-4 py-3 border-2 border-blue-500 text-blue-500 bg-white rounded-lg hover:bg-blue-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 font-medium flex items-center justify-center gap-2"
             >
-              <Plus className="w-5 h-5 mr-2" />
-              + contagem em cédulas
-            </AddButton>
+              <Calculator className="w-4 h-4" />
+              + Contagem de Cédulas
+            </button>
           </div>
         )}
 
-        {/* Cédulas e Moedas - só aparecem quando showContagem é true */}
+        {/* Cédulas - só aparecem quando showContagem é true */}
         {showContagem && (
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-800 border-b border-gray-200 pb-2">
-              Contagem em Cédulas e Moedas
+              Cédulas e Moedas
             </h3>
             
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <FormGrid cols={4}>
               {Object.entries(formData.cedulas).map(([valor, quantidade]) => (
-                <div key={valor} className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    R$ {valor}
-                  </label>
-                  <input
+                <FormField 
+                  key={valor} 
+                  label={`R$ ${valor}`}
+                  className="text-center"
+                >
+                  <FormInput
                     type="number"
                     min="0"
                     value={quantidade === '' ? '' : quantidade}
                     onChange={(e) => handleCedulaChange(valor, e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     placeholder="0"
+                    className="text-center"
                   />
-                  <p className="text-xs text-gray-500">
-                    Total: R$ {(parseFloat(valor) * (quantidade === '' ? 0 : (parseInt(quantidade) || 0))).toFixed(2)}
-                  </p>
-                </div>
+                </FormField>
               ))}
-            </div>
+            </FormGrid>
           </div>
         )}
-      </div>
-
-
+      </FormContainer>
     </form>
   );
 };
