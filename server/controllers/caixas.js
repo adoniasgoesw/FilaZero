@@ -44,12 +44,23 @@ const caixasController = {
   // Adicionar entrada ao caixa aberto
   async adicionarEntrada(req, res) {
     try {
-      const { estabelecimento_id, valor } = req.body;
+      const { estabelecimento_id, valor, descricao } = req.body;
       const estId = Number(estabelecimento_id);
       const v = Number(valor);
+      const usuario_id = req.usuario?.id;
+      
       if (!estId || Number.isNaN(v) || v <= 0) {
         return res.status(400).json({ success: false, message: 'estabelecimento_id e valor (>0) são obrigatórios' });
       }
+      
+      if (!descricao || !descricao.trim()) {
+        return res.status(400).json({ success: false, message: 'descrição é obrigatória' });
+      }
+      
+      if (!usuario_id) {
+        return res.status(400).json({ success: false, message: 'Usuário não identificado' });
+      }
+      
       const sel = await pool.query(
         `SELECT * FROM caixas WHERE estabelecimento_id = $1 AND status = true ORDER BY data_abertura DESC LIMIT 1`,
         [estId]
@@ -58,15 +69,36 @@ const caixasController = {
         return res.status(404).json({ success: false, message: 'Nenhum caixa aberto' });
       }
       const aberto = sel.rows[0];
-      const upd = await pool.query(
-        `UPDATE caixas
-            SET entradas = COALESCE(entradas, 0) + $1,
-                updated_at = NOW()
-          WHERE id = $2
-          RETURNING *`,
-        [v, aberto.id]
-      );
-      return res.json({ success: true, data: upd.rows[0] });
+      
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        
+        // Atualizar caixa
+        const upd = await client.query(
+          `UPDATE caixas
+              SET entradas = COALESCE(entradas, 0) + $1,
+                  updated_at = NOW()
+            WHERE id = $2
+            RETURNING *`,
+          [v, aberto.id]
+        );
+        
+        // Salvar movimentação
+        await client.query(
+          `INSERT INTO movimentacoes_caixa (caixa_id, tipo, descricao, valor, usuario_id)
+           VALUES ($1, 'entrada', $2, $3, $4)`,
+          [aberto.id, descricao.trim(), v, usuario_id]
+        );
+        
+        await client.query('COMMIT');
+        return res.json({ success: true, data: upd.rows[0] });
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      } finally {
+        client.release();
+      }
     } catch (error) {
       console.error('Erro ao adicionar entrada:', error);
       return res.status(500).json({ success: false, message: 'Erro interno do servidor' });
@@ -76,12 +108,23 @@ const caixasController = {
   // Adicionar saída ao caixa aberto
   async adicionarSaida(req, res) {
     try {
-      const { estabelecimento_id, valor } = req.body;
+      const { estabelecimento_id, valor, descricao } = req.body;
       const estId = Number(estabelecimento_id);
       const v = Number(valor);
+      const usuario_id = req.usuario?.id;
+      
       if (!estId || Number.isNaN(v) || v <= 0) {
         return res.status(400).json({ success: false, message: 'estabelecimento_id e valor (>0) são obrigatórios' });
       }
+      
+      if (!descricao || !descricao.trim()) {
+        return res.status(400).json({ success: false, message: 'descrição é obrigatória' });
+      }
+      
+      if (!usuario_id) {
+        return res.status(400).json({ success: false, message: 'Usuário não identificado' });
+      }
+      
       const sel = await pool.query(
         `SELECT * FROM caixas WHERE estabelecimento_id = $1 AND status = true ORDER BY data_abertura DESC LIMIT 1`,
         [estId]
@@ -90,15 +133,36 @@ const caixasController = {
         return res.status(404).json({ success: false, message: 'Nenhum caixa aberto' });
       }
       const aberto = sel.rows[0];
-      const upd = await pool.query(
-        `UPDATE caixas
-            SET saidas = COALESCE(saidas, 0) + $1,
-                updated_at = NOW()
-          WHERE id = $2
-          RETURNING *`,
-        [v, aberto.id]
-      );
-      return res.json({ success: true, data: upd.rows[0] });
+      
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        
+        // Atualizar caixa
+        const upd = await client.query(
+          `UPDATE caixas
+              SET saidas = COALESCE(saidas, 0) + $1,
+                  updated_at = NOW()
+            WHERE id = $2
+            RETURNING *`,
+          [v, aberto.id]
+        );
+        
+        // Salvar movimentação
+        await client.query(
+          `INSERT INTO movimentacoes_caixa (caixa_id, tipo, descricao, valor, usuario_id)
+           VALUES ($1, 'saida', $2, $3, $4)`,
+          [aberto.id, descricao.trim(), v, usuario_id]
+        );
+        
+        await client.query('COMMIT');
+        return res.json({ success: true, data: upd.rows[0] });
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      } finally {
+        client.release();
+      }
     } catch (error) {
       console.error('Erro ao adicionar saída:', error);
       return res.status(500).json({ success: false, message: 'Erro interno do servidor' });
@@ -222,16 +286,20 @@ const caixasController = {
   async listarPorEstabelecimento(req, res) {
     try {
       const { estabelecimento_id } = req.params;
-      const { page = 1, limit = 10 } = req.query;
+      const { page = 1, limit = 10, fechados = false } = req.query;
 
       const pageNum = Number.parseInt(page, 10) || 1;
       const pageSize = Number.parseInt(limit, 10) || 10;
       const offset = (pageNum - 1) * pageSize;
+      const apenasFechados = fechados === 'true' || fechados === true;
+
+      // Construir filtro baseado no parâmetro fechados
+      const fechadosFilter = apenasFechados ? 'AND c.valor_fechamento IS NOT NULL AND c.valor_fechamento > 0' : '';
 
       const countQuery = `
         SELECT COUNT(*) AS total
           FROM caixas c
-         WHERE c.estabelecimento_id = $1
+         WHERE c.estabelecimento_id = $1 ${fechadosFilter}
       `;
 
       const listQuery = `
@@ -252,7 +320,7 @@ const caixasController = {
           c.criado_em,
           c.updated_at
         FROM caixas c
-        WHERE c.estabelecimento_id = $1
+        WHERE c.estabelecimento_id = $1 ${fechadosFilter}
         ORDER BY c.data_abertura DESC NULLS LAST, c.id DESC
         LIMIT $2 OFFSET $3
       `;
@@ -282,6 +350,133 @@ const caixasController = {
       });
     } catch (error) {
       console.error('Erro ao listar caixas:', error);
+      return res.status(500).json({ success: false, message: 'Erro interno do servidor' });
+    }
+  },
+
+  // Listar movimentações de caixa por estabelecimento
+  async listarMovimentacoes(req, res) {
+    try {
+      const { estabelecimento_id } = req.params;
+      const { page = 1, limit = 10 } = req.query;
+
+      const pageNum = Number.parseInt(page, 10) || 1;
+      const pageSize = Number.parseInt(limit, 10) || 10;
+      const offset = (pageNum - 1) * pageSize;
+
+      const countQuery = `
+        SELECT COUNT(*) AS total
+        FROM movimentacoes_caixa mc
+        INNER JOIN caixas c ON mc.caixa_id = c.id
+        WHERE c.estabelecimento_id = $1
+      `;
+
+      const listQuery = `
+        SELECT 
+          mc.id,
+          mc.caixa_id,
+          mc.tipo,
+          mc.descricao,
+          mc.valor,
+          mc.usuario_id,
+          mc.criado_em,
+          u.nome as usuario_nome,
+          c.data_abertura as caixa_data_abertura
+        FROM movimentacoes_caixa mc
+        INNER JOIN caixas c ON mc.caixa_id = c.id
+        LEFT JOIN usuarios u ON mc.usuario_id = u.id
+        WHERE c.estabelecimento_id = $1
+        ORDER BY mc.criado_em DESC
+        LIMIT $2 OFFSET $3
+      `;
+
+      const client = await pool.connect();
+      let total = 0;
+      let rows = [];
+      try {
+        const countResult = await client.query(countQuery, [estabelecimento_id]);
+        total = Number.parseInt(countResult.rows[0].total, 10) || 0;
+        const listResult = await client.query(listQuery, [estabelecimento_id, pageSize, offset]);
+        rows = listResult.rows;
+      } finally {
+        client.release();
+      }
+
+      const totalPages = Math.ceil(total / pageSize);
+      return res.status(200).json({
+        success: true,
+        data: {
+          movimentacoes: rows,
+          total,
+          page: pageNum,
+          totalPages,
+          hasMore: pageNum < totalPages
+        }
+      });
+    } catch (error) {
+      console.error('Erro ao listar movimentações:', error);
+      return res.status(500).json({ success: false, message: 'Erro interno do servidor' });
+    }
+  },
+
+  // Listar movimentações de caixa por caixa específico
+  async listarMovimentacoesPorCaixa(req, res) {
+    try {
+      const { caixa_id } = req.params;
+      const { page = 1, limit = 10 } = req.query;
+
+      const pageNum = Number.parseInt(page, 10) || 1;
+      const pageSize = Number.parseInt(limit, 10) || 10;
+      const offset = (pageNum - 1) * pageSize;
+
+      const countQuery = `
+        SELECT COUNT(*) AS total
+        FROM movimentacoes_caixa mc
+        WHERE mc.caixa_id = $1
+      `;
+
+      const listQuery = `
+        SELECT 
+          mc.id,
+          mc.caixa_id,
+          mc.tipo,
+          mc.descricao,
+          mc.valor,
+          mc.usuario_id,
+          mc.criado_em,
+          u.nome_completo as usuario_nome
+        FROM movimentacoes_caixa mc
+        LEFT JOIN usuarios u ON mc.usuario_id = u.id
+        WHERE mc.caixa_id = $1
+        ORDER BY mc.criado_em DESC
+        LIMIT $2 OFFSET $3
+      `;
+
+      const client = await pool.connect();
+      let total = 0;
+      let rows = [];
+      try {
+        const countResult = await client.query(countQuery, [caixa_id]);
+        total = Number.parseInt(countResult.rows[0].total, 10) || 0;
+        const listResult = await client.query(listQuery, [caixa_id, pageSize, offset]);
+        rows = listResult.rows;
+      } finally {
+        client.release();
+      }
+
+      const totalPages = Math.ceil(total / pageSize);
+      return res.status(200).json({
+        success: true,
+        data: {
+          movimentacoes: rows,
+          total,
+          page: pageNum,
+          totalPages,
+          hasMore: pageNum < totalPages
+        }
+      });
+    } catch (error) {
+      console.error('Erro ao listar movimentações do caixa:', error);
       return res.status(500).json({ success: false, message: 'Erro interno do servidor' });
     }
   },

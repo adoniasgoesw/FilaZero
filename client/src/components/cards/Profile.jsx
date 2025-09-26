@@ -1,11 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, User, CreditCard, Briefcase } from 'lucide-react';
+import { Building2, User, CreditCard, Briefcase, Edit } from 'lucide-react';
 import LogoutButton from '../buttons/Logout';
+import BaseModal from '../modals/Base';
+import FormEstabelecimento from '../forms/FormEstabelecimento';
 
 const Profile = () => {
   const [userData, setUserData] = useState(null);
   const [estabelecimentoData, setEstabelecimentoData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingEstabelecimento, setIsLoadingEstabelecimento] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [estabelecimentoCompleto, setEstabelecimentoCompleto] = useState(null);
+
+  // Função para formatar CPF
+  const formatCPF = (cpf) => {
+    if (!cpf) return 'CPF não disponível';
+    const numbers = cpf.replace(/\D/g, '');
+    return numbers.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+  };
 
   useEffect(() => {
     // Buscar dados do usuário e estabelecimento do localStorage
@@ -36,6 +48,85 @@ const Profile = () => {
     }
   }, []);
 
+  const buscarDadosEstabelecimento = async () => {
+    try {
+      setIsLoadingEstabelecimento(true);
+      const token = localStorage.getItem('token');
+      
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3002/api'}/estabelecimento/meu`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          // Armazenar dados completos e abrir modal
+          setEstabelecimentoCompleto(result.data);
+          setShowEditModal(true);
+        } else {
+          console.error('Erro ao buscar dados do estabelecimento:', result.message);
+        }
+      } else {
+        console.error('Erro na requisição:', response.status);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar dados do estabelecimento:', error);
+    } finally {
+      setIsLoadingEstabelecimento(false);
+    }
+  };
+
+  const handleSaveEstabelecimento = async (formData) => {
+    try {
+      setIsLoadingEstabelecimento(true);
+      const token = localStorage.getItem('token');
+      
+      console.log('🚀 Enviando dados para atualizar estabelecimento:', formData);
+      console.log('🔑 Token:', token ? 'Presente' : 'Ausente');
+      
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3002/api'}/estabelecimento/meu`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          console.log('✅ Estabelecimento atualizado com sucesso:', result.data);
+          // Atualizar dados locais se necessário
+          if (result.data.nome) {
+            setEstabelecimentoData(prev => ({
+              ...prev,
+              nome: result.data.nome
+            }));
+          }
+          // O modal será fechado automaticamente pelo evento modalSaveSuccess
+        } else {
+          console.error('Erro ao atualizar estabelecimento:', result.message);
+        }
+      } else {
+        console.error('Erro na requisição:', response.status);
+      }
+    } catch (error) {
+      console.error('Erro ao salvar estabelecimento:', error);
+    } finally {
+      setIsLoadingEstabelecimento(false);
+    }
+  };
+
+
+  const handleCloseModal = () => {
+    setShowEditModal(false);
+    setEstabelecimentoCompleto(null);
+  };
+
   if (isLoading) {
     return (
       <div className="bg-white rounded-xl shadow-lg p-4 border border-gray-100 max-w-md">
@@ -63,9 +154,16 @@ const Profile = () => {
 
   return (
     <div className="bg-white rounded-xl shadow-lg p-4 border border-gray-100 max-w-md relative">
-      {/* Header do Profile */}
-      <div className="mb-4">
+      {/* Header do Profile com botão Edit */}
+      <div className="mb-4 flex items-center justify-between">
         <h2 className="text-lg font-bold text-gray-800">Perfil do Sistema</h2>
+        <button
+          onClick={buscarDadosEstabelecimento}
+          disabled={isLoadingEstabelecimento}
+          className="inline-flex items-center justify-center p-1.5 bg-white hover:bg-gray-50 text-gray-500 hover:text-gray-700 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Edit className={`w-4 h-4 ${isLoadingEstabelecimento ? 'animate-spin' : ''}`} />
+        </button>
       </div>
 
       <div className="space-y-4">
@@ -97,7 +195,7 @@ const Profile = () => {
         <div className="space-y-2 text-xs text-gray-600">
           <div className="flex items-center gap-2">
             <CreditCard className="w-3 h-3 text-gray-400" />
-            <span>CPF: {userData.cpf || 'CPF não disponível'}</span>
+            <span>CPF: {formatCPF(userData.cpf)}</span>
           </div>
           <div className="flex items-center gap-2">
             <Briefcase className="w-3 h-3 text-gray-400" />
@@ -111,6 +209,29 @@ const Profile = () => {
       <div className="absolute bottom-4 right-4">
         <LogoutButton />
       </div>
+
+      {/* Modal de Edição do Estabelecimento */}
+      <BaseModal
+        isOpen={showEditModal}
+        onClose={handleCloseModal}
+        title="Alterar Estabelecimento"
+        icon={Building2}
+        iconBgColor="bg-blue-100"
+        iconColor="text-blue-600"
+        showButtons={true}
+        onSave={handleSaveEstabelecimento}
+        saveText="Salvar"
+        cancelText="Cancelar"
+      >
+        <div className="max-h-[600px] overflow-y-auto">
+          <FormEstabelecimento
+            estabelecimentoData={estabelecimentoCompleto}
+            onSave={handleSaveEstabelecimento}
+            onCancel={handleCloseModal}
+            isLoading={isLoadingEstabelecimento}
+          />
+        </div>
+      </BaseModal>
     </div>
   );
 };

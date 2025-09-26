@@ -43,3 +43,4 @@ console.log('✅ Controle de diferenças');
 console.log('✅ Histórico completo');
 
 
+

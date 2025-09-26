@@ -8,8 +8,8 @@ import { fileURLToPath } from 'url';
 import AuthRoutes from './routes/AuthRoute.js';
 import pool from './config/db.js';
 
-// Carregar variáveis de ambiente
-dotenv.config();
+// Carregar variáveis de ambiente para desenvolvimento
+dotenv.config({ path: '.env.dev' });
 
 const app = express();
 const PORT = process.env.PORT || 3001;

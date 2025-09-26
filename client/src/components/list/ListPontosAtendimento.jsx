@@ -1,34 +1,38 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle2, Users, Clock, Flag, DollarSign } from 'lucide-react';
+import { CheckCircle2, Users, Clock, Flag, DollarSign, Lock } from 'lucide-react';
 import api from '../../services/api';
-import { readCache, writeCache } from '../../services/cache';
 
 // Configuração de status (cores e ícone) no estilo do design fornecido
 const STATUS_CONFIG = {
   'disponivel': {
     label: 'Disponível',
-    classes: 'bg-gray-100 text-gray-800 border border-gray-200',
+    classes: 'bg-gray-100 text-gray-800',
+    borderColor: 'border-gray-300',
     Icon: CheckCircle2,
   },
   'aberto': {
     label: 'Aberto',
-    classes: 'bg-blue-100 text-blue-800 border border-blue-200',
+    classes: 'bg-blue-100 text-blue-800',
+    borderColor: 'border-blue-300',
     Icon: Clock,
   },
   'ocupada': {
     label: 'Ocupada',
-    classes: 'bg-emerald-100 text-emerald-800 border border-emerald-200',
+    classes: 'bg-emerald-100 text-emerald-800',
+    borderColor: 'border-emerald-300',
     Icon: Users,
   },
   'em-atendimento': {
     label: 'Em Atendimento',
-    classes: 'bg-purple-100 text-purple-800 border border-purple-200',
-    Icon: Clock,
+    classes: 'bg-purple-100 text-purple-800',
+    borderColor: 'border-purple-300',
+    Icon: Lock,
   },
   'finalizada': {
     label: 'Finalizada',
-    classes: 'bg-gray-100 text-gray-800 border border-gray-200',
+    classes: 'bg-gray-100 text-gray-800',
+    borderColor: 'border-gray-300',
     Icon: Flag,
   },
 };
@@ -47,12 +51,12 @@ const normalizeStatus = (status) => {
 };
 
 const DEFAULT_ITEMS = [
-  { id: 1, identificacao: 'Mesa 1', nomePedido: 'João', status: 'disponivel', total: 0 },
-  { id: 2, identificacao: 'Mesa 2', nomePedido: 'Família Silva', status: 'aberta', total: 128.9 },
-  { id: 3, identificacao: 'Mesa 3', nomePedido: 'Casal', status: 'ocupada', total: 76.5 },
-  { id: 4, identificacao: 'Comanda 12', nomePedido: 'André', status: 'atendimento', total: 52.0 },
-  { id: 5, identificacao: 'Comanda 50', nomePedido: 'Equipe Mesa', status: 'finalizada', total: 0 },
-  { id: 6, identificacao: 'Mesa 7', nomePedido: '—', status: 'finalizada', total: 0 },
+  { id: 1, identificacao: 'Mesa 01', nomePedido: 'Aguardando o cliente', status: 'disponivel', total: 0 },
+  { id: 2, identificacao: 'Mesa 02', nomePedido: 'Família Silva', status: 'aberta', total: 128.9 },
+  { id: 3, identificacao: 'Mesa 03', nomePedido: 'Casal', status: 'ocupada', total: 76.5 },
+  { id: 4, identificacao: 'Comanda 01', nomePedido: 'André', status: 'atendimento', total: 52.0 },
+  { id: 5, identificacao: 'Comanda 02', nomePedido: 'Equipe Mesa', status: 'finalizada', total: 0 },
+  { id: 6, identificacao: 'Balcão 01', nomePedido: 'Aguardando o cliente', status: 'finalizada', total: 0 },
 ];
 
 const formatCurrency = (value) => {
@@ -62,259 +66,194 @@ const formatCurrency = (value) => {
 
 const parseIdentificacao = (identificacao) => {
   const str = String(identificacao || '').trim();
-  const match = str.match(/^(Mesa|Comanda)\s*(.+)$/i);
+  const match = str.match(/^(Balcão|Mesa|Comanda)\s*(.+)$/i);
   if (match) {
     const tipo = match[1];
     const numero = match[2];
-    return { tipo: tipo.charAt(0).toUpperCase() + tipo.slice(1).toLowerCase(), numero };
+    return { 
+      tipo: tipo.charAt(0).toUpperCase() + tipo.slice(1).toLowerCase(), 
+      numero: numero.padStart(2, '0') // Garantir formato 01, 02, etc.
+    };
   }
   return { tipo: 'Ponto', numero: String(identificacao || '') };
 };
 
 const ListPontosAtendimento = ({ estabelecimentoId: propEstabelecimentoId, search = '' }) => {
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
   const estabId = (propEstabelecimentoId ?? Number(localStorage.getItem('estabelecimentoId'))) || null;
   const [lastClickedId, setLastClickedId] = useState(null);
-  const [hintVisibleId, setHintVisibleId] = useState(null);
+  const [pontosAtendimento, setPontosAtendimento] = useState([]);
+  const [error, setError] = useState(null);
   const navigate = useNavigate();
 
   const fetchPoints = useCallback(async () => {
-    let isMounted = true;
-    try {
-      const cacheKey = `pontos:${estabId || 'none'}`;
-      const cached = readCache(cacheKey);
-      if (cached && Array.isArray(cached)) {
-        setItems(cached);
-        setLoading(false);
-      } else {
-        setLoading(true);
-      }
-      setError(null);
-      if (estabId) {
-        try {
-          const res = await api.get(`/pontos-atendimento/${estabId}`);
-          if (res && res.success) {
-            if (isMounted) {
-              setItems(res.data || []);
-              writeCache(cacheKey, res.data || []);
-            }
-          } else {
-            const cfgRes = await api.get(`/pontos-atendimento/config/${estabId}`);
-            if (cfgRes && cfgRes.success && cfgRes.data) {
-              const cfg = cfgRes.data;
-              const generated = [];
-              if (cfg.mesasEnabled) {
-                for (let i = 1; i <= Number(cfg.quantidadeMesas || 0); i += 1) {
-                  generated.push({ id: `mesa-${i}`, identificacao: `Mesa ${i}`, status: 'disponivel', total: 0 });
-                }
-              }
-              if (cfg.comandasEnabled) {
-                for (let i = 1; i <= Number(cfg.quantidadeComandas || 0); i += 1) {
-                  const label = cfg.prefixoComanda && cfg.prefixoComanda.trim() ? `${cfg.prefixoComanda.trim()} ${i}` : `Comanda ${i}`;
-                  generated.push({ id: `comanda-${i}`, identificacao: label, status: 'disponivel', total: 0 });
-                }
-              }
-              if (isMounted) {
-                setItems(generated);
-                writeCache(cacheKey, generated);
-              }
-            } else if (isMounted) {
-              setItems(DEFAULT_ITEMS);
-            }
-          }
-        } catch (err) {
-          console.debug('List fetch error, falling back to config:', err);
-          try {
-            const cfgRes = await api.get(`/pontos-atendimento/config/${estabId}`);
-            if (cfgRes && cfgRes.success && cfgRes.data) {
-              const cfg = cfgRes.data;
-              const generated = [];
-              if (cfg.mesasEnabled) {
-                for (let i = 1; i <= Number(cfg.quantidadeMesas || 0); i += 1) {
-                  generated.push({ id: `mesa-${i}`, identificacao: `Mesa ${i}`, status: 'disponivel', total: 0 });
-                }
-              }
-              if (cfg.comandasEnabled) {
-                for (let i = 1; i <= Number(cfg.quantidadeComandas || 0); i += 1) {
-                  const label = cfg.prefixoComanda && cfg.prefixoComanda.trim() ? `${cfg.prefixoComanda.trim()} ${i}` : `Comanda ${i}`;
-                  generated.push({ id: `comanda-${i}`, identificacao: label, status: 'disponivel', total: 0 });
-                }
-              }
-              if (isMounted) {
-                setItems(generated);
-                writeCache(cacheKey, generated);
-              }
-            } else if (isMounted) {
-              setItems(DEFAULT_ITEMS);
-            }
-          } catch (innerErr) {
-            console.debug('Config fetch fallback error:', innerErr);
-            if (isMounted) setItems(DEFAULT_ITEMS);
-          }
+    if (estabId) {
+      try {
+        setError(null);
+        console.log('🔄 ListPontosAtendimento - Buscando dados diretamente da API...');
+        
+        const response = await api.get(`/pontos-atendimento/${estabId}`);
+        
+        if (response.success && response.data) {
+          setPontosAtendimento(response.data);
+          console.log('✅ ListPontosAtendimento - Dados carregados da API:', response.data.length, 'pontos');
+        } else {
+          console.warn('⚠️ Resposta da API não contém dados válidos:', response);
+          setPontosAtendimento([]);
         }
-      } else {
-        if (isMounted) setItems(DEFAULT_ITEMS);
+      } catch (err) {
+        console.error('❌ Erro ao carregar pontos de atendimento:', err);
+        setError(err.message);
+        setPontosAtendimento([]);
       }
-    } catch (e) {
-      setError(e.message || 'Erro ao carregar pontos de atendimento');
-      setItems(DEFAULT_ITEMS);
-    } finally {
-      if (isMounted) setLoading(false);
     }
-    return () => { isMounted = false; };
   }, [estabId]);
 
+  // Carregar pontos de atendimento diretamente da API
   useEffect(() => {
     fetchPoints();
   }, [fetchPoints]);
 
-  // Atualizar em tempo real após salvar configurações
+  // Escutar eventos de refresh
   useEffect(() => {
-    const onSaved = () => {
-      fetchPoints();
+    const handler = () => {
+      if (estabId) {
+        console.log('🔄 Evento de refresh recebido, buscando dados atualizados da API...');
+        fetchPoints();
+      }
     };
-    window.addEventListener('modalSaveSuccess', onSaved);
+    
+    // Escutar múltiplos eventos que podem afetar os pontos de atendimento
+    window.addEventListener('refreshPontosAtendimento', handler);
+    window.addEventListener('atendimentoChanged', handler);
+    window.addEventListener('pedidoUpdated', handler);
+    
     return () => {
-      window.removeEventListener('modalSaveSuccess', onSaved);
+      window.removeEventListener('refreshPontosAtendimento', handler);
+      window.removeEventListener('atendimentoChanged', handler);
+      window.removeEventListener('pedidoUpdated', handler);
     };
-  }, [fetchPoints]);
+  }, [estabId, fetchPoints]);
 
-  const filtered = useMemo(() => {
-    const q = (search || '').toLowerCase().trim();
-    if (!q) return items;
-    return items.filter((i) =>
-      String(i.identificacao).toLowerCase().includes(q) ||
-      String(i.nomePedido || '').toLowerCase().includes(q) ||
-      (() => {
-        const normalized = normalizeStatus(i.status);
-        const label = STATUS_CONFIG[normalized]?.label || String(i.status);
-        return String(label).toLowerCase().includes(q);
-      })()
+  // Filtrar itens baseado na pesquisa
+  const filteredItems = useMemo(() => {
+    const items = pontosAtendimento.length > 0 ? pontosAtendimento : DEFAULT_ITEMS;
+    if (!search.trim()) return items;
+    
+    const query = search.toLowerCase().trim();
+    return items.filter(item => {
+      const identificacao = String(item.identificacao || '').toLowerCase();
+      const nomePedido = String(item.nomePedido || '').toLowerCase();
+      const status = String(item.status || '').toLowerCase();
+      const total = formatCurrency(item.total || 0).toLowerCase();
+      
+      return identificacao.includes(query) || 
+             nomePedido.includes(query) || 
+             status.includes(query) || 
+             total.includes(query);
+    });
+  }, [pontosAtendimento, search]);
+
+  const handleItemClick = useCallback((item) => {
+    setLastClickedId(item.id);
+    
+    // Navegar para o ponto de atendimento
+    navigate(`/ponto-atendimento/${item.id}`);
+  }, [navigate]);
+
+
+
+  if (error) {
+  return (
+      <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8 min-h-[40vh] flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-emerald-500 mb-4">
+            <Users className="w-12 h-12 mx-auto" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Erro ao carregar pontos</h3>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button onClick={fetchPoints} className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors">
+            Tentar novamente
+          </button>
+        </div>
+      </div>
     );
-  }, [items, search]);
+  }
+
+  if (!filteredItems.length) {
+    return (
+      <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8 min-h-[40vh] flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-gray-400 mb-4">
+            <Users className="w-12 h-12 mx-auto" />
+          </div>
+          <p className="text-gray-600">
+            {search ? 'Nenhum ponto encontrado' : 'Nenhum ponto de atendimento encontrado'}
+          </p>
+          <p className="text-gray-500 text-sm">
+            {search ? 'Tente ajustar os termos de pesquisa.' : 'Configure os pontos de atendimento para começar.'}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div>
-      {loading && (
-        <div className="flex items-center justify-center py-4">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
-          <span className="ml-2 text-sm text-gray-600">Carregando...</span>
-        </div>
-      )}
-
-      {error && (
-        <div className="mb-3 text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
-          {error}
-        </div>
-      )}
-
-      
-
-      {/* Grid responsiva: <390px=1, ≥390px=2, ≥890px=3, ≥1500px=4 */}
-      <div className="grid grid-cols-1 [@media(min-width:390px)]:grid-cols-2 [@media(min-width:890px)]:grid-cols-3 [@media(min-width:900px)]:grid-cols-4 gap-3 sm:gap-4 md:gap-5 lg:gap-6">
-        {filtered.map((item) => {
-          const { tipo, numero } = parseIdentificacao(item.identificacao);
-          const normalized = normalizeStatus(item.status);
-          const statusInfo = STATUS_CONFIG[normalized] || STATUS_CONFIG['disponivel'];
-          const StatusIcon = statusInfo.Icon;
+    <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
+      {filteredItems.map((item) => {
+        const status = normalizeStatus(item.status);
+        const config = STATUS_CONFIG[status];
+        const { tipo, numero } = parseIdentificacao(item.identificacao);
+        const isLastClicked = lastClickedId === item.id;
+        
           return (
-            <div
-              key={item.id}
-              className="relative bg-white rounded-xl shadow-lg border border-slate-200 p-3 max-[430px]:p-2.5 md:p-4 lg:p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl cursor-pointer"
-              onClick={async () => {
-                // Bloquear se caixa fechado
-                try {
-                  if (estabId) {
-                    const res = await api.get(`/caixas/aberto/${estabId}`);
-                    const aberto = res && res.success ? res.data : null;
-                    if (!aberto) {
-                      window.location.assign('/home?caixa_fechado=1');
-                      return;
-                    }
-                  }
-                } catch {
-                  // ignore network errors
-                }
-                // Se não está disponível (ex.: aberto/ocupada), abre direto
-                if (normalized !== 'disponivel') {
-                  navigate(`/ponto-atendimento/${encodeURIComponent(item.id)}`);
-                  return;
-                }
-                // Está disponível: primeiro toque mostra dica; segundo toque abre e altera status
-                if (lastClickedId === item.id) {
-                  try {
-                    if (estabId) {
-                      await api.post(`/atendimentos/ensure/${estabId}/${encodeURIComponent(item.id)}`, { nome_ponto: '' });
-                      await api.put(`/atendimentos/${estabId}/${encodeURIComponent(item.id)}/status`, { status: 'aberto' });
-                      setItems((prev) => prev.map((it) => (it.id === item.id ? { ...it, status: 'aberto' } : it)));
-                    }
-                  } catch {
-                    /* ignore */
-                  }
-                  navigate(`/ponto-atendimento/${encodeURIComponent(item.id)}`);
-                } else {
-                  setLastClickedId(item.id);
-                  setHintVisibleId(item.id);
-                  setTimeout(() => {
-                    setHintVisibleId((current) => (current === item.id ? null : current));
-                    setLastClickedId((current) => (current === item.id ? null : current));
-                  }, 1500);
-                }
-              }}
-            >
-              {normalized === 'disponivel' && hintVisibleId === item.id && (
-                <div className="absolute inset-0 bg-black/30 rounded-xl flex items-center justify-center z-10">
-                  <span className="px-3 py-1.5 bg-white/95 text-slate-800 text-xs font-medium rounded-full shadow">Toque para abrir</span>
-                </div>
-              )}
-              {/* Header do Card */}
-              <div className="mb-4">
-                <div className="flex items-start justify-between mb-2.5 md:mb-4 gap-3">
-                  <div className="min-w-0">
-                    <h3 className="font-semibold text-slate-800 text-sm max-[430px]:text-[13px] md:text-base lg:text-lg leading-tight whitespace-nowrap">{tipo} {numero}</h3>
-                    <div className={`text-[11px] max-[430px]:text-[10px] md:text-sm font-medium ${item.nomePedido ? 'text-slate-700' : 'text-slate-400 italic'} leading-tight whitespace-nowrap`}>
-                      {item.nomePedido || 'Aguardando cliente'}
-                    </div>
-                  </div>
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] max-[430px]:text-[8.5px] md:text-xs font-medium ${statusInfo.classes} whitespace-nowrap flex-shrink-0`}>
-                    <StatusIcon className="w-3 h-3 md:w-3.5 md:h-3.5 mr-1" />
-                    {statusInfo.label}
-                  </span>
-                </div>
+          <div
+            key={item.id}
+            onClick={() => handleItemClick(item)}
+            className={`
+              relative bg-white rounded-lg sm:rounded-xl shadow-sm border-2 p-2 sm:p-3 md:p-4 cursor-pointer transition-all duration-200
+              hover:shadow-md hover:-translate-y-1 hover:border-emerald-300
+              ${isLastClicked ? 'border-green-500' : config.borderColor}
+            `}
+          >
+            {/* Header com tipo e número */}
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+              <div>
+                <h3 className="font-bold text-gray-600 text-sm sm:text-base">{tipo} {numero}</h3>
               </div>
+              
+              {/* Status badge com ícone */}
+              <span className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs font-medium flex items-center gap-1 ${config.classes}`}>
+                <config.Icon className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                <span className="hidden sm:inline">{config.label}</span>
+              </span>
+            </div>
 
-              {/* Informações do Pedido */}
-              <div className="space-y-2 md:space-y-3">
-                {/* Valor Total (apenas valor ao lado do ícone) */}
-                <div className="flex items-center gap-2">
-                  <DollarSign className="w-3.5 h-3.5 md:w-4 md:h-4 text-emerald-500" />
-                  <span className="text-sm max-[430px]:text-[13px] md:text-base lg:text-lg font-bold text-emerald-600">{formatCurrency(item.total)}</span>
-                </div>
-
-                {/* Tempo (apenas contagem ao lado do ícone) */}
-                <div className="flex items-center gap-2">
-                  <Clock className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-500" />
-                  <span className="text-[11px] max-[430px]:text-[10px] md:text-sm font-medium text-slate-700">
-                    {(item.tempo || item.tempoAtivo || item.tempoAtendimento || '—')}
-                  </span>
-                </div>
+            {/* Conteúdo do card */}
+            <div className="space-y-1.5 sm:space-y-2">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <Users className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500" />
+                <span className={`text-xs sm:text-sm truncate font-medium ${
+                  item.nomePedido && item.nomePedido !== 'Aguardando o cliente' 
+                    ? 'text-gray-700' 
+                    : 'text-gray-500 font-semibold italic'
+                }`}>
+                  {item.nomePedido || 'Aguardando cliente'}
+                </span>
+              </div>
+              
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <DollarSign className="w-3 h-3 sm:w-4 sm:h-4 text-emerald-600" />
+                <span className="text-xs sm:text-sm font-medium text-emerald-600">
+                  {formatCurrency(item.total || 0)}
+                </span>
               </div>
             </div>
-          );
-        })}
-      </div>
 
-      {filtered.length === 0 && !loading && (
-        <div className="text-center text-sm text-gray-600 py-8 min-h-[40vh] flex items-center justify-center">
-          Nenhum ponto de atendimento encontrado.
-        </div>
-      )}
+          </div>
+        );
+      })}
     </div>
   );
 };
 
 export default ListPontosAtendimento;
-
-

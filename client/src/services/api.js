@@ -30,13 +30,17 @@ const apiRequest = async (endpoint, options = {}) => {
   }
 
   try {
+    console.log('🌐 Fazendo requisição para:', url);
     const response = await fetch(url, config);
+    console.log('📡 Resposta recebida:', response.status, response.statusText);
     const data = await response.json();
 
     if (!response.ok) {
+      console.error('❌ Erro na resposta:', data);
       throw new Error(data.message || 'Erro na requisição');
     }
 
+    console.log('✅ Resposta bem-sucedida:', data);
     return data;
   } catch (error) {
     console.error('Erro na API:', error);

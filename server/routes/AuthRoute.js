@@ -9,6 +9,9 @@ import * as atendimentosController from '../controllers/atendimentos.js';
 import * as pedidosController from '../controllers/pedidos.js';
 import registerController from '../controllers/register.js';
 import caixasController from '../controllers/caixas.js';
+import clientesController from '../controllers/clientes.js';
+import pagamentosController from '../controllers/pagamentos.js';
+import * as estabelecimentosController from '../controllers/estabelecimentos.js';
 
 const router = express.Router();
 
@@ -86,14 +89,54 @@ router.put('/atendimentos/:estabelecimento_id/:identificador/status', atendiment
 // ===== ROTAS DE PEDIDOS =====
 // Detalhes de um pedido específico (DEVE VIR ANTES das rotas genéricas)
 router.get('/pedidos/detalhes/:pedido_id', loginController.verificarToken, pedidosController.getDetalhesPedido);
+
+// ROTAS ESPECÍFICAS DEVEM VIR ANTES DAS GENÉRICAS
+// Listar itens do pedido com complementos (DEVE VIR ANTES da rota genérica)
+router.get('/pedidos/:estabelecimento_id/:identificador/itens', (req, res, next) => {
+  console.log('🔍 Rota /pedidos/:estabelecimento_id/:identificador/itens chamada');
+  console.log('📝 Parâmetros:', req.params);
+  console.log('🌐 URL completa:', req.originalUrl);
+  next();
+}, pedidosController.listarItensPedido);
+
+// Buscar pagamentos existentes de um pedido (DEVE VIR ANTES da rota genérica)
+router.get('/pedidos/:estabelecimento_id/:identificador/pagamentos', pedidosController.buscarPagamentosPedido);
+
+// Atualizar cliente do pedido (DEVE VIR ANTES da rota genérica)
+router.put('/pedidos/:estabelecimento_id/:identificador/cliente', pedidosController.atualizarClientePedido);
+
+// Atualizar desconto do pedido (DEVE VIR ANTES da rota genérica)
+router.put('/pedidos/:estabelecimento_id/:identificador/discount', pedidosController.atualizarDescontoPedido);
+
+// Atualizar acréscimo do pedido (DEVE VIR ANTES da rota genérica)
+router.put('/pedidos/:estabelecimento_id/:identificador/surcharge', pedidosController.atualizarAcrescimoPedido);
+
+// Atualizar valores de pagamento e troco do pedido (DEVE VIR ANTES da rota genérica)
+router.put('/pedidos/:estabelecimento_id/:identificador/payment', pedidosController.atualizarValoresPagamento);
+
+// Criar pedido vazio quando acessar ponto de atendimento (DEVE VIR ANTES da rota genérica)
+router.post('/pedidos/:estabelecimento_id/:identificador/criar', pedidosController.criarPedidoVazio);
+
+// Finalizar pedido (DEVE VIR ANTES da rota genérica)
+router.post('/pedidos/:estabelecimento_id/:identificador/finalizar', pedidosController.finalizarPedido);
+
+// ROTAS GENÉRICAS (DEVEM VIR POR ÚLTIMO)
 // Tornar rotas de pedidos públicas para permitir uso sem autenticação no PDV
 router.put('/pedidos/:estabelecimento_id/:identificador', pedidosController.upsertPedido);
 router.get('/pedidos/:estabelecimento_id/:identificador', pedidosController.getPedido);
-router.delete('/pedidos/itens/:item_id', pedidosController.deleteItem);
 router.delete('/pedidos/:estabelecimento_id/:identificador', pedidosController.deletePedido);
-router.post('/pedidos/:estabelecimento_id/:identificador/finalizar', pedidosController.finalizarPedido);
+
+// Deletar item específico
+router.delete('/pedidos/itens/:item_id', pedidosController.deleteItem);
+// Criar/obter pagamento composto
+router.post('/pedidos/:estabelecimento_id/pagamento-composto', pedidosController.criarOuObterPagamentoComposto);
+// Criar pagamento composto padrão
+router.post('/pedidos/:estabelecimento_id/pagamento-composto-padrao', pedidosController.criarPagamentoCompostoPadrao);
 // Histórico de pedidos por estabelecimento (opcionalmente a partir de uma data)
 router.get('/historico-pedidos/:estabelecimento_id', loginController.verificarToken, pedidosController.listarHistorico);
+
+// Rota para listar pagamentos históricos por caixa
+router.get('/pagamentos-historico/:caixa_id', loginController.verificarToken, pedidosController.listarPagamentosHistorico);
 
 // Complementos dos itens do pedido
 router.post('/pedidos/itens/:item_pedido_id/complementos', pedidosController.addItemComplementos);
@@ -145,6 +188,63 @@ router.get('/caixas/aberto/:estabelecimento_id', loginController.verificarToken,
 router.post('/caixas/fechar', loginController.verificarToken, caixasController.fechar);
 router.post('/caixas/entrada', loginController.verificarToken, caixasController.adicionarEntrada);
 router.post('/caixas/saida', loginController.verificarToken, caixasController.adicionarSaida);
+router.get('/caixas/movimentacoes/:estabelecimento_id', loginController.verificarToken, caixasController.listarMovimentacoes);
+router.get('/movimentacoes-caixa/:caixa_id', loginController.verificarToken, caixasController.listarMovimentacoesPorCaixa);
+
+// ===== ROTAS DE CLIENTES =====
+// Rota para cadastrar cliente (requer autenticação)
+router.post('/clientes', loginController.verificarToken, clientesController.cadastrar);
+
+// Rota para listar clientes por estabelecimento
+router.get('/clientes/:estabelecimento_id', loginController.verificarToken, clientesController.listarPorEstabelecimento);
+router.get('/clientes/:estabelecimento_id/:id', loginController.verificarToken, clientesController.buscarPorId);
+
+// Rota para editar cliente (requer autenticação)
+router.put('/clientes/:id', loginController.verificarToken, clientesController.editar);
+
+// Rota para deletar cliente (requer autenticação)
+router.delete('/clientes/:id', loginController.verificarToken, clientesController.deletar);
+
+// Rota para alterar status do cliente (requer autenticação)
+router.put('/clientes/:id/status', loginController.verificarToken, clientesController.alterarStatus);
+
+// ===== ROTAS DE PAGAMENTOS =====
+// Rota para cadastrar forma de pagamento (requer autenticação)
+router.post('/pagamentos', loginController.verificarToken, pagamentosController.cadastrar);
+
+// Rota para listar formas de pagamento por estabelecimento
+router.get('/pagamentos/:estabelecimento_id', loginController.verificarToken, pagamentosController.listarPorEstabelecimento);
+
+// Rota para editar forma de pagamento (requer autenticação)
+router.put('/pagamentos/:id', loginController.verificarToken, pagamentosController.editar);
+
+// Rota para deletar forma de pagamento (requer autenticação)
+router.delete('/pagamentos/:id', loginController.verificarToken, pagamentosController.deletar);
+
+// Rota para alterar status da forma de pagamento (requer autenticação)
+router.put('/pagamentos/:id/status', loginController.verificarToken, pagamentosController.alterarStatus);
+
+// Rota para buscar pagamentos de um pedido específico
+router.get('/pagamentos/pedido/:pedido_id', loginController.verificarToken, pagamentosController.buscarPagamentosPorPedido);
+
+// Rota para excluir pagamento específico de um pedido
+router.delete('/pagamentos/pedido/:pedido_id/:pagamento_id', loginController.verificarToken, pagamentosController.excluirPagamentoDoPedido);
+
+// Rota para atualizar valor de pagamento específico de um pedido
+router.put('/pagamentos/pedido/:pedido_id/:pagamento_id', loginController.verificarToken, pagamentosController.atualizarPagamentoDoPedido);
+
+// Rota para listar histórico de pagamentos por caixa
+router.get('/pagamentos/historico/caixa/:caixa_id', loginController.verificarToken, pagamentosController.listarHistoricoPorCaixa);
+
+// ===== ROTAS DE ESTABELECIMENTOS =====
+// Rota para buscar dados do estabelecimento do usuário logado
+router.get('/estabelecimento/meu', loginController.verificarToken, estabelecimentosController.getEstabelecimentoUsuario);
+
+// Rota para buscar dados de um estabelecimento específico por ID
+router.get('/estabelecimento/:id', loginController.verificarToken, estabelecimentosController.getEstabelecimento);
+
+// Rota para atualizar dados do estabelecimento do usuário logado
+router.put('/estabelecimento/meu', loginController.verificarToken, estabelecimentosController.updateEstabelecimento);
 
 // ===== ROTA PARA BUSCAR IMAGENS =====
 // Rota para buscar sugestões de imagens via Google Custom Search
@@ -179,7 +279,10 @@ router.get('/buscar-imagens', async (req, res) => {
       url: item.link,
       thumbnail: item.image?.thumbnailLink || item.link,
       title: item.title || '',
-      context: item.image?.contextLink || ''
+      context: item.image?.contextLink || '',
+      // Adicionar informações de validação
+      isValid: true,
+      checked: false
     })) || [];
 
     res.json({ 
@@ -239,6 +342,119 @@ router.get('/proxy-image', async (req, res) => {
     res.status(500).json({ 
       success: false, 
       error: "Erro interno ao carregar imagem" 
+    });
+  }
+});
+
+// ===== ROTA FALE CONOSCO (PÚBLICA) =====
+// Rota para receber mensagens do formulário "Fale Conosco"
+router.post('/fale-conosco', async (req, res) => {
+  try {
+    const { nome, email, whatsapp, restaurante, mensagem } = req.body;
+
+    console.log('📧 Dados recebidos do formulário:', { nome, email, whatsapp, restaurante, mensagem });
+
+    // Validação básica dos campos obrigatórios
+    if (!nome || !email || !mensagem) {
+      console.log('❌ Validação falhou: campos obrigatórios ausentes');
+      return res.status(400).json({
+        success: false,
+        message: 'Nome, email e mensagem são obrigatórios'
+      });
+    }
+
+    console.log('✅ Validação passou, configurando nodemailer...');
+
+    // Importar nodemailer dinamicamente
+    const nodemailer = await import('nodemailer');
+
+    // Configurar o transporter do Gmail
+    console.log('🔧 Configurando transporter do Gmail...');
+    
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: 'adoniasgoes86@gmail.com',
+        pass: 'ioazwrmbvenxeyxp' // Senha de app do Gmail
+      }
+    });
+
+    console.log('✅ Transporter configurado, testando conexão...');
+    
+    // Testar a conexão
+    try {
+      await transporter.verify();
+      console.log('✅ Conexão com Gmail verificada com sucesso');
+    } catch (verifyError) {
+      console.error('❌ Erro ao verificar conexão com Gmail:', verifyError);
+      throw new Error('Falha na configuração do e-mail: ' + verifyError.message);
+    }
+
+    // Configurar o e-mail
+    const mailOptions = {
+      from: '"Fale Conosco - FilaZero" <adoniasgoes86@gmail.com>',
+      to: 'adoniasgoes86@gmail.com',
+      subject: `Nova mensagem de ${nome}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #2563eb; border-bottom: 2px solid #2563eb; padding-bottom: 10px;">
+            Nova mensagem do formulário "Fale Conosco"
+          </h2>
+          
+          <div style="background-color: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h3 style="color: #1e40af; margin-top: 0;">Dados do Cliente:</h3>
+            <p><strong>Nome:</strong> ${nome}</p>
+            <p><strong>Email:</strong> ${email}</p>
+            <p><strong>WhatsApp:</strong> ${whatsapp || 'Não informado'}</p>
+            <p><strong>Restaurante:</strong> ${restaurante || 'Não informado'}</p>
+          </div>
+          
+          <div style="background-color: #ffffff; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px;">
+            <h3 style="color: #1e40af; margin-top: 0;">Mensagem:</h3>
+            <p style="line-height: 1.6; white-space: pre-wrap;">${mensagem}</p>
+          </div>
+          
+          <div style="margin-top: 20px; padding: 15px; background-color: #f0f9ff; border-left: 4px solid #2563eb; border-radius: 4px;">
+            <p style="margin: 0; color: #1e40af; font-size: 14px;">
+              <strong>Enviado em:</strong> ${new Date().toLocaleString('pt-BR')}
+            </p>
+          </div>
+        </div>
+      `
+    };
+
+    // Enviar o e-mail
+    console.log('📤 Enviando e-mail...');
+    const info = await transporter.sendMail(mailOptions);
+
+    console.log('✅ E-mail enviado com sucesso!');
+    console.log('📧 Message ID:', info.messageId);
+    console.log('📧 Dados da mensagem:', { nome, email, whatsapp, restaurante });
+
+    res.status(200).json({
+      success: true,
+      message: 'Mensagem enviada com sucesso! Entraremos em contato em breve.'
+    });
+
+  } catch (error) {
+    console.error('❌ Erro ao enviar e-mail:', error);
+    console.error('❌ Stack trace:', error.stack);
+    
+    // Determinar o tipo de erro
+    let errorMessage = 'Erro interno do servidor. Tente novamente mais tarde.';
+    
+    if (error.message.includes('Invalid login')) {
+      errorMessage = 'Erro de autenticação do e-mail. Verifique as credenciais.';
+    } else if (error.message.includes('ENOTFOUND')) {
+      errorMessage = 'Erro de conexão. Verifique sua internet.';
+    } else if (error.message.includes('ECONNREFUSED')) {
+      errorMessage = 'Servidor de e-mail indisponível.';
+    }
+    
+    res.status(500).json({
+      success: false,
+      message: errorMessage,
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });

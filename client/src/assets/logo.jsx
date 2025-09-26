@@ -13,7 +13,7 @@ const Logo = ({ className = "", size = "default" }) => {
   };
 
   return (
-    <div className={`bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center text-white font-bold shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer ${getSizeClasses()} ${className}`} aria-label="FilaZero logo">
+    <div className={`bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center text-white font-bold shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer ${getSizeClasses()} ${className}`} aria-label="FilaZero logo" style={{ background: className.includes('bg-gray-900') ? '#111827' : undefined }}>
       <svg
         viewBox="0 0 24 24"
         fill="none"

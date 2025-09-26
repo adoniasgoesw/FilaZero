@@ -1,7 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { Calculator, Plus } from 'lucide-react';
+import { Calculator } from 'lucide-react';
 import api from '../../services/api';
-import AddButton from '../buttons/Add';
+
+// Função para formatar valores em reais (padrão brasileiro)
+const formatCurrency = (value) => {
+  const numValue = Number(value) || 0;
+  return numValue.toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+};
+
+// Função para converter string formatada para número
+const parseCurrency = (value) => {
+  if (typeof value === 'string') {
+    // Remove pontos e substitui vírgula por ponto
+    return Number(value.replace(/\./g, '').replace(',', '.')) || 0;
+  }
+  return Number(value) || 0;
+};
 
 const FormFecharCaixa = ({ onSave, caixaData }) => {
   const [formData, setFormData] = useState({
@@ -28,17 +45,48 @@ const FormFecharCaixa = ({ onSave, caixaData }) => {
   const [diferenca, setDiferenca] = useState(0);
   const [showContagem, setShowContagem] = useState(false);
 
+  // Função para carregar dados do caixa
+  const loadCaixaData = async () => {
+    try {
+      const estabelecimentoId = Number(localStorage.getItem('estabelecimentoId'));
+      if (estabelecimentoId) {
+        console.log('🔄 Atualizando dados do caixa em tempo real...');
+        const res = await api.get(`/caixas/aberto/${estabelecimentoId}`);
+        console.log('📊 Resposta da API:', res);
+        if (res.success && res.data?.caixa) {
+          console.log('📋 Dados do caixa atualizados:', res.data.caixa);
+          const saldo = Number(res.data.caixa.saldo_total) || 0;
+          console.log('💰 Saldo total atualizado:', saldo);
+          setSaldoTotal(saldo);
+          setFormData(prev => ({
+            ...prev,
+            saldoTotal: formatCurrency(saldo)
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao buscar dados do caixa:', error);
+    }
+  };
+
   // Carregar dados do caixa quando o componente monta
   useEffect(() => {
-    if (caixaData) {
-      const saldo = caixaData.saldo_total || 0;
-      setSaldoTotal(saldo);
-      setFormData(prev => ({
-        ...prev,
-        saldoTotal: saldo.toFixed(2)
-      }));
-    }
+    loadCaixaData();
   }, [caixaData]);
+
+  // Atualizar saldo em tempo real quando houver movimentações
+  useEffect(() => {
+    const handleMovimentacaoChanged = () => {
+      console.log('🔄 Evento movimentacaoChanged recebido - atualizando saldo do caixa');
+      loadCaixaData();
+    };
+
+    window.addEventListener('movimentacaoChanged', handleMovimentacaoChanged);
+    
+    return () => {
+      window.removeEventListener('movimentacaoChanged', handleMovimentacaoChanged);
+    };
+  }, []);
 
   // Calcular valor de fechamento automaticamente quando cédulas/moedas mudam
   useEffect(() => {
@@ -53,19 +101,19 @@ const FormFecharCaixa = ({ onSave, caixaData }) => {
       
       setFormData(prev => ({
         ...prev,
-        valorFechamento: total.toFixed(2)
+        valorFechamento: formatCurrency(total)
       }));
     }
   }, [formData.cedulas, showContagem]);
 
   // Calcular diferença quando valor de fechamento ou saldo total mudam
   useEffect(() => {
-    const valorFechamento = parseFloat(formData.valorFechamento) || 0;
+    const valorFechamento = parseCurrency(formData.valorFechamento);
     const diferencaCalculada = valorFechamento - saldoTotal;
     setDiferenca(diferencaCalculada);
     setFormData(prev => ({
       ...prev,
-      diferenca: diferencaCalculada.toFixed(2)
+      diferenca: formatCurrency(diferencaCalculada)
     }));
   }, [formData.valorFechamento, saldoTotal]);
 
@@ -90,7 +138,8 @@ const FormFecharCaixa = ({ onSave, caixaData }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.valorFechamento || parseFloat(formData.valorFechamento) <= 0) {
+    const valorFechamento = parseCurrency(formData.valorFechamento);
+    if (!formData.valorFechamento || valorFechamento <= 0) {
       alert('Valor de fechamento é obrigatório e deve ser maior que zero!');
       return;
     }
@@ -111,7 +160,7 @@ const FormFecharCaixa = ({ onSave, caixaData }) => {
       
       const res = await api.post('/caixas/fechar', {
         estabelecimento_id: estabelecimentoId,
-        valor_fechamento: parseFloat(formData.valorFechamento)
+        valor_fechamento: valorFechamento
       });
       
       if (res.success) {
@@ -136,32 +185,21 @@ const FormFecharCaixa = ({ onSave, caixaData }) => {
             Valor de Fechamento <span className="text-red-500">*</span>
           </label>
           <input
-            type="number"
-            step="0.01"
-            min="0"
+            type="text"
             required
             value={formData.valorFechamento}
-            onChange={(e) => handleInputChange('valorFechamento', e.target.value)}
+            onChange={(e) => {
+              const rawValue = e.target.value.replace(/\D/g, ''); // Remove tudo que não é dígito
+              const numericValue = rawValue ? (Number(rawValue) / 100).toFixed(2) : '';
+              const formattedValue = numericValue ? formatCurrency(numericValue) : '';
+              handleInputChange('valorFechamento', formattedValue);
+            }}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             placeholder="R$ 0,00"
           />
         </div>
 
-        {/* Botão Contagem em Cédulas */}
-        {!showContagem && (
-          <div className="flex justify-center">
-            <AddButton
-              onClick={() => setShowContagem(true)}
-              className="w-full max-w-xs"
-              title="Contagem em Cédulas"
-            >
-              <Plus className="w-5 h-5 mr-2" />
-              + contagem em cédulas
-            </AddButton>
-          </div>
-        )}
-
-        {/* Valores calculados */}
+        {/* Saldo Total e Diferença lado a lado */}
         <div className="grid grid-cols-2 gap-4">
           {/* Saldo Total */}
           <div>
@@ -186,7 +224,7 @@ const FormFecharCaixa = ({ onSave, caixaData }) => {
               value={formData.diferenca ? `R$ ${formData.diferenca}` : 'R$ 0,00'}
               disabled
               className={`w-full px-3 py-2 border rounded-lg ${
-                parseFloat(formData.diferenca) >= 0 
+                parseCurrency(formData.diferenca) >= 0 
                   ? 'border-green-300 bg-green-50 text-green-700' 
                   : 'border-red-300 bg-red-50 text-red-700'
               }`}
@@ -194,17 +232,30 @@ const FormFecharCaixa = ({ onSave, caixaData }) => {
           </div>
         </div>
 
-        {/* Cédulas e Moedas - só aparecem quando showContagem é true */}
+        {/* Botão Contagem em Cédulas */}
+        {!showContagem && (
+          <div>
+            <button
+              type="button"
+              onClick={() => setShowContagem(true)}
+              className="w-full px-3 py-2 border-2 border-blue-500 text-blue-500 bg-white rounded-lg hover:bg-blue-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 font-medium"
+            >
+              + Contagem de Cédulas
+            </button>
+          </div>
+        )}
+
+        {/* Cédulas - só aparecem quando showContagem é true */}
         {showContagem && (
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-800 border-b border-gray-200 pb-2">
-              Contagem em Cédulas e Moedas
+              Cédulas
             </h3>
             
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {Object.entries(formData.cedulas).map(([valor, quantidade]) => (
                 <div key={valor} className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">
+                  <label className="block text-sm font-medium text-gray-700 text-center">
                     R$ {valor}
                   </label>
                   <input
@@ -212,12 +263,9 @@ const FormFecharCaixa = ({ onSave, caixaData }) => {
                     min="0"
                     value={quantidade === '' ? '' : quantidade}
                     onChange={(e) => handleCedulaChange(valor, e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center"
                     placeholder="0"
                   />
-                  <p className="text-xs text-gray-500">
-                    Total: R$ {(parseFloat(valor) * (quantidade === '' ? 0 : (parseInt(quantidade) || 0))).toFixed(2)}
-                  </p>
                 </div>
               ))}
             </div>

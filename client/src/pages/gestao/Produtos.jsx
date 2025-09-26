@@ -12,6 +12,7 @@ import Notification from '../../components/elements/Notification';
 import api from '../../services/api';
 import StatusButton from '../../components/buttons/Status';
 import DeleteButton from '../../components/buttons/Delete';
+import { useProdutos, useComplementos } from '../../contexts/CacheContext';
 
 function Produtos() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -24,7 +25,6 @@ function Produtos() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [produtoToEdit, setProdutoToEdit] = useState(null);
   const [estabelecimentoId, setEstabelecimentoId] = useState(null);
-  const [refreshList, setRefreshList] = useState(0);
   const [notification, setNotification] = useState({ isOpen: false, type: 'success', title: '', message: '' });
   const [activeTab, setActiveTab] = useState('produtos'); // 'produtos' ou 'complementos'
   const [search, setSearch] = useState('');
@@ -33,7 +33,6 @@ function Produtos() {
   const [isAddComplementoModalOpen, setIsAddComplementoModalOpen] = useState(false);
   const [isEditComplementoModalOpen, setIsEditComplementoModalOpen] = useState(false);
   const [complementoToEdit, setComplementoToEdit] = useState(null);
-  const [refreshComplementosList, setRefreshComplementosList] = useState(0);
   const [formProductState, setFormProductState] = useState({
     showComplementoForm: false,
     complementosSelecionados: [],
@@ -44,6 +43,10 @@ function Produtos() {
   const [selectedProducts, setSelectedProducts] = useState([]);
   const [selectedComplementos, setSelectedComplementos] = useState([]);
   const [showActionsDropdown, setShowActionsDropdown] = useState(false);
+
+  // Usar hooks de cache
+  const { addProduto, updateProduto, removeProduto } = useProdutos(estabelecimentoId);
+  const { addComplemento, updateComplemento, removeComplemento } = useComplementos(estabelecimentoId);
 
   useEffect(() => {
     // Buscar o ID do estabelecimento do localStorage
@@ -74,10 +77,10 @@ function Produtos() {
 
   const handleProductSave = (data) => {
     console.log('Produto salvo:', data);
+    // Adicionar produto ao cache
+    addProduto(data);
     // Fechar modal primeiro
     setIsAddModalOpen(false);
-    // Forçar atualização da lista
-    setRefreshList(prev => prev + 1);
     // Mostrar notificação de sucesso
     showNotification('success', 'Sucesso!', 'Produto cadastrado com sucesso!');
   };
@@ -88,6 +91,8 @@ function Produtos() {
   };
 
   const handleProductDelete = (produto) => {
+    // Remover produto do cache
+    removeProduto(produto.id);
     // Mostrar notificação de sucesso após deletar
     showNotification('success', 'Excluído!', `Produto "${produto.nome}" foi excluído com sucesso!`);
   };
@@ -100,11 +105,11 @@ function Produtos() {
 
   const handleProductEditSave = (data) => {
     console.log('Produto editado:', data);
+    // Atualizar produto no cache
+    updateProduto(data.id, data);
     // Fechar modal primeiro
     setIsEditModalOpen(false);
     setProdutoToEdit(null);
-    // Forçar atualização da lista
-    setRefreshList(prev => prev + 1);
     // Mostrar notificação de sucesso
     showNotification('success', 'Atualizado!', 'Produto atualizado com sucesso!');
   };
@@ -117,8 +122,9 @@ function Produtos() {
   // Funções para complementos
   const handleComplementoSave = (data) => {
     console.log('Complemento salvo:', data);
+    // Adicionar complemento ao cache
+    addComplemento(data);
     setIsAddComplementoModalOpen(false);
-    setRefreshComplementosList(prev => prev + 1);
     showNotification('success', 'Sucesso!', 'Complemento cadastrado com sucesso!');
   };
 
@@ -127,6 +133,8 @@ function Produtos() {
   };
 
   const handleComplementoDelete = (complemento) => {
+    // Remover complemento do cache
+    removeComplemento(complemento.id);
     showNotification('success', 'Excluído!', `Complemento "${complemento.nome}" foi excluído com sucesso!`);
   };
 
@@ -138,9 +146,10 @@ function Produtos() {
 
   const handleComplementoEditSave = (data) => {
     console.log('Complemento editado:', data);
+    // Atualizar complemento no cache
+    updateComplemento(data.id, data);
     setIsEditComplementoModalOpen(false);
     setComplementoToEdit(null);
-    setRefreshComplementosList(prev => prev + 1);
     showNotification('success', 'Atualizado!', 'Complemento atualizado com sucesso!');
   };
 
@@ -192,11 +201,11 @@ function Produtos() {
       </div>
 
       {/* Título padronizado com outras páginas (Clientes/Categorias) */}
-      <div className="px-4 md:px-6 pt-4 pb-2 mt-16 md:mt-0">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Package className="w-6 h-6 text-blue-600" />
-            <h1 className="text-2xl font-bold text-gray-900">
+      <div className="px-4 md:px-6 pt-4 pb-2 mt-18 md:mt-0">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+            <Package className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 flex-shrink-0" />
+            <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 truncate">
               {activeTab === 'produtos' ? 'Produtos' : 'Complementos'}
             </h1>
           </div>
@@ -205,18 +214,18 @@ function Produtos() {
             const count = activeTab === 'produtos' ? selectedProducts.length : selectedComplementos.length;
             if (count === 0) return null;
             return (
-              <div className="flex items-center gap-3 relative">
-                <span className="text-sm text-gray-600 whitespace-nowrap">{count} produto{count > 1 ? 's' : ''} selecionado{count > 1 ? 's' : ''}</span>
+              <div className="flex items-center gap-1 sm:gap-2 md:gap-3 relative flex-shrink-0">
+                <span className="text-xs sm:text-sm text-gray-600 whitespace-nowrap">{count} produto{count > 1 ? 's' : ''} selecionado{count > 1 ? 's' : ''}</span>
                 <button
                   onClick={() => setShowActionsDropdown((v) => !v)}
-                  className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 py-1 rounded-md text-xs font-medium transition-colors flex items-center justify-center"
+                  className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-1.5 sm:px-2 py-1 rounded-md text-xs font-medium transition-colors flex items-center justify-center"
                   title="Ações"
                 >
-                  <MoreHorizontal className="w-3.5 h-3.5" />
+                  <MoreHorizontal className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                 </button>
 
                 {showActionsDropdown && (
-                  <div className="absolute right-0 top-8 w-40 bg-white rounded-md shadow-lg border border-gray-200 z-10">
+                  <div className="absolute right-0 top-8 w-36 sm:w-40 bg-white rounded-md shadow-lg border border-gray-200 z-40">
                     <button
                       onClick={async () => {
                         try {
@@ -227,7 +236,7 @@ function Produtos() {
                           setRefreshList((v) => v + 1);
                         } catch { /* noop */ }
                       }}
-                      className="w-full text-left px-3 py-2 text-xs sm:text-sm flex items-center gap-2 text-gray-700 hover:bg-gray-50"
+                      className="w-full text-left px-2 sm:px-3 py-1.5 sm:py-2 text-xs flex items-center gap-1.5 sm:gap-2 text-gray-700 hover:bg-gray-50"
                     >
                       <Check className="w-4 h-4 text-green-600" />
                       <span>Ativar</span>
@@ -242,7 +251,7 @@ function Produtos() {
                           setRefreshList((v) => v + 1);
                         } catch { /* noop */ }
                       }}
-                      className="w-full text-left px-3 py-2 text-xs sm:text-sm flex items-center gap-2 text-gray-700 hover:bg-gray-50"
+                      className="w-full text-left px-2 sm:px-3 py-1.5 sm:py-2 text-xs flex items-center gap-1.5 sm:gap-2 text-gray-700 hover:bg-gray-50"
                     >
                       <X className="w-4 h-4 text-orange-600" />
                       <span>Desativar</span>
@@ -257,7 +266,7 @@ function Produtos() {
                           setRefreshList((v) => v + 1);
                         } catch { /* noop */ }
                       }}
-                      className="w-full text-left px-3 py-2 text-xs sm:text-sm flex items-center gap-2 text-gray-700 hover:bg-gray-50"
+                      className="w-full text-left px-2 sm:px-3 py-1.5 sm:py-2 text-xs flex items-center gap-1.5 sm:gap-2 text-gray-700 hover:bg-gray-50"
                     >
                       <Trash2 className="w-4 h-4 text-gray-500" />
                       <span>Excluir</span>
@@ -309,7 +318,6 @@ function Produtos() {
           {estabelecimentoId ? (
             activeTab === 'produtos' ? (
               <ListProduct 
-                key={refreshList} 
                 estabelecimentoId={estabelecimentoId}
                 onProductDelete={handleProductDelete}
                 onProductEdit={handleProductEdit}
@@ -319,7 +327,6 @@ function Produtos() {
               />
             ) : (
               <ListComplementos 
-                key={refreshComplementosList} 
                 estabelecimentoId={estabelecimentoId}
                 onComplementoDelete={handleComplementoDelete}
                 onComplementoEdit={handleComplementoEdit}

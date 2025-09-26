@@ -152,4 +152,3 @@ const ListaItensPedido = ({ items, onItemsChange, pendingItems = [], onPendingDe
 
 export default ListaItensPedido;
 
-

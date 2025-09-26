@@ -1,13 +1,18 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Settings } from 'lucide-react';
+import { Settings, Table, Receipt, Store } from 'lucide-react';
 import api from '../../services/api';
+import FormContainer from './FormContainer';
+import FormField from './FormField';
+import FormInput from './FormInput';
 
 
 const DEFAULTS = {
   mesasEnabled: true,
   comandasEnabled: false,
+  balcaoEnabled: false,
   quantidadeMesas: 4,
   quantidadeComandas: 0,
+  quantidadeBalcao: 0,
   prefixoComanda: ''
 };
 
@@ -33,7 +38,18 @@ const FormConfig = ({ estabelecimentoId: propEstabelecimentoId }) => {
         } else {
           payload.quantidadeComandas = 0;
         }
-        await api.put(`/pontos-atendimento/config/${estabId}`, payload);
+        if (payload.balcaoEnabled) {
+          payload.quantidadeBalcao = Math.max(1, Number(payload.quantidadeBalcao || 1));
+        } else {
+          payload.quantidadeBalcao = 0;
+        }
+        const res = await api.put(`/pontos-atendimento/config/${estabId}`, payload);
+        
+        // Disparar evento para atualizar a listagem de pontos de atendimento
+        if (res && res.success) {
+          console.log('🔄 FormConfig - Disparando evento para atualizar pontos de atendimento');
+          window.dispatchEvent(new CustomEvent('refreshPontosAtendimento'));
+        }
       } catch (err) {
         setError(err?.message || 'Erro ao salvar configuração');
       } finally {
@@ -45,11 +61,12 @@ const FormConfig = ({ estabelecimentoId: propEstabelecimentoId }) => {
   const handleToggle = (field) => {
     setFormData(prev => {
       const togglingTo = !prev[field];
-      const otherField = field === 'mesasEnabled' ? 'comandasEnabled' : 'mesasEnabled';
+      const otherFields = ['mesasEnabled', 'comandasEnabled', 'balcaoEnabled'].filter(f => f !== field);
+      const otherEnabled = otherFields.some(f => prev[f]);
 
-      // Impedir desabilitar ambos
-      if (!togglingTo && prev[otherField] === false) {
-        setError('Pelo menos Mesas ou Comandas deve estar habilitado.');
+      // Impedir desabilitar todos
+      if (!togglingTo && !otherEnabled) {
+        setError('Pelo menos um tipo de atendimento deve estar habilitado.');
         return prev;
       }
 
@@ -61,6 +78,8 @@ const FormConfig = ({ estabelecimentoId: propEstabelecimentoId }) => {
           next.quantidadeMesas = 1;
         } else if (field === 'comandasEnabled') {
           next.quantidadeComandas = 1;
+        } else if (field === 'balcaoEnabled') {
+          next.quantidadeBalcao = 1;
         }
       }
       
@@ -87,8 +106,10 @@ const FormConfig = ({ estabelecimentoId: propEstabelecimentoId }) => {
         setFormData({
           mesasEnabled: !!res.data.mesasEnabled,
           comandasEnabled: !!res.data.comandasEnabled,
+          balcaoEnabled: !!res.data.balcaoEnabled,
           quantidadeMesas: Math.max(1, Number(res.data.quantidadeMesas ?? DEFAULTS.quantidadeMesas)),
           quantidadeComandas: Number(res.data.quantidadeComandas ?? DEFAULTS.quantidadeComandas),
+          quantidadeBalcao: Number(res.data.quantidadeBalcao ?? DEFAULTS.quantidadeBalcao),
           prefixoComanda: String(res.data.prefixoComanda ?? '')
         });
       } else {
@@ -98,8 +119,10 @@ const FormConfig = ({ estabelecimentoId: propEstabelecimentoId }) => {
           setFormData({
             mesasEnabled: !!created.data.mesasEnabled,
             comandasEnabled: !!created.data.comandasEnabled,
+            balcaoEnabled: !!created.data.balcaoEnabled,
             quantidadeMesas: Math.max(1, Number(created.data.quantidadeMesas ?? DEFAULTS.quantidadeMesas)),
             quantidadeComandas: Number(created.data.quantidadeComandas ?? DEFAULTS.quantidadeComandas),
+            quantidadeBalcao: Number(created.data.quantidadeBalcao ?? DEFAULTS.quantidadeBalcao),
             prefixoComanda: String(created.data.prefixoComanda ?? '')
           });
         } else {
@@ -125,9 +148,9 @@ const FormConfig = ({ estabelecimentoId: propEstabelecimentoId }) => {
     try {
       setSaving(true);
       setError(null);
-      // Guard extra: não permitir enviar ambos desabilitados
-      if (!formData.mesasEnabled && !formData.comandasEnabled) {
-        setError('Pelo menos Mesas ou Comandas deve estar habilitado.');
+      // Guard extra: não permitir enviar todos desabilitados
+      if (!formData.mesasEnabled && !formData.comandasEnabled && !formData.balcaoEnabled) {
+        setError('Pelo menos um tipo de atendimento deve estar habilitado.');
         setSaving(false);
         return;
       }
@@ -139,10 +162,20 @@ const FormConfig = ({ estabelecimentoId: propEstabelecimentoId }) => {
       } else {
         payload.quantidadeComandas = 0;
       }
+      if (payload.balcaoEnabled) {
+        payload.quantidadeBalcao = Math.max(1, Number(payload.quantidadeBalcao || 1));
+      } else {
+        payload.quantidadeBalcao = 0;
+      }
       const res = await api.put(`/pontos-atendimento/config/${estabId}`, payload);
       if (!(res && res.success)) {
         throw new Error('Falha ao salvar configuração');
       }
+      
+      // Disparar evento para atualizar a listagem de pontos de atendimento
+      console.log('🔄 FormConfig - Disparando evento para atualizar pontos de atendimento');
+      window.dispatchEvent(new CustomEvent('refreshPontosAtendimento'));
+      
       // Disparar evento para o modal fechar automaticamente
       window.dispatchEvent(new CustomEvent('modalSaveSuccess', { detail: { data: res.data || payload } }));
     } catch (err) {
@@ -153,26 +186,25 @@ const FormConfig = ({ estabelecimentoId: propEstabelecimentoId }) => {
   };
 
   return (
-    <form id="form-config" onSubmit={handleSubmit} className="modal-form h-full flex flex-col bg-white">
-      {/* Conteúdo do formulário */}
-      <div className="flex-1 p-2 sm:p-4 max-h-96 overflow-y-auto scrollbar-hide space-y-4 sm:space-y-6">
+    <form id="form-config" onSubmit={handleSubmit} className="h-full flex flex-col modal-form bg-white">
+      <FormContainer>
         {/* Configuração de Mesas */}
-        <div className="space-y-3 sm:space-y-4">
-          <h3 className="text-sm sm:text-lg font-semibold text-gray-800 border-b border-gray-200 pb-1 sm:pb-2">
-            Configuração de Mesas
+        <div className="space-y-4">
+          <h3 className="text-lg font-medium text-gray-800 border-b border-gray-200 pb-2">
+            Mesas
           </h3>
           
           <div className="space-y-4">
-            {/* Habilitar Mesas */}
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-gray-700">
-                Habilitar Mesas
-              </label>
+            {/* Toggle Mesas */}
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+              <div>
+                <label className="text-sm font-medium text-gray-700">Habilitar Mesas</label>
+              </div>
               <button
                 type="button"
                 onClick={() => handleToggle('mesasEnabled')}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  formData.mesasEnabled ? 'bg-blue-600' : 'bg-gray-300'
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 ${
+                  formData.mesasEnabled ? 'bg-gray-600' : 'bg-gray-300'
                 }`}
               >
                 <span
@@ -183,43 +215,41 @@ const FormConfig = ({ estabelecimentoId: propEstabelecimentoId }) => {
               </button>
             </div>
 
-            
-            
             {/* Quantidade de Mesas */}
             {formData.mesasEnabled && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Quantidade de Mesas
-                </label>
-                <input
+              <FormField 
+                label="Quantidade de Mesas" 
+                helpText="Número de mesas disponíveis para atendimento"
+              >
+                <FormInput
                   type="number"
                   min="1"
                   value={formData.quantidadeMesas}
                   onChange={(e) => handleInputChange('quantidadeMesas', parseInt(e.target.value))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Ex: 10"
                 />
-              </div>
+              </FormField>
             )}
           </div>
         </div>
 
         {/* Configuração de Comandas */}
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-gray-800 border-b border-gray-200 pb-2">
-            Configuração de Comandas
+          <h3 className="text-lg font-medium text-gray-800 border-b border-gray-200 pb-2">
+            Comandas
           </h3>
           
           <div className="space-y-4">
-            {/* Habilitar Comandas */}
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-gray-700">
-                Habilitar Comandas
-              </label>
+            {/* Toggle Comandas */}
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+              <div>
+                <label className="text-sm font-medium text-gray-700">Habilitar Comandas</label>
+              </div>
               <button
                 type="button"
                 onClick={() => handleToggle('comandasEnabled')}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  formData.comandasEnabled ? 'bg-blue-600' : 'bg-gray-300'
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 ${
+                  formData.comandasEnabled ? 'bg-gray-600' : 'bg-gray-300'
                 }`}
               >
                 <span
@@ -229,50 +259,107 @@ const FormConfig = ({ estabelecimentoId: propEstabelecimentoId }) => {
                 />
               </button>
             </div>
-            
-            
 
             {/* Configurações de Comandas */}
             {formData.comandasEnabled && (
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Quantidade de Comandas
-                  </label>
-                  <input
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormField 
+                  label="Quantidade de Comandas" 
+                  helpText="Número de comandas disponíveis"
+                >
+                  <FormInput
                     type="number"
                     min="1"
                     value={Math.max(1, Number(formData.quantidadeComandas || 1))}
                     onChange={(e) => handleInputChange('quantidadeComandas', Math.max(1, parseInt(e.target.value || '1')))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Ex: 50"
                   />
-                </div>
+                </FormField>
                 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Prefixo da Comanda
-                  </label>
-                  <input
+                <FormField 
+                  label="Prefixo da Comanda" 
+                  helpText="Identificador para as comandas (ex: CMD, COM)"
+                >
+                  <FormInput
                     type="text"
                     value={formData.prefixoComanda}
                     onChange={(e) => handleInputChange('prefixoComanda', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     placeholder="Ex: CMD"
+                    icon={Receipt}
                   />
-                </div>
+                </FormField>
               </div>
             )}
           </div>
         </div>
-      </div>
 
-      {/* Ações */}
-      {error && (
-        <div className="mt-4 text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
-          {error}
+        {/* Configuração de Balcões */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-medium text-gray-800 border-b border-gray-200 pb-2">
+            Balcões
+          </h3>
+          
+          <div className="space-y-4">
+            {/* Toggle Balcões */}
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+              <div>
+                <label className="text-sm font-medium text-gray-700">Habilitar Balcões</label>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleToggle('balcaoEnabled')}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 ${
+                  formData.balcaoEnabled ? 'bg-gray-600' : 'bg-gray-300'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    formData.balcaoEnabled ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* Quantidade de Balcões */}
+            {formData.balcaoEnabled && (
+              <FormField 
+                label="Quantidade de Balcões" 
+                helpText="Número de balcões disponíveis para atendimento"
+              >
+                <FormInput
+                  type="number"
+                  min="1"
+                  value={formData.quantidadeBalcao}
+                  onChange={(e) => handleInputChange('quantidadeBalcao', parseInt(e.target.value))}
+                  placeholder="Ex: 3"
+                />
+              </FormField>
+            )}
+          </div>
         </div>
-      )}
-      {/* O botão Salvar/Cancelar virá do modal base. Este formulário pode ser submetido via botão externo usando form="form-config" */}
+
+        {/* Status de Salvamento */}
+        {saving && (
+          <div className="flex items-center justify-center gap-2 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
+            <span className="text-sm text-gray-700 font-medium">Salvando configurações...</span>
+          </div>
+        )}
+
+        {/* Mensagem de Erro */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0">
+                <div className="w-5 h-5 bg-red-100 rounded-full flex items-center justify-center">
+                  <span className="text-red-600 text-xs font-bold">!</span>
+                </div>
+              </div>
+              <p className="text-sm text-red-700 leading-relaxed font-medium">{error}</p>
+            </div>
+          </div>
+        )}
+      </FormContainer>
     </form>
   );
 };

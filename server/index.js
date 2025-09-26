@@ -8,7 +8,7 @@ import authRoutes from './routes/AuthRoute.js';
 dotenv.config({ path: '.env.dev' });
 
 const app = express();
-const PORT = process.env.PORT || 3002;
+const PORT = 3002;
 
 // Middlewares
 app.use(cors({
@@ -70,6 +70,58 @@ app.get('/', (req, res) => {
     database: 'Neon Database',
     timestamp: new Date().toISOString()
   });
+});
+
+// Rota para proxy de imagens (evitar CORS)
+app.get('/api/proxy-image', async (req, res) => {
+  try {
+    const { url } = req.query;
+    
+    if (!url) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'URL parameter is required' 
+      });
+    }
+
+    // Validar se é uma URL válida
+    try {
+      new URL(url);
+    } catch (error) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Invalid URL' 
+      });
+    }
+
+    // Fazer requisição para a imagem
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+      }
+    });
+
+    if (!response.ok) {
+      return res.status(response.status).json({ 
+        success: false, 
+        message: 'Failed to fetch image' 
+      });
+    }
+
+    // Definir headers apropriados
+    const contentType = response.headers.get('content-type') || 'image/jpeg';
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=3600'); // Cache por 1 hora
+
+    // Pipe da resposta
+    response.body.pipe(res);
+  } catch (error) {
+    console.error('Erro ao fazer proxy da imagem:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Erro interno do servidor' 
+    });
+  }
 });
 
 // Middleware de tratamento de erros

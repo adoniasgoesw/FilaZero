@@ -15,6 +15,10 @@ const DeleteButton = ({ onClick, className = '', disabled = false, children, siz
   };
 
   if (square) {
+    const squareVariantClasses = variant === 'white-red' 
+      ? 'bg-white hover:bg-gray-50 text-red-600 border border-gray-200 shadow-sm hover:shadow-md'
+      : 'bg-red-600 hover:bg-red-700 disabled:bg-red-300 text-white';
+    
     return (
       <button
         onClick={onClick}
@@ -23,8 +27,8 @@ const DeleteButton = ({ onClick, className = '', disabled = false, children, siz
         className={`
           inline-flex items-center justify-center select-none
           w-12 h-12 md:w-14 md:h-14 rounded-xl
-          bg-red-600 hover:bg-red-700 disabled:bg-red-300
-          text-white font-medium 
+          ${squareVariantClasses}
+          font-medium 
           transition-colors duration-200 
           focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2
           disabled:cursor-not-allowed
@@ -40,11 +44,13 @@ const DeleteButton = ({ onClick, className = '', disabled = false, children, siz
   const outlineClasses = `bg-transparent hover:bg-red-50 text-red-600 border-0`;
   const iconGrayClasses = `bg-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100`;
   const softClasses = `bg-red-50 hover:bg-red-100 text-red-600`;
+  const whiteRedClasses = `bg-white hover:bg-gray-50 text-red-600 border border-gray-200 shadow-sm hover:shadow-md`;
 
   const variantClasses = 
     variant === 'outline' ? outlineClasses : 
     variant === 'icon-gray' ? iconGrayClasses : 
     variant === 'soft' ? softClasses : 
+    variant === 'white-red' ? whiteRedClasses :
     filledClasses;
 
   return (

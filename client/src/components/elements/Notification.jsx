@@ -72,7 +72,7 @@ const Notification = ({
   const IconComponent = config.icon;
 
   return (
-    <div className="fixed top-4 left-4 z-50 w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg">
+    <div className="fixed top-4 left-4 z-[10000] w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg">
       <div className={`${config.bgColor} ${config.borderColor} border rounded-xl shadow-lg p-3 sm:p-4 transform transition-all duration-300 ease-in-out`}>
         <div className="flex items-start gap-2 sm:gap-3">
           {/* Icon */}

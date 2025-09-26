@@ -13,11 +13,12 @@ const produtosController = {
         habilita_estoque,
         estoque_qtd,
         habilita_tempo_preparo,
-        tempo_preparo_min
+        tempo_preparo_min,
+        imagem_url
       } = req.body;
       const estabelecimentoId = req.body.estabelecimento_id;
-      // Cloudinary retorna a URL completa em req.file.path
-      const imagemUrl = req.file ? req.file.path : null;
+      // Cloudinary retorna a URL completa em req.file.path, ou usar imagem_url se fornecida
+      const imagemUrl = req.file ? req.file.path : (imagem_url || null);
 
       // Validação dos campos obrigatórios
       if (!nome || !categoria_id || !valor_venda || !estabelecimentoId) {
@@ -72,6 +73,30 @@ const produtosController = {
         RETURNING id, nome, categoria_id, valor_venda, valor_custo, imagem_url, habilita_estoque, estoque_qtd, habilita_tempo_preparo, tempo_preparo_min, status, criado_em
       `;
 
+      // Buscar dados completos do produto com categoria
+      const produtoCompletoQuery = `
+        SELECT 
+          p.id,
+          p.nome,
+          p.descricao,
+          p.valor_venda,
+          p.valor_custo,
+          p.imagem_url,
+          p.habilita_estoque,
+          p.estoque_qtd,
+          p.habilita_tempo_preparo,
+          p.tempo_preparo_min,
+          p.status,
+          p.criado_em,
+          p.categoria_id,
+          c.nome as categoria_nome,
+          c.imagem_url as categoria_imagem_url,
+          c.status as categoria_status
+        FROM produtos p
+        LEFT JOIN categorias c ON p.categoria_id = c.id
+        WHERE p.id = $1
+      `;
+
       const result = await pool.query(query, [
         estabelecimentoId,
         categoria_id,
@@ -86,12 +111,15 @@ const produtosController = {
         true // status ativo
       ]);
 
-      const novoProduto = result.rows[0];
+      const produtoInserido = result.rows[0];
+
+      // Buscar dados completos do produto com categoria
+      const produtoCompleto = await pool.query(produtoCompletoQuery, [produtoInserido.id]);
 
       res.status(201).json({
         success: true,
         message: 'Produto cadastrado com sucesso',
-        data: novoProduto
+        data: produtoCompleto.rows[0]
       });
 
     } catch (error) {
@@ -225,9 +253,11 @@ const produtosController = {
         habilita_estoque,
         estoque_qtd,
         habilita_tempo_preparo,
-        tempo_preparo_min
+        tempo_preparo_min,
+        imagem_url
       } = req.body;
-      const imagemUrl = req.file ? req.file.path : null;
+      // Cloudinary retorna a URL completa em req.file.path, ou usar imagem_url se fornecida
+      const imagemUrl = req.file ? req.file.path : (imagem_url || null);
 
       // Validação dos campos obrigatórios
       if (!nome || !categoria_id || !valor_venda) {
@@ -329,10 +359,36 @@ const produtosController = {
       const result = await pool.query(query, values);
       const produtoAtualizado = result.rows[0];
 
+      // Buscar dados completos do produto com categoria
+      const produtoCompletoQuery = `
+        SELECT 
+          p.id,
+          p.nome,
+          p.descricao,
+          p.valor_venda,
+          p.valor_custo,
+          p.imagem_url,
+          p.habilita_estoque,
+          p.estoque_qtd,
+          p.habilita_tempo_preparo,
+          p.tempo_preparo_min,
+          p.status,
+          p.criado_em,
+          p.categoria_id,
+          c.nome as categoria_nome,
+          c.imagem_url as categoria_imagem_url,
+          c.status as categoria_status
+        FROM produtos p
+        LEFT JOIN categorias c ON p.categoria_id = c.id
+        WHERE p.id = $1
+      `;
+
+      const produtoCompleto = await pool.query(produtoCompletoQuery, [id]);
+
       res.status(200).json({
         success: true,
         message: 'Produto atualizado com sucesso',
-        data: produtoAtualizado
+        data: produtoCompleto.rows[0]
       });
 
     } catch (error) {

@@ -1,7 +1,7 @@
 import React from 'react';
 // Minimal toggle switch styled for enable/disable with no inner icons
 
-const StatusButton = ({ onClick, className = '', disabled = false, isActive = false, size = 'md', title = 'Alterar status' }) => {
+const StatusButton = ({ onClick, className = '', disabled = false, isActive = false, size = 'md', title = 'Editar status' }) => {
   const trackSizes = {
     xs: 'w-8 h-4',
     sm: 'w-9 h-4',

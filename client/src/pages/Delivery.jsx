@@ -1,7 +1,15 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Truck } from 'lucide-react';
+import DevelopmentDialog from '../components/elements/DevelopmentDialog';
 
 function Delivery() {
+  const [showDevelopmentDialog, setShowDevelopmentDialog] = useState(false);
+
+  useEffect(() => {
+    // Mostrar o diálogo de desenvolvimento automaticamente
+    setShowDevelopmentDialog(true);
+  }, []);
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header com ícone e título */}
@@ -23,6 +31,14 @@ function Delivery() {
           <p className="text-gray-600">Configurações de delivery serão exibidas aqui...</p>
         </div>
       </div>
+
+      {/* Diálogo de desenvolvimento */}
+      <DevelopmentDialog
+        isOpen={showDevelopmentDialog}
+        onClose={() => setShowDevelopmentDialog(false)}
+        title="Área de Delivery em Desenvolvimento"
+        message="A funcionalidade de delivery está sendo desenvolvida e incluirá gestão de entregadores, áreas de entrega, cardápio digital e muito mais."
+      />
     </div>
   );
 }

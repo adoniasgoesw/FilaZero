@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import SearchBar from '../layout/SeachBar';
 import SaveButton from '../buttons/Save';
@@ -9,11 +10,15 @@ import api from '../../services/api';
 import Counter from '../elements/Counter';
 import ConfirmDialog from '../elements/ConfirmDialog';
 import BaseModal from '../modals/Base';
+import { imprimirNotaCozinha } from '../../services/notaFiscalPrint';
+// Removido import do cache - agora busca diretamente da API
 
-const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, onAddItem, onSave, selectedCounts = {}, totalSelectedCount = 0 }) => {
+const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, onAddItem, onSave, selectedCounts = {}, totalSelectedCount = 0, disabled = false, isBalcao = false, identificacao, nomePonto, vendedor, usuarioId, pedido, pendingCombosByProductId = {} }) => {
   const navigate = useNavigate();
+  
+  // Estados para categorias e produtos (busca direta da API)
   const [categorias, setCategorias] = React.useState([]);
-  const [loadingCats, setLoadingCats] = React.useState(true);
+  const [loadingCats, setLoadingCats] = React.useState(false);
   const [errorCats, setErrorCats] = React.useState(null);
   const [selectedCategoryId, setSelectedCategoryId] = React.useState(null);
   const [search, setSearch] = React.useState('');
@@ -24,6 +29,7 @@ const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, on
   const [confirmUnsavedOpen, setConfirmUnsavedOpen] = React.useState(false);
   const [savingAndExit, setSavingAndExit] = React.useState(false);
   const [pendingNavAction, setPendingNavAction] = React.useState(null); // 'home' | 'back'
+  const [savingAndPrinting, setSavingAndPrinting] = React.useState(false);
 
   // Modal de complementos
   const [complementsModalOpen, setComplementsModalOpen] = React.useState(false);
@@ -62,42 +68,75 @@ const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, on
     return null;
   }, [estabelecimentoId]);
 
+  // Função para carregar categorias diretamente da API
+  const loadCategorias = React.useCallback(async (forceRefresh = false) => {
+    const id = resolveEstabelecimentoId();
+    if (!id) {
+      console.warn('⚠️ PanelItens: estabelecimentoId não encontrado');
+      return;
+    }
+
+    try {
+      setLoadingCats(true);
+      setErrorCats(null);
+      console.log('🔄 PanelItens - Carregando categorias da API...');
+      
+      const response = await api.get(`/categorias/${id}`);
+      if (response.success && response.data) {
+        const categoriasData = Array.isArray(response.data) ? response.data : response.data.categorias || [];
+        setCategorias(categoriasData);
+        console.log('✅ PanelItens - Categorias carregadas:', categoriasData.length);
+      } else {
+        console.warn('⚠️ PanelItens - Resposta da API sem sucesso para categorias');
+        setCategorias([]);
+      }
+    } catch (error) {
+      console.warn('⚠️ PanelItens - Erro ao carregar categorias:', error.message);
+      setErrorCats(error.message);
+      setCategorias([]);
+    } finally {
+      setLoadingCats(false);
+    }
+  }, [resolveEstabelecimentoId]);
+
+  // Carregar categorias da API
   React.useEffect(() => {
-    let isMounted = true;
-    async function fetchCategorias() {
-      try {
-        setLoadingCats(true);
-        setErrorCats(null);
-        const id = resolveEstabelecimentoId();
-        if (id === null) {
-          if (isMounted) {
-            setErrorCats('Estabelecimento não definido');
-            setLoadingCats(false);
-          }
-          return;
-        }
-        const resp = await api.get(`/categorias/${id}`);
-        if (!isMounted) return;
-        if (resp.success) {
-          const list = Array.isArray(resp.data) ? resp.data : [];
-          const active = list.filter((c) => c && (c.status === true || c.status === 1));
-          setCategorias(active);
-          if ((!selectedCategoryId || !active.some((c) => Number(c.id) === Number(selectedCategoryId))) && active.length) {
-            setSelectedCategoryId(active[0].id);
-          }
-        } else {
-          setErrorCats('Erro ao carregar categorias');
-        }
-      } catch {
-        if (!isMounted) return;
-        setErrorCats('Erro ao carregar categorias');
-      } finally {
-        if (isMounted) setLoadingCats(false);
+    const id = resolveEstabelecimentoId();
+    if (id) {
+      console.log('🔄 PanelItens - Carregando categorias da API...');
+      loadCategorias().catch(error => {
+        console.warn('⚠️ Erro ao carregar categorias, continuando sem categorias:', error);
+      });
+    }
+  }, [resolveEstabelecimentoId, loadCategorias]);
+
+  // Atualizar categoria selecionada quando categorias mudarem
+  React.useEffect(() => {
+    if (categorias && categorias.length > 0) {
+      const activeCategorias = categorias.filter((c) => c && (c.status === true || c.status === 1));
+      if ((!selectedCategoryId || !activeCategorias.some((c) => Number(c.id) === Number(selectedCategoryId))) && activeCategorias.length) {
+        console.log('🔄 PanelItens - Selecionando primeira categoria:', activeCategorias[0].nome);
+        setSelectedCategoryId(activeCategorias[0].id);
       }
     }
-    fetchCategorias();
-    return () => { isMounted = false; };
-  }, [resolveEstabelecimentoId, selectedCategoryId]);
+  }, [categorias, selectedCategoryId]);
+
+  // Listener para atualizações de categorias em tempo real
+  React.useEffect(() => {
+    const handleCategoriaUpdate = () => {
+      console.log('🔄 PanelItens - Evento de atualização de categoria recebido, recarregando...');
+      const id = resolveEstabelecimentoId();
+      if (id) {
+        loadCategorias(true); // Forçar recarregamento
+      }
+    };
+
+    window.addEventListener('categoriaUpdated', handleCategoriaUpdate);
+    
+    return () => {
+      window.removeEventListener('categoriaUpdated', handleCategoriaUpdate);
+    };
+  }, [resolveEstabelecimentoId, loadCategorias]);
 
   React.useEffect(() => {
     let isMounted = true;
@@ -110,7 +149,9 @@ const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, on
         }
         return;
       }
+      
       try {
+
         setLoadingProdutos(true);
         setErroProdutos(null);
         const response = await api.get(`/produtos/${id}?page=1&limit=200`);
@@ -146,6 +187,9 @@ const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, on
   };
 
   const handleProdutoClick = async (produto) => {
+    // Se o painel estiver desabilitado, não fazer nada
+    if (disabled) return;
+    
     try {
       // Verifica se o produto possui alguma categoria de complementos ativa
       const resp = await api.get(`/categorias-complementos/${produto.id}`);
@@ -171,16 +215,22 @@ const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, on
     let isMounted = true;
     async function fetchItens() {
       if (!complementsModalOpen || !Array.isArray(modalCategoriasComplementos) || modalCategoriasComplementos.length === 0) return;
+      
+      
       try {
         setModalLoadingItens(true);
         setModalError(null);
         const results = await Promise.all(
           modalCategoriasComplementos.map(async (cat) => {
             try {
+              console.log(`🔍 Buscando complementos para categoria ${cat.id} (${cat.nome})`);
               const r = await api.get(`/itens-complementos/categoria/${cat.id}`);
+              console.log(`📦 Resposta da API para categoria ${cat.id}:`, r);
               const itens = r?.data || (r?.success ? r.data : []);
+              console.log(`📋 Itens processados para categoria ${cat.id}:`, itens);
               return { categoriaId: cat.id, itens: Array.isArray(itens) ? itens : [] };
-            } catch {
+            } catch (error) {
+              console.error(`❌ Erro ao buscar complementos para categoria ${cat.id}:`, error);
               return { categoriaId: cat.id, itens: [] };
             }
           })
@@ -191,6 +241,7 @@ const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, on
           byCat[categoriaId] = itens;
         }
         setModalItensComplementosByCategoria(byCat);
+        console.log('📊 Estado modalItensComplementosByCategoria atualizado:', byCat);
         // inicializa seleção vazia para categorias ainda não vistas
         setModalSelectedByCategoria((prev) => {
           const next = { ...prev };
@@ -250,15 +301,166 @@ const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, on
       setModalSelectedByCategoria(next);
     }
   }, [modalCategoriasComplementos, modalSelectedByCategoria]);
+
+  // Função para buscar dados do estabelecimento
+  const buscarDadosEstabelecimento = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3002/api'}/estabelecimento/meu`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          return result.data;
+        }
+      }
+      return null;
+    } catch (error) {
+      console.error('Erro ao buscar dados do estabelecimento:', error);
+      return null;
+    }
+  };
+
+  // Função para lidar com salvamento e impressão
+  const handleSaveAndPrint = async () => {
+    if (totalSelectedCount === 0) {
+      // Se não há itens selecionados, apenas salva
+      await onSave?.();
+      return;
+    }
+
+    try {
+      setSavingAndPrinting(true);
+      
+      // PRIMEIRO: Buscar dados do estabelecimento
+      console.log('🏢 Buscando dados do estabelecimento...');
+      const estabelecimento = await buscarDadosEstabelecimento();
+      console.log('📋 Dados do estabelecimento:', estabelecimento);
+      
+      // SEGUNDO: Imprimir a nota de cozinha com os itens novos (não salvos)
+      console.log('🖨️ Imprimindo nota de cozinha com itens novos...');
+      
+      // Converter selectedCounts para formato de itens para impressão
+      const itensParaImpressao = [];
+      for (const [produtoId, quantidade] of Object.entries(selectedCounts)) {
+        if (quantidade > 0) {
+          const produto = produtos.find(p => Number(p.id) === Number(produtoId));
+          if (produto) {
+            // Buscar complementos para este produto
+            const combos = pendingCombosByProductId[produtoId] || [];
+            
+            // Se não há combos, criar item simples
+            if (combos.length === 0) {
+              itensParaImpressao.push({
+                id: produto.id,
+                name: produto.nome,
+                produto_nome: produto.nome,
+                qty: quantidade,
+                quantidade: quantidade,
+                unitPrice: produto.valor_venda,
+                valor_unitario: produto.valor_venda,
+                complements: []
+              });
+            } else {
+              // Criar um item separado para cada combo (cada clique no produto)
+              combos.forEach((combo, index) => {
+                if (Array.isArray(combo)) {
+                  const complementos = combo.map(complemento => ({
+                    id: complemento.id,
+                    name: complemento.name,
+                    nome_complemento: complemento.name,
+                    qty: complemento.qty || 0,
+                    quantidade: complemento.qty || 0,
+                    unitPrice: complemento.unitPrice || 0,
+                    valor_unitario: complemento.unitPrice || 0
+                  }));
+                  
+                  itensParaImpressao.push({
+                    id: `${produto.id}-${index}`, // ID único para cada combo
+                    name: produto.nome,
+                    produto_nome: produto.nome,
+                    qty: 1, // Cada combo representa 1 item
+                    quantidade: 1,
+                    unitPrice: produto.valor_venda,
+                    valor_unitario: produto.valor_venda,
+                    complements: complementos
+                  });
+                }
+              });
+            }
+          }
+        }
+      }
+
+      if (itensParaImpressao.length > 0) {
+        console.log('📋 Itens para impressão (com complementos):', itensParaImpressao);
+        
+        // Buscar dados do pedido atual para obter o código correto
+        let pedidoParaImpressao = pedido || { id: 'NOVO', codigo: 'NOVO' };
+        try {
+          const estId = Number(localStorage.getItem('estabelecimentoId')) || null;
+          if (estId && identificacao) {
+            console.log('🔍 Buscando dados do pedido para impressão...');
+            const printResponse = await api.get(`/pedidos/${estId}/${encodeURIComponent(identificacao)}`);
+            if (printResponse.success && printResponse.data && printResponse.data.pedido) {
+              pedidoParaImpressao = printResponse.data.pedido;
+              console.log('✅ Dados do pedido obtidos:', pedidoParaImpressao);
+            }
+          }
+        } catch (error) {
+          console.warn('⚠️ Erro ao buscar dados do pedido, usando dados padrão:', error);
+        }
+        
+        // Imprimir nota de cozinha com dados do estabelecimento
+        imprimirNotaCozinha(
+          pedidoParaImpressao,
+          itensParaImpressao,
+          identificacao,
+          nomePonto,
+          vendedor,
+          usuarioId,
+          estabelecimento
+        );
+        console.log('✅ Nota de cozinha enviada para impressão');
+        
+        // Aguardar um pouco para a impressão processar
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+      
+      // TERCEIRO: Salvar o pedido
+      console.log('💾 Salvando pedido...');
+      await onSave?.();
+      
+      // QUARTO: Navegar de volta
+      console.log('🏠 Navegando de volta...');
+      navigate('/home');
+      
+    } catch (error) {
+      console.error('❌ Erro ao salvar e imprimir:', error);
+      alert('Erro ao salvar e imprimir: ' + error.message);
+    } finally {
+      setSavingAndPrinting(false);
+    }
+  };
+
   return (
-    <main className={`${mobileHidden ? 'hidden md:flex' : 'flex md:flex'} fixed md:top-4 md:bottom-4 md:right-4 md:left-[calc(30%+7rem)] top-0 bottom-0 left-0 right-0 bg-white border border-gray-200 md:rounded-2xl shadow-2xl z-30 flex-col`}>
+    <>
+      <main className={`${mobileHidden ? 'hidden md:flex' : 'flex md:flex'} fixed md:top-4 md:bottom-4 md:right-4 md:left-[calc(35%+7rem)] lg:left-[calc(30%+7rem)] top-0 bottom-0 left-0 right-0 bg-white border border-gray-200 md:rounded-2xl shadow-2xl z-50 flex-col ${disabled ? 'opacity-50 pointer-events-none' : ''}`}>
       {/* Header com barra de pesquisa no topo */}
       <div className="p-3 md:p-4 border-b border-gray-200">
         <div className="flex items-center gap-2">
           {/* Mostrar Back apenas em telas pequenas */}
           <div className="md:hidden">
             <Back onClick={() => {
-              if (totalSelectedCount > 0) {
+              if (isBalcao) {
+                // Balcão: sair sem confirmação (não salva itens)
+                navigate('/home');
+              } else if (totalSelectedCount > 0) {
                 setPendingNavAction('home');
                 setConfirmUnsavedOpen(true);
               } else {
@@ -272,6 +474,14 @@ const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, on
 
       {/* Conteúdo do painel */}
       <div className="flex-1 overflow-y-auto p-2 md:p-3 scrollbar-hide">
+        {disabled && (
+          <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center z-10">
+            <div className="text-center">
+              <div className="text-lg font-semibold text-gray-600 mb-2">Painel de Pagamentos Ativo</div>
+              <div className="text-sm text-gray-500">Finalize o pagamento para continuar adicionando itens</div>
+            </div>
+          </div>
+        )}
         <div className="overflow-x-auto scrollbar-hide">
           {loadingCats ? (
             <div className="text-xs text-slate-500 px-1">Carregando categorias...</div>
@@ -306,7 +516,7 @@ const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, on
         {/* Produtos filtrados */}
         <div className="pt-2 md:pt-3">
           {loadingProdutos && (!produtos || produtos.length === 0) ? (
-            <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-2 md:gap-2.5 animate-pulse">
+            <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 md:gap-2.5 animate-pulse">
               {Array.from({ length: 8 }).map((_, i) => (
                 <div key={i} className="bg-white border border-gray-200 rounded-xl p-1.5 md:p-2">
                   <div className="aspect-square p-1.5 md:p-2">
@@ -342,7 +552,7 @@ const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, on
                 return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
               };
               return (
-                <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-2 md:gap-2.5 transition-opacity duration-200">
+                <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 md:gap-2.5 transition-opacity duration-200">
                   {filtered.map((produto) => (
                     <button onClick={() => handleProdutoClick(produto)} key={produto.id} className="relative text-left bg-white border border-gray-200 rounded-xl p-1.5 md:p-2 shadow-sm hover:shadow transition-transform duration-150 hover:-translate-y-0.5">
                       <div className="aspect-square p-1.5 md:p-2 relative">
@@ -366,26 +576,47 @@ const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, on
         </div>
       </div>
 
-      {/* Footer com botões Cancelar e Salvar alinhados à direita ocupando 30% */}
-      <div className="border-t border-gray-200 p-2 md:p-3">
-        <div className="flex items-center justify-end gap-2 w-full flex-nowrap">
-          {/* Information apenas no mobile, ao lado do Cancel */}
-          <div className="md:hidden order-2">
-            <Information onClick={onOpenDetails} />
-          </div>
-          <div className="flex items-center justify-end gap-2 ml-auto order-3">
-            <CancelButton onClick={() => {
-              if (totalSelectedCount > 0) {
-                setPendingNavAction('back');
-                setConfirmUnsavedOpen(true);
-              } else {
-                navigate(-1);
-              }
-            }} className="w-auto min-w-[110px] px-3 py-2 text-xs md:text-sm rounded-md whitespace-nowrap" />
-            <SaveButton onClick={onSave} className="w-auto min-w-[110px] px-3 py-2 text-xs md:text-sm rounded-md whitespace-nowrap">{totalSelectedCount > 0 ? `Salvar (${totalSelectedCount})` : 'Salvar'}</SaveButton>
+      {/* Footer com botões Information, Cancelar e Salvar alinhados à direita */}
+      {!isBalcao && (
+        <div className="border-t border-gray-200 p-2 md:p-3">
+          <div className="flex items-center justify-end gap-2 w-full flex-nowrap">
+            <div className="flex items-center justify-end gap-2 ml-auto">
+              {/* Information apenas no mobile */}
+              <div className="md:hidden">
+                <Information onClick={onOpenDetails} />
+              </div>
+              <CancelButton onClick={() => {
+                if (totalSelectedCount > 0) {
+                  setPendingNavAction('back');
+                  setConfirmUnsavedOpen(true);
+                } else {
+                  navigate(-1);
+                }
+              }} className="w-auto min-w-[120px] px-4 py-2.5 text-xs md:text-sm rounded-lg whitespace-nowrap" />
+              <SaveButton onClick={handleSaveAndPrint} disabled={savingAndPrinting} className="w-auto min-w-[120px] px-4 py-2.5 text-xs md:text-sm rounded-lg whitespace-nowrap">
+                {savingAndPrinting ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Salvando...
+                  </div>
+                ) : (
+                  totalSelectedCount > 0 ? `Salvar (${totalSelectedCount})` : 'Salvar'
+                )}
+              </SaveButton>
+            </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Footer para balcão com botão de informação */}
+      {isBalcao && (
+        <div className="border-t border-gray-200 p-2 md:p-3">
+          <div className="flex items-center justify-end gap-2 w-full flex-nowrap">
+            <Information onClick={onOpenDetails} variant="orange" />
+          </div>
+        </div>
+      )}
+
       <ConfirmDialog
         isOpen={confirmUnsavedOpen}
         onClose={() => setConfirmUnsavedOpen(false)}
@@ -412,7 +643,8 @@ const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, on
         isLoading={savingAndExit}
       />
       {/* Modal para seleção de complementos (exibição simples por enquanto) */}
-      <BaseModal
+      {complementsModalOpen && createPortal(
+        <BaseModal
         isOpen={complementsModalOpen}
         onClose={() => {
           setComplementsModalOpen(false);
@@ -444,15 +676,17 @@ const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, on
           </div>
         ) : null}
         iconBgColor="bg-amber-500"
-        onSave={(detail) => {
+        onSave={() => {
           if (modalProduto) {
             // Monta a lista de complementos selecionados com nome e valor
             let selectedComplements = [];
             try {
-              const categorias = detail?.categorias || [];
-              for (const cat of categorias) {
+              for (const cat of modalCategoriasComplementos || []) {
                 const itens = modalItensComplementosByCategoria[cat.id] || [];
-                const selecionados = Array.isArray(cat.selecionados) ? cat.selecionados : [];
+                const selecionados = Object.entries(modalSelectedByCategoria[cat.id] || {})
+                  .filter(([, qty]) => Number(qty) > 0)
+                  .map(([compId]) => Number(compId));
+                
                 for (const compId of selecionados) {
                   const found = itens.find((it) => Number(it.complemento_id) === Number(compId));
                   if (found) {
@@ -468,9 +702,15 @@ const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, on
                   }
                 }
               }
-            } catch {
-              /* ignore */
+            } catch (error) {
+              console.error('Erro ao processar complementos:', error);
             }
+            
+            console.log('🛒 Adicionando produto com complementos:', {
+              produto: modalProduto.nome,
+              complementos: selectedComplements
+            });
+            
             onAddItem?.(modalProduto, selectedComplements);
           }
           // Limpa estado após salvar
@@ -484,7 +724,7 @@ const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, on
         }}
       >
         <form
-          className="modal-form space-y-3"
+          className="modal-form space-y-4 sm:space-y-6"
           onSubmit={(e) => {
             e.preventDefault();
             // Validação por categoria: mostrar erros diretamente em cada categoria
@@ -507,57 +747,94 @@ const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, on
               return;
             }
             setModalCategoryErrors({});
-            // Dispara evento de sucesso esperado pelo BaseModal
-            window.dispatchEvent(
-              new CustomEvent('modalSaveSuccess', {
-                detail: {
-                  produtoId: modalProduto?.id,
-                  categorias: modalCategoriasComplementos?.map((c) => ({
-                    id: c.id,
-                    nome: c.nome,
-                    obrigatorio: !!c.preenchimento_obrigatorio,
-                    quantidade_minima: c.quantidade_minima,
-                    quantidade_maxima: c.quantidade_maxima,
-                    selecionados: Object.entries(modalSelectedByCategoria[c.id] || {})
-                      .filter(([, qty]) => Number(qty) > 0)
-                      .map(([compId]) => Number(compId))
-                  })) || []
+            
+            // Chama diretamente o onSave do BaseModal
+            if (modalProduto) {
+              // Monta a lista de complementos selecionados com nome e valor
+              let selectedComplements = [];
+              try {
+                for (const cat of modalCategoriasComplementos || []) {
+                  const itens = modalItensComplementosByCategoria[cat.id] || [];
+                  const selecionados = Object.entries(modalSelectedByCategoria[cat.id] || {})
+                    .filter(([, qty]) => Number(qty) > 0)
+                    .map(([compId]) => Number(compId));
+                  
+                  for (const compId of selecionados) {
+                    const found = itens.find((it) => Number(it.complemento_id) === Number(compId));
+                    if (found) {
+                      const qty = Number(modalSelectedByCategoria[cat.id]?.[found.complemento_id] || 0);
+                      if (qty > 0) {
+                        selectedComplements.push({
+                          id: Number(found.complemento_id),
+                          name: String(found.complemento_nome || ''),
+                          unitPrice: Number(found.complemento_valor) || 0,
+                          qty
+                        });
+                      }
+                    }
+                  }
                 }
-              })
-            );
+              } catch (error) {
+                console.error('Erro ao processar complementos:', error);
+              }
+              
+              console.log('🛒 Adicionando produto com complementos:', {
+                produto: modalProduto.nome,
+                complementos: selectedComplements
+              });
+              
+              onAddItem?.(modalProduto, selectedComplements);
+            }
+            
+            // Fecha o modal
+            setComplementsModalOpen(false);
+            setModalProduto(null);
+            setModalCategoriasComplementos([]);
+            setModalItensComplementosByCategoria({});
+            setModalError(null);
+            setModalSelectedByCategoria({});
+            setModalCategoryErrors({});
           }}
         >
-          {/* Título Complementos */}
-          <div className="pt-1 text-sm font-semibold text-gray-800">Complementos</div>
+          {/* Container principal organizado */}
+          <div className="flex flex-col h-full px-4 sm:px-6">
+            {/* Título Complementos - alinhado no start */}
+            <div className="py-3 border-b border-gray-100 mb-4">
+              <h3 className="text-sm font-semibold text-gray-800">Complementos</h3>
+            </div>
 
-          {/* Conteúdo das categorias e seus complementos */}
-          {(!modalCategoriasComplementos || modalCategoriasComplementos.length === 0) ? (
-            <div className="text-sm text-slate-500">Nenhuma categoria de complementos disponível.</div>
-          ) : modalLoadingItens ? (
-            <div className="text-sm text-slate-500">Carregando complementos...</div>
-          ) : modalError ? (
-            <div className="text-sm text-red-500">{modalError}</div>
-          ) : (
-            <div className="space-y-3">
+            {/* Conteúdo das categorias e seus complementos */}
+            <div className="flex-1 overflow-y-auto scrollbar-hide">
+              {(!modalCategoriasComplementos || modalCategoriasComplementos.length === 0) ? (
+                <div className="text-sm text-slate-500 text-center py-8">Nenhuma categoria de complementos disponível.</div>
+              ) : modalLoadingItens ? (
+                <div className="text-sm text-slate-500 text-center py-8">Carregando complementos...</div>
+              ) : modalError ? (
+                <div className="text-sm text-red-500 text-center py-8">{modalError}</div>
+              ) : (
+                <div className="space-y-3 sm:space-y-4">
               {modalCategoriasComplementos.map((cat) => {
                 const itens = modalItensComplementosByCategoria[cat.id] || [];
+                console.log(`🎯 Renderizando categoria ${cat.id} (${cat.nome}) com ${itens.length} itens:`, itens);
                 return (
-                  <div key={cat.id} className="border border-gray-200 rounded-lg p-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="text-sm font-medium text-gray-800">{cat.nome}</div>
-                        {cat.preenchimento_obrigatorio ? (
-                          <span className="inline-flex items-center rounded bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-700 border border-gray-200">Obrigatório</span>
-                        ) : null}
+                  <div key={cat.id} className="bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-200">
+                    {/* Cabeçalho da categoria - alinhado no start */}
+                    <div className="mb-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h4 className="text-sm font-semibold text-gray-800 truncate">{cat.nome}</h4>
+                        {cat.preenchimento_obrigatorio && (
+                          <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600 border border-gray-200 flex-shrink-0">
+                            Obrigatório
+                          </span>
+                        )}
                       </div>
                       <div className="text-xs text-gray-500">
                         {(() => {
                           const max = cat.quantidade_maxima == null ? Infinity : Number(cat.quantidade_maxima);
-                          const hints = [];
                           if (Number.isFinite(max)) {
-                            hints.push(`Selecione até ${max} ${max === 1 ? 'item' : 'itens'}`);
+                            return `Selecione até ${max} ${max === 1 ? 'item' : 'itens'}`;
                           }
-                          return hints.join(' • ');
+                          return 'Selecione quantos quiser';
                         })()}
                       </div>
                     </div>
@@ -565,9 +842,11 @@ const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, on
                       <div className="mt-1 text-xs text-red-500">{modalCategoryErrors[cat.id]}</div>
                     ) : null}
                     {(!itens || itens.length === 0) ? (
-                      <div className="text-xs text-slate-500 mt-1">Nenhum complemento nesta categoria.</div>
+                      <div className="text-xs text-slate-500 text-center py-4 bg-white rounded-md border border-gray-100">
+                        Nenhum complemento nesta categoria.
+                      </div>
                     ) : (
-                      <div className="mt-2 grid grid-cols-1 gap-2">
+                      <div className="space-y-2">
                         {itens.map((it) => {
                           const qtyMap = modalSelectedByCategoria[cat.id] || {};
                           const currentQty = Number(qtyMap[it.complemento_id] || 0);
@@ -577,41 +856,51 @@ const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, on
                           const canIncrement = totalSelected < max;
                           const formatMoney = (v) => (v || v === 0) ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v) : 'R$\u00A00,00';
                           return (
-                            <div key={it.id} className="flex items-center justify-between rounded-md border border-gray-100 px-2 py-1.5">
-                              <div className="min-w-0 pr-2">
-                                <div className="flex items-center gap-2">
-                                  <div className="text-sm text-gray-800 truncate">{it.complemento_nome}</div>
-                                </div>
-                                <div className="text-xs text-blue-600 font-medium mt-0.5">{formatMoney(it.complemento_valor)}</div>
+                            <div key={it.id} className={`flex items-center justify-between rounded-lg border px-3 py-2.5 transition-colors ${
+                              currentQty > 0 
+                                ? 'bg-blue-50 border-blue-200' 
+                                : 'bg-white border-gray-200 hover:border-gray-300'
+                            }`}>
+                              <div className="min-w-0 pr-3 flex-1">
+                                <div className="text-sm font-medium text-gray-800 truncate">{it.complemento_nome}</div>
+                                <div className="text-xs text-blue-600 font-semibold mt-0.5">{formatMoney(it.complemento_valor)}</div>
                               </div>
-                              <div className="flex items-center justify-end gap-2 min-w-[86px]">
+                              <div className="flex items-center justify-end gap-2 min-w-[80px] sm:min-w-[90px]">
                                 {isSingleChoice ? (
-                                  <input
-                                    type="checkbox"
-                                    className="h-5 w-5 appearance-none rounded-full border-2 border-blue-500 checked:bg-blue-600 checked:border-blue-600 cursor-pointer"
-                                    checked={currentQty > 0}
-                                    onChange={(e) => {
-                                      const checked = e.target.checked;
+                                  <button
+                                    type="button"
+                                    className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
+                                      currentQty > 0 
+                                        ? 'border-blue-600 bg-blue-600 text-white' 
+                                        : 'border-gray-300 bg-white text-gray-400 hover:border-blue-400'
+                                    }`}
+                                    onClick={() => {
                                       setModalSelectedByCategoria((prev) => {
                                         const next = { ...prev };
                                         const mapForCat = { ...(next[cat.id] || {}) };
-                                        if (checked) {
+                                        if (currentQty > 0) {
+                                          Object.keys(mapForCat).forEach((k) => delete mapForCat[k]);
+                                        } else {
                                           Object.keys(mapForCat).forEach((k) => delete mapForCat[k]);
                                           mapForCat[it.complemento_id] = 1;
-                                        } else {
-                                          delete mapForCat[it.complemento_id];
                                         }
                                         next[cat.id] = mapForCat;
                                         return next;
                                       });
                                     }}
-                                  />
+                                  >
+                                    {currentQty > 0 && (
+                                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                      </svg>
+                                    )}
+                                  </button>
                                 ) : (
-                                  <div className="inline-flex items-center gap-2">
+                                  <div className="inline-flex items-center gap-1.5">
                                     {currentQty > 0 ? (
                                       <button
                                         type="button"
-                                        className="h-7 w-7 inline-flex items-center justify-center rounded-md border border-gray-400 bg-gray-400 text-white"
+                                        className="w-6 h-6 inline-flex items-center justify-center rounded-full border border-gray-300 bg-white text-gray-600 hover:bg-gray-50 hover:border-gray-400 transition-colors"
                                         onClick={() => {
                                           setModalSelectedByCategoria((prev) => {
                                             const next = { ...prev };
@@ -623,15 +912,23 @@ const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, on
                                             return next;
                                           });
                                         }}
-                                      >−</button>
+                                      >
+                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                                        </svg>
+                                      </button>
                                     ) : null}
                                     {currentQty > 0 ? (
-                                      <span className="min-w-[16px] text-center text-sm">{currentQty}</span>
+                                      <span className="min-w-[20px] text-center text-sm font-semibold text-gray-700">{currentQty}</span>
                                     ) : null}
                                     <button
                                       type="button"
                                       disabled={!canIncrement}
-                                      className={`h-7 w-7 inline-flex items-center justify-center rounded-md border ${canIncrement ? 'border-blue-600 bg-blue-600 text-white' : 'border-gray-300 bg-gray-200 text-gray-300'}`}
+                                      className={`w-6 h-6 inline-flex items-center justify-center rounded-full border text-sm font-medium transition-colors ${
+                                        canIncrement 
+                                          ? 'border-blue-600 bg-blue-600 text-white hover:bg-blue-700' 
+                                          : 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
+                                      }`}
                                       onClick={() => {
                                         const nextTotal = totalSelected + 1;
                                         if (Number.isFinite(max) && nextTotal > max) {
@@ -652,7 +949,11 @@ const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, on
                                           return next;
                                         });
                                       }}
-                                    >+</button>
+                                    >
+                                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                      </svg>
+                                    </button>
                                   </div>
                                 )}
                               </div>
@@ -664,11 +965,16 @@ const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, on
                   </div>
                 );
               })}
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </form>
-      </BaseModal>
-    </main>
+      </BaseModal>,
+      document.body
+      )}
+      </main>
+    </>
   );
 };
 

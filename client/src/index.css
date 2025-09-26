@@ -1,5 +1,23 @@
 @import "tailwindcss";
 
+/* Reset para garantir que o sidebar ocupe 100% da altura */
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow-x: hidden;
+}
+
+#root {
+  height: 100%;
+}
+
+/* Garantir que o sidebar sempre seja clicável */
+.sidebar-navigation {
+  pointer-events: auto !important;
+  z-index: 9999 !important;
+}
+
 /* Estilos para scroll horizontal das sugestões de imagens */
 .scrollbar-hide {
   -ms-overflow-style: none;  /* Internet Explorer 10+ */

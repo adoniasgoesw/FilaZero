@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
+import { Package, DollarSign } from 'lucide-react';
 import api from '../../services/api';
 import ValidationNotification from '../elements/ValidationNotification';
 import { useFormValidation } from '../../hooks/useFormValidation';
+import FormContainer from './FormContainer';
+import FormField from './FormField';
+import FormInput from './FormInput';
 
 const FormComplementos = ({ complemento = null, onClose, onSave }) => {
   const [formData, setFormData] = useState({
@@ -72,6 +76,8 @@ const FormComplementos = ({ complemento = null, onClose, onSave }) => {
         
         if (response.success) {
           console.log('✅ Complemento editado com sucesso');
+          // Disparar eventos de atualização em tempo real
+          window.dispatchEvent(new CustomEvent('complementoUpdated'));
           // Notificar modal para fechar
           window.dispatchEvent(new CustomEvent('modalSaveSuccess', { detail: response.data }));
         }
@@ -89,6 +95,8 @@ const FormComplementos = ({ complemento = null, onClose, onSave }) => {
         
         if (response.success) {
           console.log('✅ Complemento criado com sucesso');
+          // Disparar eventos de atualização em tempo real
+          window.dispatchEvent(new CustomEvent('complementoUpdated'));
           // Notificar modal para fechar
           window.dispatchEvent(new CustomEvent('modalSaveSuccess', { detail: response.data }));
         }
@@ -103,51 +111,46 @@ const FormComplementos = ({ complemento = null, onClose, onSave }) => {
 
   return (
     <form onSubmit={handleSubmit} className="h-full flex flex-col modal-form bg-white">
-      {/* Conteúdo do formulário */}
-      <div className="flex-1 p-2 sm:p-4 max-h-96 overflow-y-auto scrollbar-hide space-y-4 sm:space-y-6">
+      <FormContainer>
         {/* Nome - Obrigatório */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Nome do Complemento
-          </label>
-          <input
+        <FormField 
+          label="Nome do Complemento" 
+          required
+          error={getFieldError('nome')}
+          helpText="Nome que aparecerá na listagem de complementos"
+        >
+          <FormInput
             type="text"
             value={formData.nome}
             onChange={(e) => {
               handleInputChange('nome', e.target.value);
               clearError('nome');
             }}
-            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-              getFieldError('nome') ? 'border-red-500' : 'border-gray-300'
-            }`}
             placeholder="Ex: Refrigerante, Batata Frita"
+            icon={Package}
+            error={!!getFieldError('nome')}
           />
-          {getFieldError('nome') && (
-            <p className="text-xs text-red-500 mt-1">{getFieldError('nome')}</p>
-          )}
-        </div>
+        </FormField>
 
         {/* Valor de Venda - Obrigatório */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Valor de Venda
-          </label>
-          <input
+        <FormField 
+          label="Valor de Venda" 
+          required
+          error={getFieldError('valorVenda')}
+          helpText="Preço de venda do complemento"
+        >
+          <FormInput
             type="text"
             value={formData.valorVenda}
             onChange={(e) => {
               handleInputChange('valorVenda', e.target.value);
               clearError('valorVenda');
             }}
-            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-              getFieldError('valorVenda') ? 'border-red-500' : 'border-gray-300'
-            }`}
             placeholder="R$ 0,00"
+            icon={DollarSign}
+            error={!!getFieldError('valorVenda')}
           />
-          {getFieldError('valorVenda') && (
-            <p className="text-xs text-red-500 mt-1">{getFieldError('valorVenda')}</p>
-          )}
-        </div>
+        </FormField>
         
         {/* Mensagem de erro */}
         {error && (
@@ -162,7 +165,7 @@ const FormComplementos = ({ complemento = null, onClose, onSave }) => {
             </div>
           </div>
         )}
-      </div>
+      </FormContainer>
 
       {/* Notificação de Validação */}
       <ValidationNotification

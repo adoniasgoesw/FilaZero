@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, History, Truck, Settings } from 'lucide-react';
+import { Home, History, ChefHat, Truck, Settings } from 'lucide-react';
 import Logo from '../../assets/logo';
 
 function Sidebar({ hideMobileFooter = false }) {
@@ -9,6 +9,7 @@ function Sidebar({ hideMobileFooter = false }) {
   const menuItems = [
     { path: '/home', icon: Home, label: 'Home' },
     { path: '/historic', icon: History, label: 'Histórico' },
+    { path: '/cozinha', icon: ChefHat, label: 'Cozinha' },
     { path: '/delivery', icon: Truck, label: 'Delivery' },
     { path: '/config', icon: Settings, label: 'Ajuste' },
   ];
@@ -16,7 +17,7 @@ function Sidebar({ hideMobileFooter = false }) {
   return (
     <>
       {/* Sidebar para telas médias e grandes (>= 900px) */}
-      <div className="hidden md:flex fixed left-0 top-4 h-full w-20 bg-white border-r border-gray-200 flex-col items-center py-4 z-50 shadow-lg">
+      <div className="hidden md:flex fixed left-0 top-0 h-screen w-20 bg-white border-r border-gray-200 flex-col items-center py-4 z-[9998] shadow-lg sidebar-navigation" style={{ height: '100vh' }}>
         {/* Logo */}
         <div className="mb-12">
           <Link to="/home" className="block">

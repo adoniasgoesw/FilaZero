@@ -52,9 +52,16 @@ export const useFormValidation = () => {
       } else if (rules.pattern && value && !rules.pattern.test(value)) {
         newErrors[field] = rules.message || `${rules.label || field} inválido`;
         isValid = false;
+      } else if (rules.currency && value) {
+        // Validação específica para valores monetários
+        const numericValue = parseFloat(value.toString().replace(',', '.').replace(/[^\d.-]/g, ''));
+        if (isNaN(numericValue) || numericValue <= 0) {
+          newErrors[field] = `${rules.label || field} deve ser um valor válido`;
+          isValid = false;
+        }
       }
     });
-
+    
     setErrors(newErrors);
     
     if (!isValid) {

@@ -2,10 +2,10 @@
   "name": "filazero-backend",
   "version": "1.0.0",
   "description": "Backend do sistema FilaZero - Sistema de Gestão",
-  "main": "server.js",
+  "main": "index.js",
   "type": "module",
   "scripts": {
-    "start": "node server.js",
+    "start": "node index.js",
     "start:simple": "node server-simple.js",
     "start:test": "node test-deployment.js",
     "dev": "node index.js",
@@ -31,6 +31,7 @@
     "multer": "^2.0.2",
     "multer-storage-cloudinary": "^4.0.0",
     "node-fetch": "^2.7.0",
+    "nodemailer": "^7.0.6",
     "pg": "^8.11.3"
   },
   "devDependencies": {

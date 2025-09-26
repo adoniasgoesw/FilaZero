@@ -1,6 +1,74 @@
 import React, { useState } from 'react';
 import api from '../../services/api';
-import { User, Building, Lock, ArrowRight, ArrowLeft, Check } from 'lucide-react';
+import { User, Building, Lock, ArrowRight, ArrowLeft } from 'lucide-react';
+import CelebrationSuccess from '../elements/CelebrationSuccess';
+
+// Funções de validação de CPF e CNPJ
+const validateCPF = (cpf) => {
+  // Remove caracteres não numéricos
+  cpf = cpf.replace(/[^\d]/g, '');
+  
+  // Verifica se tem 11 dígitos
+  if (cpf.length !== 11) return false;
+  
+  // Verifica se todos os dígitos são iguais
+  if (/^(\d)\1{10}$/.test(cpf)) return false;
+  
+  // Validação do primeiro dígito verificador
+  let sum = 0;
+  for (let i = 0; i < 9; i++) {
+    sum += parseInt(cpf.charAt(i)) * (10 - i);
+  }
+  let remainder = (sum * 10) % 11;
+  if (remainder === 10 || remainder === 11) remainder = 0;
+  if (remainder !== parseInt(cpf.charAt(9))) return false;
+  
+  // Validação do segundo dígito verificador
+  sum = 0;
+  for (let i = 0; i < 10; i++) {
+    sum += parseInt(cpf.charAt(i)) * (11 - i);
+  }
+  remainder = (sum * 10) % 11;
+  if (remainder === 10 || remainder === 11) remainder = 0;
+  if (remainder !== parseInt(cpf.charAt(10))) return false;
+  
+  return true;
+};
+
+const validateCNPJ = (cnpj) => {
+  // Remove caracteres não numéricos
+  cnpj = cnpj.replace(/[^\d]/g, '');
+  
+  // Verifica se tem 14 dígitos
+  if (cnpj.length !== 14) return false;
+  
+  // Verifica se todos os dígitos são iguais
+  if (/^(\d)\1{13}$/.test(cnpj)) return false;
+  
+  // Validação do primeiro dígito verificador
+  let sum = 0;
+  let weight = 2;
+  for (let i = 11; i >= 0; i--) {
+    sum += parseInt(cnpj.charAt(i)) * weight;
+    weight = weight === 9 ? 2 : weight + 1;
+  }
+  let remainder = sum % 11;
+  let firstDigit = remainder < 2 ? 0 : 11 - remainder;
+  if (firstDigit !== parseInt(cnpj.charAt(12))) return false;
+  
+  // Validação do segundo dígito verificador
+  sum = 0;
+  weight = 2;
+  for (let i = 12; i >= 0; i--) {
+    sum += parseInt(cnpj.charAt(i)) * weight;
+    weight = weight === 9 ? 2 : weight + 1;
+  }
+  remainder = sum % 11;
+  let secondDigit = remainder < 2 ? 0 : 11 - remainder;
+  if (secondDigit !== parseInt(cnpj.charAt(13))) return false;
+  
+  return true;
+};
 
 function FormRegister() {
   const [currentStep, setCurrentStep] = useState(1);
@@ -21,6 +89,65 @@ function FormRegister() {
     confirmPassword: ''
   });
 
+  const [validationErrors, setValidationErrors] = useState({
+    cpf: '',
+    cnpj: '',
+    email: ''
+  });
+
+  const [passwordValidation, setPasswordValidation] = useState({
+    length: false,
+    uppercase: false,
+    lowercase: false,
+    number: false,
+    symbol: false
+  });
+
+  const [passwordMatch, setPasswordMatch] = useState(true);
+  const [showCelebration, setShowCelebration] = useState(false);
+
+  const handleCelebrationComplete = async () => {
+    setShowCelebration(false);
+    
+    // Fazer login automático após a celebração
+    try {
+      console.log('Iniciando login automático...');
+      console.log('CPF:', formData.cpf);
+      console.log('Senha:', formData.password);
+      
+      const loginPayload = {
+        cpf: formData.cpf,
+        senha: formData.password
+      };
+      
+      console.log('Payload de login:', loginPayload);
+      
+      const loginResponse = await api.post('/login', loginPayload);
+      
+      console.log('Resposta do login:', loginResponse);
+      
+      if (loginResponse.data && loginResponse.data.success) {
+        // Salvar token e dados do usuário
+        localStorage.setItem('token', loginResponse.data.token);
+        localStorage.setItem('user', JSON.stringify(loginResponse.data.user));
+        
+        console.log('Login automático bem-sucedido! Redirecionando...');
+        
+        // Redirecionar para a página home
+        window.location.href = '/home';
+      } else {
+        console.log('Login automático falhou, mostrando formulário de login');
+        // Se o login automático falhar, mostrar formulário de login
+        window.dispatchEvent(new CustomEvent('switchToLogin'));
+      }
+    } catch (error) {
+      console.error('Erro no login automático:', error);
+      console.log('Erro completo:', error.response?.data);
+      // Se houver erro, mostrar formulário de login
+      window.dispatchEvent(new CustomEvent('switchToLogin'));
+    }
+  };
+
   const sectors = [
     'Pizzaria',
     'Hamburgueria',
@@ -36,12 +163,94 @@ function FormRegister() {
     'Outros'
   ];
 
+  // Função para formatar CPF
+  const formatCPF = (value) => {
+    const numbers = value.replace(/[^\d]/g, '');
+    return numbers.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+  };
+
+  // Função para formatar CNPJ
+  const formatCNPJ = (value) => {
+    const numbers = value.replace(/[^\d]/g, '');
+    return numbers.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+  };
+
+  // Função para formatar WhatsApp
+  const formatWhatsApp = (value) => {
+    const numbers = value.replace(/[^\d]/g, '');
+    
+    // Limitar a 11 dígitos
+    const limitedNumbers = numbers.slice(0, 11);
+    
+    if (limitedNumbers.length <= 2) {
+      return limitedNumbers;
+    } else if (limitedNumbers.length <= 7) {
+      return `(${limitedNumbers.slice(0, 2)}) ${limitedNumbers.slice(2)}`;
+    } else {
+      return `(${limitedNumbers.slice(0, 2)}) ${limitedNumbers.slice(2, 7)}-${limitedNumbers.slice(7)}`;
+    }
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    let formattedValue = value;
+
+    // Formatar CPF, CNPJ e WhatsApp
+    if (name === 'cpf') {
+      formattedValue = formatCPF(value);
+    } else if (name === 'cnpj') {
+      formattedValue = formatCNPJ(value);
+    } else if (name === 'whatsapp') {
+      formattedValue = formatWhatsApp(value);
+    }
+
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: formattedValue
     }));
+
+    // Validação de senha em tempo real
+    if (name === 'password') {
+      validatePassword(formattedValue);
+      // Verificar se as senhas coincidem quando a senha principal muda
+      if (formData.confirmPassword) {
+        checkPasswordMatch(formattedValue, formData.confirmPassword);
+      }
+    } else if (name === 'confirmPassword') {
+      // Verificar se as senhas coincidem quando a confirmação muda
+      checkPasswordMatch(formData.password, formattedValue);
+    }
+
+    // Validação em tempo real para CPF e CNPJ
+    if (name === 'cpf') {
+      const cpfValue = value.replace(/[^\d]/g, '');
+      if (cpfValue.length === 11) {
+        if (!validateCPF(cpfValue)) {
+          setValidationErrors(prev => ({ ...prev, cpf: 'CPF inválido' }));
+        } else {
+          setValidationErrors(prev => ({ ...prev, cpf: '' }));
+        }
+      } else if (cpfValue.length > 0) {
+        setValidationErrors(prev => ({ ...prev, cpf: 'CPF deve ter 11 dígitos' }));
+      } else {
+        setValidationErrors(prev => ({ ...prev, cpf: '' }));
+      }
+    }
+
+    if (name === 'cnpj') {
+      const cnpjValue = value.replace(/[^\d]/g, '');
+      if (cnpjValue.length === 14) {
+        if (!validateCNPJ(cnpjValue)) {
+          setValidationErrors(prev => ({ ...prev, cnpj: 'CNPJ inválido' }));
+        } else {
+          setValidationErrors(prev => ({ ...prev, cnpj: '' }));
+        }
+      } else if (cnpjValue.length > 0) {
+        setValidationErrors(prev => ({ ...prev, cnpj: 'CNPJ deve ter 14 dígitos' }));
+      } else {
+        setValidationErrors(prev => ({ ...prev, cnpj: '' }));
+      }
+    }
   };
 
   const isStep1Valid = () => {
@@ -53,21 +262,44 @@ function FormRegister() {
   };
 
   const isStep2Valid = () => {
+    const cnpjValid = !formData.cnpj || validateCNPJ(formData.cnpj);
     return (
       formData.establishmentName.trim() &&
-      formData.establishmentSector.trim()
+      formData.establishmentSector.trim() &&
+      cnpjValid
     );
   };
 
-  const isStrongPassword = (pwd) => /^(?=.*[a-z])(?=.*[A-Z])(?=.*[^A-Za-z0-9])(?=.{8,})/.test(String(pwd || ''));
+
+  // Função para validar senha em tempo real
+  const validatePassword = (password) => {
+    const validation = {
+      length: password.length >= 8,
+      uppercase: /[A-Z]/.test(password),
+      lowercase: /[a-z]/.test(password),
+      number: /\d/.test(password),
+      symbol: /[^A-Za-z0-9]/.test(password)
+    };
+    
+    setPasswordValidation(validation);
+    return Object.values(validation).every(Boolean);
+  };
+
+  // Função para verificar se as senhas coincidem
+  const checkPasswordMatch = (password, confirmPassword) => {
+    const match = password === confirmPassword && password.length > 0;
+    setPasswordMatch(match);
+    return match;
+  };
 
   const isStep3Valid = () => {
     return (
       formData.cpf.trim() &&
       formData.password.trim() &&
       formData.confirmPassword.trim() &&
-      formData.password === formData.confirmPassword &&
-      isStrongPassword(formData.password)
+      passwordMatch &&
+      Object.values(passwordValidation).every(Boolean) &&
+      validateCPF(formData.cpf)
     );
   };
 
@@ -87,7 +319,15 @@ function FormRegister() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!isStep1Valid() || !isStep2Valid() || !isStep3Valid()) return;
+    
     try {
+      // Limpar erros anteriores
+      setValidationErrors({
+        cpf: '',
+        cnpj: '',
+        email: ''
+      });
+      
       const payload = {
         nome_completo: formData.name,
         email: formData.email,
@@ -98,13 +338,31 @@ function FormRegister() {
         cpf: formData.cpf,
         senha: formData.password
       };
+      
       const res = await api.post('/register', payload);
       if (res.success) {
-        window.dispatchEvent(new CustomEvent('switchToLogin'));
+        setShowCelebration(true);
       }
     } catch (err) {
-      // Exibir uma notificação simples
-      alert('Falha ao registrar: ' + (err?.message || 'Erro desconhecido'));
+      console.error('Erro no cadastro:', err);
+      
+      if (err.response?.data?.message) {
+        const errorMessage = err.response.data.message.toLowerCase();
+        
+        // Verificar se é erro de duplicata e exibir no campo correto
+        if (errorMessage.includes('cpf') && (errorMessage.includes('já') || errorMessage.includes('existe'))) {
+          setValidationErrors(prev => ({ ...prev, cpf: 'CPF já está em uso' }));
+        } else if (errorMessage.includes('email') && (errorMessage.includes('já') || errorMessage.includes('existe'))) {
+          setValidationErrors(prev => ({ ...prev, email: 'E-mail já existe' }));
+        } else if (errorMessage.includes('cnpj') && (errorMessage.includes('já') || errorMessage.includes('existe'))) {
+          setValidationErrors(prev => ({ ...prev, cnpj: 'CNPJ já está em uso' }));
+        } else {
+          // Para outros erros, mostrar alerta
+          alert('Falha ao registrar: ' + err.response.data.message);
+        }
+      } else {
+        alert('Falha ao registrar: ' + (err?.message || 'Erro desconhecido'));
+      }
     }
   };
 
@@ -135,7 +393,7 @@ function FormRegister() {
   };
 
   const renderStep1 = () => (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Nome */}
       <div className="space-y-2">
         <label htmlFor="name" className="block text-sm font-medium text-gray-700">
@@ -152,7 +410,7 @@ function FormRegister() {
              value={formData.name}
              onChange={handleInputChange}
              placeholder="Digite seu nome completo"
-             className="block w-full pl-10 pr-3 py-2 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
+             className="block w-full pl-10 pr-3 py-2 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent text-sm sm:text-base"
              required
            />
         </div>
@@ -174,10 +432,15 @@ function FormRegister() {
             value={formData.email}
             onChange={handleInputChange}
             placeholder="seu@email.com"
-            className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className={`block w-full pl-10 pr-3 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent ${
+              validationErrors.email ? 'border-red-300' : 'border-gray-300'
+            }`}
             required
           />
         </div>
+        {validationErrors.email && (
+          <p className="text-sm text-red-600">{validationErrors.email}</p>
+        )}
       </div>
 
       {/* WhatsApp */}
@@ -196,7 +459,7 @@ function FormRegister() {
             value={formData.whatsapp}
             onChange={handleInputChange}
             placeholder="(11) 99999-9999"
-            className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
             required
           />
         </div>
@@ -205,7 +468,7 @@ function FormRegister() {
   );
 
   const renderStep2 = () => (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Nome do Estabelecimento */}
       <div className="space-y-2">
         <label htmlFor="establishmentName" className="block text-sm font-medium text-gray-700">
@@ -222,7 +485,7 @@ function FormRegister() {
             value={formData.establishmentName}
             onChange={handleInputChange}
             placeholder="Nome do seu estabelecimento"
-            className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
             required
           />
         </div>
@@ -242,7 +505,7 @@ function FormRegister() {
             name="establishmentSector"
             value={formData.establishmentSector}
             onChange={handleInputChange}
-            className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
             required
           >
             <option value="">Selecione um setor</option>
@@ -271,16 +534,21 @@ function FormRegister() {
             value={formData.cnpj}
             onChange={handleInputChange}
             placeholder="00.000.000/0000-00"
-            className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className={`block w-full pl-10 pr-3 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent ${
+              validationErrors.cnpj ? 'border-red-300' : 'border-gray-300'
+            }`}
             required={false}
           />
         </div>
+        {validationErrors.cnpj && (
+          <p className="text-sm text-red-600">{validationErrors.cnpj}</p>
+        )}
       </div>
     </div>
   );
 
   const renderStep3 = () => (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* CPF */}
       <div className="space-y-2">
         <label htmlFor="cpf" className="block text-sm font-medium text-gray-700">
@@ -297,10 +565,15 @@ function FormRegister() {
             value={formData.cpf}
             onChange={handleInputChange}
             placeholder="000.000.000-00"
-            className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className={`block w-full pl-10 pr-3 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent ${
+              validationErrors.cpf ? 'border-red-300' : 'border-gray-300'
+            }`}
             required
           />
         </div>
+        {validationErrors.cpf && (
+          <p className="text-sm text-red-600">{validationErrors.cpf}</p>
+        )}
       </div>
 
       {/* Senha */}
@@ -319,9 +592,43 @@ function FormRegister() {
             value={formData.password}
             onChange={handleInputChange}
             placeholder="Digite sua senha"
-            className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
             required
           />
+        </div>
+        
+        {/* Indicadores de validação da senha */}
+        <div className="space-y-1 mt-2">
+          <div className="flex items-center space-x-2">
+            <div className={`w-2 h-2 rounded-full ${passwordValidation.length ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+            <span className={`text-xs ${passwordValidation.length ? 'text-green-600' : 'text-gray-500'}`}>
+              Pelo menos 8 caracteres
+            </span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className={`w-2 h-2 rounded-full ${passwordValidation.uppercase ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+            <span className={`text-xs ${passwordValidation.uppercase ? 'text-green-600' : 'text-gray-500'}`}>
+              Uma letra maiúscula
+            </span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className={`w-2 h-2 rounded-full ${passwordValidation.lowercase ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+            <span className={`text-xs ${passwordValidation.lowercase ? 'text-green-600' : 'text-gray-500'}`}>
+              Uma letra minúscula
+            </span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className={`w-2 h-2 rounded-full ${passwordValidation.number ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+            <span className={`text-xs ${passwordValidation.number ? 'text-green-600' : 'text-gray-500'}`}>
+              Um número
+            </span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className={`w-2 h-2 rounded-full ${passwordValidation.symbol ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+            <span className={`text-xs ${passwordValidation.symbol ? 'text-green-600' : 'text-gray-500'}`}>
+              Um símbolo
+            </span>
+          </div>
         </div>
       </div>
 
@@ -341,46 +648,58 @@ function FormRegister() {
             value={formData.confirmPassword}
             onChange={handleInputChange}
             placeholder="Confirme sua senha"
-            className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className={`block w-full pl-10 pr-3 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent ${
+              formData.confirmPassword && !passwordMatch ? 'border-red-300' : 
+              formData.confirmPassword && passwordMatch ? 'border-green-300' : 
+              'border-gray-300'
+            }`}
             required
           />
         </div>
+        {formData.confirmPassword && !passwordMatch && (
+          <p className="text-sm text-red-600">As senhas não coincidem</p>
+        )}
+        {formData.confirmPassword && passwordMatch && (
+          <p className="text-sm text-green-600">As senhas coincidem</p>
+        )}
       </div>
     </div>
   );
 
+  // Se estiver mostrando a celebração, renderizar apenas ela
+  if (showCelebration) {
+    return <CelebrationSuccess onComplete={handleCelebrationComplete} />;
+  }
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Barra de Progresso */}
-      <div className="mb-6">
-        {/* Barra de etapas centralizada */}
-        <div className="flex items-center justify-center space-x-2 mb-6">
-          {[1, 2, 3].map((step) => (
-            <div key={step} className="flex items-center">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                step < currentStep 
-                  ? 'bg-green-500 text-white' 
-                  : step === currentStep 
-                    ? 'bg-blue-500 text-white' 
-                    : 'bg-gray-200 text-gray-500'
-              }`}>
-                {step < currentStep ? <Check size={16} /> : step}
-              </div>
-              {step < 3 && (
-                <div className={`w-12 h-1 mx-2 ${
-                  step < currentStep ? 'bg-green-500' : 'bg-gray-200'
-                }`} />
-              )}
-            </div>
-          ))}
-        </div>
-        
-        {/* Título da etapa atual - menor e centralizado */}
-        <div className="text-center">
-          <h3 className="text-lg font-semibold text-gray-800">{getStepTitle()}</h3>
-          <p className="text-sm text-gray-600 mt-1">{getStepDescription()}</p>
+    <div className="h-full flex flex-col">
+      {/* Header do formulário */}
+      <div className="p-6 pb-4">
+        <h1 className="text-3xl font-bold text-gray-900 mb-1">Criar Conta</h1>
+        <p className="text-gray-400 text-sm font-light">Preencha os dados para criar sua conta</p>
+      </div>
+
+      {/* Barra de Progresso Simples */}
+      <div className="px-6 pb-4">
+        <div className="mb-4">
+          {/* Barra de progresso */}
+          <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+            <div 
+              className="h-full bg-gradient-to-r from-gray-900 to-gray-600 rounded-full transition-all duration-500 ease-out"
+              style={{ width: `${((currentStep - 1) / 2) * 100}%` }}
+            ></div>
+          </div>
         </div>
       </div>
+
+      {/* Conteúdo do formulário */}
+      <div className="flex-1 px-6 pb-6">
+    <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Título da etapa atual */}
+        <div className="text-center mb-4">
+          <h3 className="text-lg font-semibold text-gray-800">{getStepTitle()}</h3>
+          <p className="text-sm text-gray-500 mt-1">{getStepDescription()}</p>
+        </div>
 
       {/* Conteúdo da etapa atual */}
       {currentStep === 1 && renderStep1()}
@@ -407,7 +726,7 @@ function FormRegister() {
           <button
             type="button"
             onClick={nextStep}
-            className="flex items-center gap-2 px-4 sm:px-6 py-2 sm:py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors duration-200"
+              className="flex items-center gap-2 px-4 sm:px-6 py-2 sm:py-3 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 transition-colors duration-200"
           >
             <span className="text-sm sm:text-base">Próximo</span>
             <ArrowRight size={18} className="sm:w-5 sm:h-5" />
@@ -415,28 +734,29 @@ function FormRegister() {
         ) : (
           <button
             type="submit"
-            className="flex items-center gap-2 px-4 sm:px-6 py-2 sm:py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors duration-200"
+              className="flex items-center gap-2 px-4 sm:px-6 py-2 sm:py-3 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 transition-colors duration-200"
           >
-            <Check size={18} className="sm:w-5 sm:h-5" />
-            <span className="text-sm sm:text-base">Finalizar Cadastro</span>
+            <span className="text-sm sm:text-base">Registrar</span>
           </button>
         )}
       </div>
 
       {/* Link para login */}
       <div className="text-center pt-4 border-t border-gray-200">
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-gray-500">
           Já possui uma conta?{' '}
           <button
             type="button"
-            className="text-blue-600 hover:text-blue-500 font-medium"
+              className="text-gray-900 hover:text-gray-700 font-bold"
             onClick={() => window.dispatchEvent(new CustomEvent('switchToLogin'))}
           >
-            Acessar conta
+            Login
           </button>
         </p>
       </div>
-    </form>
+      </form>
+      </div>
+    </div>
   );
 }
 

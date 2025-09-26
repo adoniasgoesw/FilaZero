@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Lock, Eye, EyeOff, LogIn } from 'lucide-react';
+import { User, Lock, Eye, EyeOff } from 'lucide-react';
 import { login, setAuthData } from '../../services/api';
 import { useNavigate } from 'react-router-dom';
 
@@ -57,17 +57,18 @@ function FormLogin() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Título do formulário */}
-      <div className="text-center mb-8">
-        <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
-          <User className="w-8 h-8 text-white" />
-        </div>
-        <h2 className="text-2xl font-bold text-gray-800">Fazer Login</h2>
-        <p className="text-gray-600 mt-2">Entre com suas credenciais</p>
+    <div className="h-full flex flex-col">
+      {/* Header do formulário */}
+      <div className="p-6 pb-4">
+        <h1 className="text-3xl font-bold text-gray-900 mb-1">Bem-vindo de volta!</h1>
+        <p className="text-gray-400 text-sm font-light">Por favor, preencha seus dados</p>
       </div>
 
-      {/* Mensagem de erro */}
+      {/* Conteúdo do formulário */}
+      <div className="flex-1 px-6 pb-6">
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Mensagem de erro */}
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
           {error}
@@ -90,7 +91,7 @@ function FormLogin() {
             value={formData.cpf}
             onChange={handleInputChange}
             placeholder="000.000.000-00"
-            className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
             required
             disabled={isLoading}
           />
@@ -113,7 +114,7 @@ function FormLogin() {
             value={formData.password}
             onChange={handleInputChange}
             placeholder="Digite sua senha"
-            className="block w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="block w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
             required
             disabled={isLoading}
           />
@@ -132,25 +133,11 @@ function FormLogin() {
         </div>
       </div>
 
-      {/* Lembrar de mim e Esqueci a senha */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center">
-          <input
-            id="rememberMe"
-            name="rememberMe"
-            type="checkbox"
-            checked={formData.rememberMe}
-            onChange={handleInputChange}
-            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-            disabled={isLoading}
-          />
-          <label htmlFor="rememberMe" className="ml-2 block text-sm text-gray-700">
-            Lembrar de mim
-          </label>
-        </div>
+      {/* Esqueci a senha */}
+      <div className="flex justify-start">
         <a
           href="#"
-          className="text-sm text-blue-600 hover:text-blue-500 font-medium"
+          className="text-sm font-bold text-gray-900 hover:text-gray-700"
         >
           Esqueci a senha
         </a>
@@ -160,10 +147,10 @@ function FormLogin() {
       <button
         type="submit"
         disabled={isLoading}
-        className={`w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200 ${
+        className={`w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 transition-colors duration-200 ${
           isLoading
             ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
-            : 'bg-blue-600 text-white hover:bg-blue-700'
+            : 'bg-gray-900 text-white hover:bg-gray-800'
         }`}
       >
         {isLoading ? (
@@ -172,20 +159,17 @@ function FormLogin() {
             <span>Entrando...</span>
           </>
         ) : (
-          <>
-            <LogIn className="w-5 h-5" />
-            <span>Entrar no Sistema</span>
-          </>
+          <span>Entrar</span>
         )}
       </button>
 
       {/* Link para cadastro */}
       <div className="text-center">
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-gray-500">
           Não possui uma conta?{' '}
           <button
             type="button"
-            className="text-blue-600 hover:text-blue-500 font-medium"
+            className="text-gray-900 hover:text-gray-700 font-bold"
             onClick={() => window.dispatchEvent(new CustomEvent('switchToRegister'))}
             disabled={isLoading}
           >
@@ -193,7 +177,9 @@ function FormLogin() {
           </button>
         </p>
       </div>
-    </form>
+      </form>
+      </div>
+    </div>
   );
 }
 
