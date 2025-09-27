@@ -21,6 +21,8 @@ const corsOptions = {
     if (!origin) return callback(null, true);
     
     const allowedOrigins = [
+      'https://filazeroapp.online',
+      'https://www.filazeroapp.online',
       'https://filazero.netlify.app',
       'https://filazero-sistema-de-gestao.onrender.com',
       'http://localhost:5173',

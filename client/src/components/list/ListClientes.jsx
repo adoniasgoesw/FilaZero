@@ -5,7 +5,7 @@ import EditButton from '../buttons/Edit';
 import DeleteButton from '../buttons/Delete';
 import StatusButton from '../buttons/Status';
 import ConfirmDelete from '../elements/ConfirmDelete';
-import { useClientes } from '../../contexts/CacheContext';
+import { useClientes, useClientesMutation } from '../../hooks/useCache';
 
 const ListClientes = ({ 
   estabelecimentoId,
@@ -17,10 +17,19 @@ const ListClientes = ({
 }) => {
   console.log('🔍 ListClientes renderizado com estabelecimentoId:', estabelecimentoId);
   
-  // Usar hook de cache para clientes
-  const { clientes, loading, error, loadClientes, addCliente, updateCliente, removeCliente } = useClientes(estabelecimentoId);
+  // Usar cache para clientes (3 segundos)
+  const { data: clientes = [], isLoading, error, refetch } = useClientes(estabelecimentoId);
+  const clientesMutation = useClientesMutation();
+  
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, cliente: null });
   const [deleting, setDeleting] = useState(false);
+
+  // Chamar callback quando dados mudarem
+  useEffect(() => {
+    if (clientes.length > 0 && onClientesLoaded) {
+      onClientesLoaded(clientes);
+    }
+  }, [clientes, onClientesLoaded]);
   
   // Estados para seleção múltipla
   const [selectAll, setSelectAll] = useState(false);
@@ -45,36 +54,6 @@ const ListClientes = ({
     });
   }, [clientes, searchQuery]);
 
-  const fetchClientes = useCallback(async () => {
-    try {
-      if (!estabelecimentoId) {
-        console.log('⚠️ Estabelecimento não identificado, aguardando...');
-        return;
-      }
-
-      console.log('🔍 Buscando clientes para estabelecimento:', estabelecimentoId);
-      
-      const clientesData = await loadClientes();
-      
-      console.log('✅ Clientes carregados do cache:', clientesData.length);
-      
-      if (onClientesLoaded) {
-        onClientesLoaded(clientesData);
-      }
-    } catch (error) {
-      console.error('❌ Erro ao buscar clientes:', error);
-    }
-  }, [estabelecimentoId, loadClientes, onClientesLoaded]);
-
-  // Usar useRef para evitar loops infinitos
-  const hasFetched = useRef(false);
-
-  useEffect(() => {
-    if (estabelecimentoId && !hasFetched.current) {
-      hasFetched.current = true;
-      fetchClientes();
-    }
-  }, [estabelecimentoId, fetchClientes]);
 
   // Controlar seleção baseada nos clientes selecionados externos
   useEffect(() => {
@@ -83,8 +62,8 @@ const ListClientes = ({
 
   // Função para recarregar a lista
   const refreshList = useCallback(() => {
-    fetchClientes();
-  }, [fetchClientes]);
+    refetch();
+  }, [refetch]);
 
   // Função para alternar status do cliente
   const toggleStatus = async (cliente) => {
@@ -94,8 +73,8 @@ const ListClientes = ({
       });
       
       if (response.success) {
-        // Atualizar o cliente no cache
-        updateCliente(cliente.id, { status: !cliente.status });
+        // Invalidar cache automaticamente
+        clientesMutation.mutate();
         
         console.log('✅ Status do cliente alterado:', cliente.nome, 'Novo status:', !cliente.status);
       } else {
@@ -146,10 +125,8 @@ const ListClientes = ({
       
       await Promise.all(promises);
       
-      // Remover clientes do cache
-      externalSelectedClientes.forEach(cliente => {
-        removeCliente(cliente.id);
-      });
+      // Invalidar cache automaticamente
+      clientesMutation.mutate();
       
       // Fechar modal e limpar seleção
       setBulkDeleteModal({ isOpen: false, clientes: [] });
@@ -172,8 +149,8 @@ const ListClientes = ({
       const response = await api.delete(`/clientes/${cliente.id}`);
       
       if (response.success) {
-        // Remover cliente do cache
-        removeCliente(cliente.id);
+        // Invalidar cache automaticamente
+        clientesMutation.mutate();
         
         // Fechar modal
         setDeleteModal({ isOpen: false, cliente: null });
@@ -202,7 +179,7 @@ const ListClientes = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showActionsDropdown]);
 
-  if (loading && clientes.length === 0) {
+  if (isLoading && clientes.length === 0) {
     return (
       <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8 min-h-[50vh] flex items-center justify-center">
         <div className="flex items-center">
@@ -221,7 +198,7 @@ const ListClientes = ({
             <User className="w-12 h-12 mx-auto" />
           </div>
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Erro ao carregar clientes</h3>
-          <p className="text-gray-600 mb-4">{error}</p>
+          <p className="text-gray-600 mb-4">{error.message}</p>
           <button
             onClick={refreshList}
             className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"

@@ -6,12 +6,12 @@ import DeleteButton from '../buttons/Delete';
 import StatusButton from '../buttons/Status';
 import { ToggleLeft, ToggleRight } from 'lucide-react';
 import ConfirmDelete from '../elements/ConfirmDelete';
-import { useCategorias, useCache } from '../../contexts/CacheContext';
+import { useCategorias, useCategoriasMutation } from '../../hooks/useCache';
 
 const ListCategory = ({ estabelecimentoId, onCategoryDelete, onCategoryEdit, searchQuery = '', isReordering = false }) => {
-  // Usar hook de cache para categorias
-  const { categorias, loadCategorias, updateCategoria, removeCategoria } = useCategorias(estabelecimentoId);
-  const { invalidateCache } = useCache();
+  // Usar cache para categorias (3 segundos)
+  const { data: categorias = [], isLoading, error, refetch } = useCategorias(estabelecimentoId);
+  const categoriasMutation = useCategoriasMutation();
   
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, categoria: null });
   const [deleting, setDeleting] = useState(false);
@@ -42,20 +42,11 @@ const ListCategory = ({ estabelecimentoId, onCategoryDelete, onCategoryEdit, sea
     }
   }, [reorderedCategories, isReordering]);
 
-  // Carregar categorias do cache
-  useEffect(() => {
-    if (estabelecimentoId) {
-      loadCategorias();
-    }
-  }, [estabelecimentoId, loadCategorias]);
-
   // Escutar eventos de atualização em tempo real
   useEffect(() => {
     const handleCategoriaUpdate = () => {
       console.log('🔄 ListCategory - Evento de atualização recebido, recarregando categorias...');
-      if (estabelecimentoId) {
-        loadCategorias(true); // Forçar recarregamento
-      }
+      refetch(); // Recarregar dados do cache
     };
 
     window.addEventListener('categoriaUpdated', handleCategoriaUpdate);
@@ -63,7 +54,7 @@ const ListCategory = ({ estabelecimentoId, onCategoryDelete, onCategoryEdit, sea
     return () => {
       window.removeEventListener('categoriaUpdated', handleCategoriaUpdate);
     };
-  }, [estabelecimentoId, loadCategorias]);
+  }, [refetch]);
 
   const handleEdit = (categoria) => {
     console.log('Editar categoria:', categoria);
@@ -89,8 +80,8 @@ const ListCategory = ({ estabelecimentoId, onCategoryDelete, onCategoryEdit, sea
       if (response.success) {
         console.log('✅ Categoria deletada com sucesso:', response.data);
         
-        // Remover categoria do cache
-        removeCategoria(deleteModal.categoria.id);
+        // Invalidar cache automaticamente
+        categoriasMutation.mutate();
         
         // Fechar modal
         setDeleteModal({ isOpen: false, categoria: null });
@@ -122,8 +113,8 @@ const ListCategory = ({ estabelecimentoId, onCategoryDelete, onCategoryEdit, sea
       if (response.success) {
         console.log('✅ Status da categoria alterado com sucesso:', response.data);
         
-        // Atualizar categoria no cache
-        updateCategoria(categoria.id, { status: response.data.status });
+        // Invalidar cache automaticamente
+        categoriasMutation.mutate();
         
         // Mostrar notificação de sucesso
         const statusText = response.data.status ? 'ativada' : 'desativada';
@@ -244,21 +235,18 @@ const ListCategory = ({ estabelecimentoId, onCategoryDelete, onCategoryEdit, sea
       
       console.log('✅ Ordem das categorias atualizada com sucesso');
       
-      // Invalidar cache para forçar reload
-      invalidateCache('categorias');
+      // Invalidar cache automaticamente
+      categoriasMutation.mutate();
       
-      // Aguardar um pouco e recarregar categorias
-      setTimeout(async () => {
-        await loadCategorias();
-        console.log('🔄 Lista de categorias recarregada com nova ordem');
-      }, 100);
+      // Disparar evento para atualizar outros componentes
+      window.dispatchEvent(new CustomEvent('refreshCategorias'));
       
       return true;
     } catch (err) {
       console.error('❌ Erro ao atualizar ordem das categorias:', err);
       throw err;
     }
-  }, [reorderedCategories, loadCategorias, invalidateCache]);
+  }, [reorderedCategories, categoriasMutation]);
 
   // Expor função de salvamento globalmente
   useEffect(() => {
@@ -311,6 +299,42 @@ const ListCategory = ({ estabelecimentoId, onCategoryDelete, onCategoryEdit, sea
     return finalUrl;
   };
 
+  // Mostrar loading
+  if (isLoading) {
+    return (
+      <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8 min-h-[50vh] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Carregando categorias...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Mostrar erro
+  if (error) {
+    return (
+      <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8 min-h-[50vh] flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-500 mb-4">
+            <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <p className="text-red-600 mb-2">Erro ao carregar categorias</p>
+          <p className="text-gray-500 text-sm mb-4">{error.message}</p>
+          <button 
+            onClick={() => refetch()}
+            className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+          >
+            Tentar novamente
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Mostrar mensagem se não houver categorias
   if (categorias.length === 0) {
     return (
       <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8 min-h-[50vh] flex items-center justify-center">

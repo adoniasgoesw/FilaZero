@@ -46,7 +46,7 @@ server/
 - ✅ API status monitoring
 
 ### 6. CORS Configuration
-- Allowed origins: `https://filazero.netlify.app`, `https://filazero-sistema-de-gestao.onrender.com`
+- Allowed origins: `https://filazeroapp.online`, `https://www.filazeroapp.online`, `https://filazero.netlify.app`, `https://filazero-sistema-de-gestao.onrender.com`
 - Local development: `http://localhost:5173`, `http://localhost:3000`
 - Credentials enabled
 - Preflight requests handled

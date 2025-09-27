@@ -9,7 +9,7 @@ import BaseModal from '../../components/modals/Base';
 import FormCategory from '../../components/forms/FormCategory';
 import ListCategory from '../../components/list/ListCategory';
 import Notification from '../../components/elements/Notification';
-import { useCategorias } from '../../contexts/CacheContext';
+// Removido import do cache - agora busca diretamente da API
 import api from '../../services/api';
 
 function Categorias() {
@@ -25,8 +25,23 @@ function Categorias() {
   const [search, setSearch] = useState('');
   const [isReordering, setIsReordering] = useState(false);
 
-  // Usar hook de cache para categorias
-  const { addCategoria, updateCategoria, removeCategoria } = useCategorias(estabelecimentoId);
+  // Estados para categorias (busca direta da API)
+  const [categorias, setCategorias] = useState([]);
+
+  // Função para adicionar categoria
+  const addCategoria = (categoria) => {
+    setCategorias(prev => [...prev, categoria]);
+  };
+
+  // Função para atualizar categoria
+  const updateCategoria = (categoriaAtualizada) => {
+    setCategorias(prev => prev.map(c => c.id === categoriaAtualizada.id ? categoriaAtualizada : c));
+  };
+
+  // Função para remover categoria
+  const removeCategoria = (categoriaId) => {
+    setCategorias(prev => prev.filter(c => c.id !== categoriaId));
+  };
 
   useEffect(() => {
     // Buscar o ID do estabelecimento do localStorage

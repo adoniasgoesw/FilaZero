@@ -1,12 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import { Users } from 'lucide-react';
-import { useClientes } from '../../contexts/CacheContext';
+import api from '../../services/api';
 
 const ListClient = ({ onClientSelect, selectedClientId = null }) => {
   const [estabelecimentoId, setEstabelecimentoId] = useState(null);
   
-  // Usar hook de cache para clientes
-  const { clientes, loading, error, loadClientes } = useClientes(estabelecimentoId);
+  // Estados para clientes (busca direta da API)
+  const [clientes, setClientes] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Função para carregar clientes da API
+  const loadClientes = async () => {
+    if (!estabelecimentoId) return;
+    
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await api.get(`/clientes/${estabelecimentoId}`);
+      
+      if (response.success) {
+        setClientes(response.data || []);
+      } else {
+        throw new Error(response.message || 'Erro ao carregar clientes');
+      }
+    } catch (err) {
+      console.error('Erro ao carregar clientes:', err);
+      setError(err.message || 'Erro ao carregar clientes');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Buscar ID do estabelecimento
   useEffect(() => {
@@ -16,12 +41,12 @@ const ListClient = ({ onClientSelect, selectedClientId = null }) => {
     }
   }, []);
 
-  // Carregar clientes do cache
+  // Carregar clientes da API
   useEffect(() => {
     if (estabelecimentoId) {
       loadClientes();
     }
-  }, [estabelecimentoId, loadClientes]);
+  }, [estabelecimentoId]);
 
   const handleClientSelect = (client) => {
     console.log('🔴 CLIENTE CLICADO:', client);

@@ -1,15 +1,45 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useCategorias, useProdutos } from '../contexts/CacheContext';
+import api from '../services/api';
 
 export const usePainelItens = (estabelecimentoId) => {
   const [categoriaSelecionada, setCategoriaSelecionada] = useState(null);
   const [produtosFiltrados, setProdutosFiltrados] = useState([]);
   
-  // Usar hooks de cache
-  const { categorias, loadCategorias } = useCategorias(estabelecimentoId);
-  const { produtos, loadProdutos } = useProdutos(estabelecimentoId);
+  // Estados para dados (busca direta da API)
+  const [categorias, setCategorias] = useState([]);
+  const [produtos, setProdutos] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  // Carregar dados do cache
+  // Função para carregar categorias da API
+  const loadCategorias = useCallback(async () => {
+    if (!estabelecimentoId) return;
+    
+    try {
+      const response = await api.get(`/categorias/${estabelecimentoId}`);
+      if (response.success) {
+        setCategorias(response.data || []);
+      }
+    } catch (err) {
+      console.error('Erro ao carregar categorias:', err);
+    }
+  }, [estabelecimentoId]);
+
+  // Função para carregar produtos da API
+  const loadProdutos = useCallback(async () => {
+    if (!estabelecimentoId) return;
+    
+    try {
+      const response = await api.get(`/produtos/${estabelecimentoId}`);
+      if (response.success) {
+        setProdutos(response.data || []);
+      }
+    } catch (err) {
+      console.error('Erro ao carregar produtos:', err);
+    }
+  }, [estabelecimentoId]);
+
+  // Carregar dados da API
   useEffect(() => {
     if (estabelecimentoId) {
       loadCategorias();

@@ -1,13 +1,35 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { usePagamentos } from '../contexts/CacheContext';
+import api from '../services/api';
 
 export const usePainelPagamentos = (estabelecimentoId) => {
   const [pagamentoSelecionado, setPagamentoSelecionado] = useState(null);
   
-  // Usar hook de cache
-  const { pagamentos, loadPagamentos } = usePagamentos(estabelecimentoId);
+  // Estados para dados (busca direta da API)
+  const [pagamentos, setPagamentos] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  // Carregar dados do cache
+  // Função para carregar pagamentos da API
+  const loadPagamentos = useCallback(async () => {
+    if (!estabelecimentoId) return;
+    
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await api.get(`/pagamentos/${estabelecimentoId}`);
+      if (response.success) {
+        setPagamentos(response.data || []);
+      }
+    } catch (err) {
+      console.error('Erro ao carregar pagamentos:', err);
+      setError(err.message || 'Erro ao carregar pagamentos');
+    } finally {
+      setLoading(false);
+    }
+  }, [estabelecimentoId]);
+
+  // Carregar dados da API
   useEffect(() => {
     if (estabelecimentoId) {
       loadPagamentos();

@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Calculator, Calendar, Info } from 'lucide-react';
-import api from '../../services/api';
-import { useCaixas } from '../../contexts/CacheContext';
+import { useCaixas } from '../../hooks/useRealtime';
 
 const formatCurrency = (value) => {
   if (value === null || value === undefined) return 'R$ 0,00';
@@ -35,8 +34,8 @@ const formatDateOnly = (iso) => {
 };
 
 const ListCaixas = ({ estabelecimentoId, apenasFechados = false, searchQuery = '', onVerDetalhes }) => {
-  // Usar hook de cache para caixas
-  const { caixas, loading, error, loadCaixas } = useCaixas(estabelecimentoId, apenasFechados);
+  // Usar tempo real para caixas (atualização a cada 5 segundos)
+  const { data: caixas = [], isLoading, error, refetch } = useCaixas(estabelecimentoId, apenasFechados);
 
   // Filtrar itens baseado na pesquisa
   const filteredItems = React.useMemo(() => {
@@ -60,25 +59,7 @@ const ListCaixas = ({ estabelecimentoId, apenasFechados = false, searchQuery = '
     });
   }, [caixas, searchQuery]);
 
-  // Carregar caixas do cache
-  useEffect(() => {
-    if (estabelecimentoId) {
-      loadCaixas();
-    }
-  }, [estabelecimentoId, loadCaixas]);
-
-  // Escutar evento de refresh
-  useEffect(() => {
-    const handler = () => {
-      if (estabelecimentoId) {
-        loadCaixas();
-      }
-    };
-    window.addEventListener('refreshCaixas', handler);
-    return () => window.removeEventListener('refreshCaixas', handler);
-  }, [estabelecimentoId, loadCaixas]);
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8 min-h-[40vh] flex items-center justify-center">
         <div className="flex items-center">
@@ -97,8 +78,8 @@ const ListCaixas = ({ estabelecimentoId, apenasFechados = false, searchQuery = '
             <Calculator className="w-12 h-12 mx-auto" />
           </div>
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Erro ao carregar histórico</h3>
-          <p className="text-gray-600 mb-4">{error}</p>
-          <button onClick={fetchData} className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors">
+          <p className="text-gray-600 mb-4">{error.message}</p>
+          <button onClick={refetch} className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors">
             Tentar novamente
           </button>
         </div>

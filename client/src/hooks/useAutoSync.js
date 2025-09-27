@@ -1,9 +1,7 @@
 import { useEffect, useRef } from 'react';
-import { useCache } from '../contexts/CacheContext';
 
 // Hook para sincronização automática com o banco de dados
 export function useAutoSync(estabelecimentoId) {
-  const { invalidateCache } = useCache();
   const syncIntervalRef = useRef(null);
   const isInitializedRef = useRef(false);
 
@@ -16,15 +14,14 @@ export function useAutoSync(estabelecimentoId) {
     // Função para sincronizar dados
     const syncData = async () => {
       try {
-        // Invalidar cache para forçar refresh dos dados
-        invalidateCache('produtos');
-        invalidateCache('categorias');
-        invalidateCache('clientes');
-        invalidateCache('pagamentos');
-        invalidateCache('complementos');
-        invalidateCache('caixas');
-        invalidateCache('pedidos');
-        invalidateCache('pontosAtendimento');
+        // Disparar eventos para atualizar componentes
+        window.dispatchEvent(new CustomEvent('refreshProdutos'));
+        window.dispatchEvent(new CustomEvent('refreshCategorias'));
+        window.dispatchEvent(new CustomEvent('refreshClientes'));
+        window.dispatchEvent(new CustomEvent('refreshPagamentos'));
+        window.dispatchEvent(new CustomEvent('refreshCaixas'));
+        window.dispatchEvent(new CustomEvent('refreshPedidos'));
+        window.dispatchEvent(new CustomEvent('refreshPontosAtendimento'));
         
         console.log('🔄 Sincronização automática executada');
       } catch (error) {
@@ -46,19 +43,19 @@ export function useAutoSync(estabelecimentoId) {
       }
       isInitializedRef.current = false;
     };
-  }, [estabelecimentoId, invalidateCache]);
+  }, [estabelecimentoId]);
 
   // Função para forçar sincronização manual
   const forceSync = async () => {
     try {
-      invalidateCache('produtos');
-      invalidateCache('categorias');
-      invalidateCache('clientes');
-      invalidateCache('pagamentos');
-      invalidateCache('complementos');
-      invalidateCache('caixas');
-      invalidateCache('pedidos');
-      invalidateCache('pontosAtendimento');
+      // Disparar eventos para atualizar componentes
+      window.dispatchEvent(new CustomEvent('refreshProdutos'));
+      window.dispatchEvent(new CustomEvent('refreshCategorias'));
+      window.dispatchEvent(new CustomEvent('refreshClientes'));
+      window.dispatchEvent(new CustomEvent('refreshPagamentos'));
+      window.dispatchEvent(new CustomEvent('refreshCaixas'));
+      window.dispatchEvent(new CustomEvent('refreshPedidos'));
+      window.dispatchEvent(new CustomEvent('refreshPontosAtendimento'));
       
       console.log('🔄 Sincronização manual executada');
     } catch (error) {
@@ -71,7 +68,6 @@ export function useAutoSync(estabelecimentoId) {
 
 // Hook para sincronização em tempo real com WebSocket (futuro)
 export function useRealtimeSync(estabelecimentoId) {
-  const { addItem, updateItem, removeItem } = useCache();
   const wsRef = useRef(null);
 
   useEffect(() => {
@@ -90,17 +86,14 @@ export function useRealtimeSync(estabelecimentoId) {
         wsRef.current.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data);
-            const { type, entity, item } = data;
+            const { type, entity } = data;
 
+            // Disparar eventos baseados no tipo de mudança
             switch (type) {
               case 'CREATE':
-                addItem(entity, item);
-                break;
               case 'UPDATE':
-                updateItem(entity, item.id, item);
-                break;
               case 'DELETE':
-                removeItem(entity, item.id);
+                window.dispatchEvent(new CustomEvent(`refresh${entity}`));
                 break;
               default:
                 console.log('Tipo de evento desconhecido:', type);
@@ -132,7 +125,7 @@ export function useRealtimeSync(estabelecimentoId) {
         wsRef.current.close();
       }
     };
-  }, [estabelecimentoId, addItem, updateItem, removeItem]);
+  }, [estabelecimentoId]);
 
   return { isConnected: wsRef.current?.readyState === WebSocket.OPEN };
 }

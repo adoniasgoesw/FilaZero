@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { History, Calculator, Clock, User, CreditCard, ShoppingBag } from 'lucide-react';
+import { History, Calculator, Printer, Info, Plus, Minus } from 'lucide-react';
 import SearchBar from '../components/layout/SeachBar';
 import OpenButton from '../components/buttons/Open';
 import BaseModal from '../components/modals/Base';
@@ -11,9 +11,8 @@ import ListMovimentacoesCaixa from '../components/list/ListMovimentacoesCaixa';
 import ListPagamentoHistorico from '../components/list/ListPagamentoHistorico';
 import DetalhesPedido from '../components/elements/DetalhesPedido';
 import DetalhesCaixa from '../components/elements/DetalhesCaixa';
-import api from '../services/api';
 import ConfirmDialog from '../components/elements/ConfirmDialog';
-import { Plus, Minus, Calendar, Printer, Info } from 'lucide-react';
+import api from '../services/api';
 import { imprimirNotaCaixa } from '../services/notaFiscalPrint';
 
 const formatDateTime = (iso) => {
@@ -86,13 +85,17 @@ function Historic() {
     if (caixaAbertoStorage) {
       try {
         const caixaData = JSON.parse(caixaAbertoStorage);
-        if (caixaData && caixaData.caixa) {
+        if (caixaData && caixaData.caixa && caixaData.caixa.id) {
           setCaixaAbertoInfo(caixaData);
           setIsLoadingCaixa(false);
           console.log('💰 Historic - Caixa aberto carregado do localStorage:', caixaData);
+        } else {
+          // Se não tem caixa válido no localStorage, limpar
+          localStorage.removeItem('caixaAbertoInfo');
         }
       } catch (error) {
         console.error('Erro ao carregar caixa do localStorage:', error);
+        localStorage.removeItem('caixaAbertoInfo');
       }
     }
   }, []);
@@ -119,7 +122,9 @@ function Historic() {
       }
 
       const res = await api.get(`/caixas/aberto/${estabelecimentoId}`);
-      if (res.success) {
+      console.log('🔍 Resposta da API de caixa aberto:', res);
+      
+      if (res.success && res.data && res.data.caixa) {
         // Garantir que o saldo_total esteja no objeto caixa
         const caixaData = {
           ...res.data,
@@ -131,23 +136,28 @@ function Historic() {
         setCaixaAbertoInfo(caixaData);
         // Salvar no localStorage para evitar delay na próxima navegação
         localStorage.setItem('caixaAbertoInfo', JSON.stringify(caixaData));
-        console.log('💰 Historic - Saldo total do caixa:', caixaData.caixa.saldo_total);
+        console.log('💰 Historic - Caixa aberto encontrado:', caixaData.caixa);
         // Se encontrou caixa aberto, não mostrar loading
         setIsLoadingCaixa(false);
       } else {
+        console.log('💰 Historic - Nenhum caixa aberto encontrado');
         setCaixaAbertoInfo(null);
+        // Limpar localStorage quando não há caixa aberto
+        localStorage.removeItem('caixaAbertoInfo');
         setIsLoadingCaixa(false);
       }
-    } catch {
+    } catch (error) {
+      console.error('❌ Erro ao buscar caixa aberto:', error);
       setCaixaAbertoInfo(null);
+      // Limpar localStorage em caso de erro
+      localStorage.removeItem('caixaAbertoInfo');
       setIsLoadingCaixa(false);
     }
   }, [estabelecimentoId, caixaAbertoInfo]);
 
-
   useEffect(() => { 
     // Se já tem caixa aberto, não mostrar loading
-    if (caixaAbertoInfo && caixaAbertoInfo.caixa) {
+    if (caixaAbertoInfo && caixaAbertoInfo.caixa && caixaAbertoInfo.caixa.id) {
       setIsLoadingCaixa(false);
     } else {
       fetchCaixaAberto(); 
@@ -268,14 +278,16 @@ function Historic() {
           {/* Barra de pesquisa */}
           <div className="flex-1 min-w-0">
             <SearchBar 
-              placeholder={activeTab === 'pedidos' ? 'Pesquisar pedidos...' : activeTab === 'pagamentos' ? 'Pesquisar pagamentos...' : 'Pesquisar movimentações...'} 
+              placeholder={caixaAbertoInfo && caixaAbertoInfo.caixa && caixaAbertoInfo.caixa.id ? 
+                (activeTab === 'pedidos' ? 'Pesquisar pedidos...' : activeTab === 'pagamentos' ? 'Pesquisar pagamentos...' : 'Pesquisar movimentações...') : 
+                'Pesquisar caixas...'} 
               value={search}
               onChange={setSearch}
             />
           </div>
           
-          {/* Botão Open reduzido */}
-          {caixaAbertoInfo && caixaAbertoInfo.caixa ? (
+          {/* Botão Open/Close baseado no status do caixa */}
+          {caixaAbertoInfo && caixaAbertoInfo.caixa && caixaAbertoInfo.caixa.id ? (
             <OpenButton variant="close" onClick={() => setIsCloseModalOpen(true)} />
           ) : (
             <OpenButton onClick={() => setIsOpenModalOpen(true)} />
@@ -292,8 +304,10 @@ function Historic() {
               <span className="ml-3 text-gray-600">Verificando status do caixa...</span>
             </div>
           </div>
-        ) : caixaAbertoInfo && caixaAbertoInfo.caixa ? (
+        ) : caixaAbertoInfo && caixaAbertoInfo.caixa && caixaAbertoInfo.caixa.id ? (
           <>
+            {/* ESTADO: CAIXA ABERTO - Mostrar cards e abas */}
+            
             {/* Cards de agregados */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
               <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
@@ -385,13 +399,13 @@ function Historic() {
                 />
               </>
             )}
-      {activeTab === 'pagamentos' && (
-        <ListPagamentoHistorico 
-          estabelecimentoId={estabelecimentoId} 
-          caixaId={caixaAbertoInfo.caixa?.id} 
-          searchQuery={search}
-        />
-      )}
+            {activeTab === 'pagamentos' && (
+              <ListPagamentoHistorico 
+                estabelecimentoId={estabelecimentoId} 
+                caixaId={caixaAbertoInfo.caixa?.id} 
+                searchQuery={search}
+              />
+            )}
             {activeTab === 'movimentacoes' && (
               <ListMovimentacoesCaixa 
                 estabelecimentoId={estabelecimentoId} 
@@ -401,10 +415,29 @@ function Historic() {
             )}
           </>
         ) : (
-          <ListCaixas 
-            estabelecimentoId={estabelecimentoId} 
-            onVerDetalhes={handleVerDetalhes}
-          />
+          <>
+            {/* ESTADO: CAIXA FECHADO - Mostrar apenas histórico de caixas */}
+            
+            {/* Título com ícone */}
+            <div className="mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center shadow-sm">
+                  <Calculator className="w-5 h-5 text-emerald-600" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">Caixas</h1>
+                  <p className="text-sm text-gray-500">Histórico de caixas fechados</p>
+                </div>
+              </div>
+            </div>
+
+            <ListCaixas 
+              estabelecimentoId={estabelecimentoId} 
+              apenasFechados={true}
+              onVerDetalhes={handleVerDetalhes}
+              searchQuery={search}
+            />
+          </>
         )}
       </div>
 
