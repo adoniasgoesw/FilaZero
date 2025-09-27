@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Image as ImageIcon, Package, MoreHorizontal, Check, X, ToggleLeft, ToggleRight } from 'lucide-react';
 import api from '../../services/api';
 import EditButton from '../buttons/Edit';
 import DeleteButton from '../buttons/Delete';
 import StatusButton from '../buttons/Status';
 import ConfirmDelete from '../elements/ConfirmDelete';
-import { useProdutos } from '../../contexts/CacheContext';
+import { useProdutos, useProdutosMutation } from '../../hooks/useCache';
 
 const ListProduct = ({ 
   estabelecimentoId, 
@@ -15,16 +15,12 @@ const ListProduct = ({
   selectedProducts: externalSelectedProducts = [],
   onSelectionChange
 }) => {
-  // Usar hook de cache para produtos
-  const { produtos, loading, error, loadProdutos, addProduto, updateProduto, removeProduto } = useProdutos(estabelecimentoId);
+  // Usar cache para produtos (3 segundos)
+  const { data: produtos = [], isLoading, error, refetch } = useProdutos(estabelecimentoId);
+  const produtosMutation = useProdutosMutation();
   
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, produto: null });
   const [deleting, setDeleting] = useState(false);
-  
-  // Estados para rolagem infinita
-  const [currentPage, setCurrentPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   
   // Estados para seleção múltipla
   const [selectAll, setSelectAll] = useState(false);
@@ -33,8 +29,6 @@ const ListProduct = ({
   const [showActionsDropdown, setShowActionsDropdown] = useState(false);
   const [bulkDeleteModal, setBulkDeleteModal] = useState({ isOpen: false, produtos: [] });
   const [bulkDeleting, setBulkDeleting] = useState(false);
-
-  const itemsPerPage = 10;
 
   const displayedProdutos = React.useMemo(() => {
     const list = Array.isArray(produtos) ? produtos : [];
@@ -48,62 +42,11 @@ const ListProduct = ({
     });
   }, [produtos, searchQuery]);
 
-  const fetchProdutos = useCallback(async (page = 1, append = false) => {
-    try {
-      console.log('🚀 fetchProdutos chamado:', { page, append, estabelecimentoId });
-      
-      if (page === 1) {
-        // Para primeira página, usar cache
-        console.log('📦 Carregando produtos do cache...');
-        const cachedProdutos = await loadProdutos();
-        console.log('✅ Produtos carregados do cache:', cachedProdutos?.length || 0, 'produtos');
-        console.log('📋 Dados dos produtos:', cachedProdutos);
-      } else {
-        setLoadingMore(true);
-        
-        console.log('🔍 Buscando mais produtos para estabelecimento:', estabelecimentoId, 'Página:', page);
-        const response = await api.get(`/produtos/${estabelecimentoId}?page=${page}&limit=${itemsPerPage}`);
-        
-        if (response.success) {
-          const newProdutos = response.data.produtos || response.data;
-          const total = response.data.total || newProdutos.length;
-          
-          // Adicionar novos produtos ao cache
-          newProdutos.forEach(produto => addProduto(produto));
-          
-          setCurrentPage(page);
-          setHasMore(page < Math.ceil(total / itemsPerPage));
-          
-          console.log('✅ Mais produtos carregados:', newProdutos.length, 'Total:', total);
-        } else {
-          throw new Error(response.message || 'Erro ao carregar produtos');
-        }
-      }
-    } catch (error) {
-      console.error('❌ Erro ao buscar produtos:', error);
-    } finally {
-      setLoadingMore(false);
-    }
-  }, [estabelecimentoId, itemsPerPage, loadProdutos, addProduto]);
-
-  useEffect(() => {
-    console.log('🔄 useEffect ListProduct executado:', { estabelecimentoId, type: typeof estabelecimentoId });
-    if (!estabelecimentoId) {
-      console.log('❌ estabelecimentoId não disponível, não carregando produtos');
-      return;
-    }
-    console.log('✅ estabelecimentoId disponível, carregando produtos...');
-    fetchProdutos(1, false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [estabelecimentoId]);
-
   // Escutar eventos de atualização em tempo real
   useEffect(() => {
     const handleProdutoUpdate = () => {
       console.log('🔄 ListProduct - Evento de atualização recebido, recarregando produtos...');
-      if (estabelecimentoId) {
-        loadProdutos(true); // Forçar recarregamento
-      }
+      refetch(); // Recarregar dados do cache
     };
 
     window.addEventListener('produtoUpdated', handleProdutoUpdate);
@@ -111,26 +54,13 @@ const ListProduct = ({
     return () => {
       window.removeEventListener('produtoUpdated', handleProdutoUpdate);
     };
-  }, [estabelecimentoId, loadProdutos]);
+  }, [refetch]);
 
   // Controlar seleção baseada nos produtos selecionados externos
   useEffect(() => {
     setSelectAll(externalSelectedProducts.length === displayedProdutos.length && displayedProdutos.length > 0);
   }, [externalSelectedProducts.length, displayedProdutos.length]);
 
-  // Função para carregar mais produtos
-  const loadMore = useCallback(() => {
-    if (hasMore && !loadingMore && !loading) {
-      fetchProdutos(currentPage + 1, true);
-    }
-  }, [hasMore, loadingMore, loading, currentPage, fetchProdutos]);
-
-  // Função para recarregar a lista
-  const refreshList = useCallback(() => {
-    if (estabelecimentoId) {
-      fetchProdutos(1);
-    }
-  }, [estabelecimentoId, fetchProdutos]);
 
   // Função para alternar status do produto
   const toggleStatus = async (produto) => {
@@ -138,8 +68,8 @@ const ListProduct = ({
       const response = await api.put(`/produtos/${produto.id}/status`);
       
       if (response.success) {
-        // Atualizar o produto no cache
-        updateProduto(produto.id, { status: !produto.status });
+        // Invalidar cache automaticamente
+        produtosMutation.mutate();
         
         console.log('✅ Status do produto alterado:', produto.nome, 'Novo status:', !produto.status);
       } else {
@@ -191,10 +121,8 @@ const ListProduct = ({
       
       await Promise.all(promises);
       
-      // Remover produtos do cache
-      externalSelectedProducts.forEach(produto => {
-        removeProduto(produto.id);
-      });
+      // Invalidar cache automaticamente
+      produtosMutation.mutate();
       
       // Fechar modal e limpar seleção
       setBulkDeleteModal({ isOpen: false, produtos: [] });
@@ -220,8 +148,8 @@ const ListProduct = ({
       const response = await api.delete(`/produtos/${produto.id}`);
       
       if (response.success) {
-        // Remover produto do cache
-        removeProduto(produto.id);
+        // Invalidar cache automaticamente
+        produtosMutation.mutate();
         
         // Fechar modal
         setDeleteModal({ isOpen: false, produto: null });
@@ -278,17 +206,6 @@ const ListProduct = ({
     return `${cleanBaseUrl}/${cleanImageUrl}`;
   };
 
-  // Efeito para rolagem infinita
-  useEffect(() => {
-    const handleScroll = () => {
-      if (window.innerHeight + document.documentElement.scrollTop >= document.documentElement.offsetHeight - 1000) {
-        loadMore();
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [loadMore]);
 
   // Efeito para fechar dropdown quando clicar fora
   useEffect(() => {
@@ -306,13 +223,13 @@ const ListProduct = ({
   console.log('🔍 ListProduct Debug:', {
     estabelecimentoId,
     produtos: produtos?.length || 0,
-    loading,
+    isLoading,
     error,
     displayedProdutos: displayedProdutos?.length || 0
   });
 
   // Mostrar loading se estiver carregando
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8 min-h-[50vh] flex items-center justify-center">
         <div className="text-center">
@@ -332,9 +249,9 @@ const ListProduct = ({
             <X className="w-12 h-12 mx-auto" />
           </div>
           <p className="text-red-600 mb-2">Erro ao carregar produtos</p>
-          <p className="text-gray-500 text-sm">{error}</p>
+          <p className="text-gray-500 text-sm">{error.message}</p>
           <button 
-            onClick={refreshList}
+            onClick={refetch}
             className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
             Tentar novamente
@@ -345,15 +262,21 @@ const ListProduct = ({
   }
 
   // Mostrar mensagem se não houver produtos
-  if (!produtos || produtos.length === 0) {
+  if (!displayedProdutos || displayedProdutos.length === 0) {
     return (
       <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8 min-h-[50vh] flex items-center justify-center">
         <div className="text-center">
           <div className="text-gray-400 mb-4">
-            <Package className="w-12 h-12 mx-auto" />
+            <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+            </svg>
           </div>
-          <p className="text-gray-600">Nenhum produto encontrado</p>
-          <p className="text-gray-500 text-sm">Adicione um novo produto para começar</p>
+          <p className="text-gray-600">
+            {searchQuery ? 'Nenhum produto encontrado' : 'Nenhum produto encontrado'}
+          </p>
+          <p className="text-gray-500 text-sm">
+            {searchQuery ? 'Tente ajustar os termos de pesquisa.' : 'Adicione um produto para começar'}
+          </p>
         </div>
       </div>
     );
@@ -487,13 +410,6 @@ const ListProduct = ({
         </div>
       </div>
 
-      {/* Indicador de carregamento para rolagem infinita */}
-      {loadingMore && (
-        <div className="flex justify-center items-center py-6 border-t border-gray-200">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-red-500"></div>
-          <span className="ml-2 text-sm text-gray-600">Carregando mais produtos...</span>
-        </div>
-      )}
 
         {/* Modal de confirmação de exclusão */}
         <ConfirmDelete

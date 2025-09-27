@@ -1,0 +1,8 @@
+# Netlify Environment Variables
+# Configure these in your Netlify dashboard under Site Settings > Environment Variables
+
+VITE_API_URL=https://filazero-sistema-de-gestao.onrender.com/api
+VITE_FRONTEND_URL=https://filazeroapp.online
+VITE_APP_NAME=FilaZero
+VITE_APP_VERSION=1.0.0
+

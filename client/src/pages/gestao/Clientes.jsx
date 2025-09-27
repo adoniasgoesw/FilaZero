@@ -8,7 +8,7 @@ import FormCliente from '../../components/forms/FormCliente';
 import ListClientes from '../../components/list/ListClientes';
 import Notification from '../../components/elements/Notification';
 import api from '../../services/api';
-import { useClientes } from '../../contexts/CacheContext';
+// Removido import do cache - agora busca diretamente da API
 
 function Clientes() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -24,7 +24,23 @@ function Clientes() {
   const contentRef = useRef(null);
 
   // Usar hook de cache para clientes
-  const { addCliente, updateCliente, removeCliente } = useClientes(estabelecimentoId);
+  // Estados para clientes (busca direta da API)
+  const [clientes, setClientes] = useState([]);
+
+  // Função para adicionar cliente
+  const addCliente = (cliente) => {
+    setClientes(prev => [...prev, cliente]);
+  };
+
+  // Função para atualizar cliente
+  const updateCliente = (clienteAtualizado) => {
+    setClientes(prev => prev.map(c => c.id === clienteAtualizado.id ? clienteAtualizado : c));
+  };
+
+  // Função para remover cliente
+  const removeCliente = (clienteId) => {
+    setClientes(prev => prev.filter(c => c.id !== clienteId));
+  };
 
   useEffect(() => {
     if (contentRef.current && typeof contentRef.current.scrollTo === 'function') {
@@ -81,7 +97,7 @@ function Clientes() {
   };
 
   const handleClientesLoaded = useCallback((clientesData) => {
-    // Os clientes já são gerenciados pelo contexto CacheContext
+    // Os clientes são gerenciados localmente
     console.log('Clientes carregados:', clientesData.length);
   }, []);
 

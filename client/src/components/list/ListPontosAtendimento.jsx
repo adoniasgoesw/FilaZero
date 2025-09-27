@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle2, Users, Clock, Flag, DollarSign, Lock } from 'lucide-react';
-import api from '../../services/api';
+import { usePontosAtendimento } from '../../hooks/useRealtime';
 
 // Configuração de status (cores e ícone) no estilo do design fornecido
 const STATUS_CONFIG = {
@@ -50,14 +50,7 @@ const normalizeStatus = (status) => {
   return map[String(status || '').toLowerCase()] || 'disponivel';
 };
 
-const DEFAULT_ITEMS = [
-  { id: 1, identificacao: 'Mesa 01', nomePedido: 'Aguardando o cliente', status: 'disponivel', total: 0 },
-  { id: 2, identificacao: 'Mesa 02', nomePedido: 'Família Silva', status: 'aberta', total: 128.9 },
-  { id: 3, identificacao: 'Mesa 03', nomePedido: 'Casal', status: 'ocupada', total: 76.5 },
-  { id: 4, identificacao: 'Comanda 01', nomePedido: 'André', status: 'atendimento', total: 52.0 },
-  { id: 5, identificacao: 'Comanda 02', nomePedido: 'Equipe Mesa', status: 'finalizada', total: 0 },
-  { id: 6, identificacao: 'Balcão 01', nomePedido: 'Aguardando o cliente', status: 'finalizada', total: 0 },
-];
+
 
 const formatCurrency = (value) => {
   if (!value) return 'R$ 0,00';
@@ -81,58 +74,10 @@ const parseIdentificacao = (identificacao) => {
 const ListPontosAtendimento = ({ estabelecimentoId: propEstabelecimentoId, search = '' }) => {
   const estabId = (propEstabelecimentoId ?? Number(localStorage.getItem('estabelecimentoId'))) || null;
   const [lastClickedId, setLastClickedId] = useState(null);
-  const [pontosAtendimento, setPontosAtendimento] = useState([]);
-  const [error, setError] = useState(null);
   const navigate = useNavigate();
 
-  const fetchPoints = useCallback(async () => {
-    if (estabId) {
-      try {
-        setError(null);
-        console.log('🔄 ListPontosAtendimento - Buscando dados diretamente da API...');
-        
-        const response = await api.get(`/pontos-atendimento/${estabId}`);
-        
-        if (response.success && response.data) {
-          setPontosAtendimento(response.data);
-          console.log('✅ ListPontosAtendimento - Dados carregados da API:', response.data.length, 'pontos');
-        } else {
-          console.warn('⚠️ Resposta da API não contém dados válidos:', response);
-          setPontosAtendimento([]);
-        }
-      } catch (err) {
-        console.error('❌ Erro ao carregar pontos de atendimento:', err);
-        setError(err.message);
-        setPontosAtendimento([]);
-      }
-    }
-  }, [estabId]);
-
-  // Carregar pontos de atendimento diretamente da API
-  useEffect(() => {
-    fetchPoints();
-  }, [fetchPoints]);
-
-  // Escutar eventos de refresh
-  useEffect(() => {
-    const handler = () => {
-      if (estabId) {
-        console.log('🔄 Evento de refresh recebido, buscando dados atualizados da API...');
-        fetchPoints();
-      }
-    };
-    
-    // Escutar múltiplos eventos que podem afetar os pontos de atendimento
-    window.addEventListener('refreshPontosAtendimento', handler);
-    window.addEventListener('atendimentoChanged', handler);
-    window.addEventListener('pedidoUpdated', handler);
-    
-    return () => {
-      window.removeEventListener('refreshPontosAtendimento', handler);
-      window.removeEventListener('atendimentoChanged', handler);
-      window.removeEventListener('pedidoUpdated', handler);
-    };
-  }, [estabId, fetchPoints]);
+  // Usar tempo real para pontos de atendimento (atualização a cada 5 segundos)
+  const { data: pontosAtendimento = [], isLoading, error, refetch } = usePontosAtendimento(estabId);
 
   // Filtrar itens baseado na pesquisa
   const filteredItems = useMemo(() => {
@@ -162,16 +107,28 @@ const ListPontosAtendimento = ({ estabelecimentoId: propEstabelecimentoId, searc
 
 
 
+  // Mostrar loading
+  if (isLoading) {
+    return (
+      <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8 min-h-[40vh] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Carregando pontos de atendimento...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (error) {
-  return (
+    return (
       <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8 min-h-[40vh] flex items-center justify-center">
         <div className="text-center">
           <div className="text-emerald-500 mb-4">
             <Users className="w-12 h-12 mx-auto" />
           </div>
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Erro ao carregar pontos</h3>
-          <p className="text-gray-600 mb-4">{error}</p>
-          <button onClick={fetchPoints} className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors">
+          <p className="text-gray-600 mb-4">{error.message}</p>
+          <button onClick={refetch} className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors">
             Tentar novamente
           </button>
         </div>

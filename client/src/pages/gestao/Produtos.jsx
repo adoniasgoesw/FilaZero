@@ -12,7 +12,7 @@ import Notification from '../../components/elements/Notification';
 import api from '../../services/api';
 import StatusButton from '../../components/buttons/Status';
 import DeleteButton from '../../components/buttons/Delete';
-import { useProdutos, useComplementos } from '../../contexts/CacheContext';
+// Removido import do cache - agora busca diretamente da API
 
 function Produtos() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -45,8 +45,39 @@ function Produtos() {
   const [showActionsDropdown, setShowActionsDropdown] = useState(false);
 
   // Usar hooks de cache
-  const { addProduto, updateProduto, removeProduto } = useProdutos(estabelecimentoId);
-  const { addComplemento, updateComplemento, removeComplemento } = useComplementos(estabelecimentoId);
+  // Estados para produtos e complementos (busca direta da API)
+  const [, setProdutos] = useState([]);
+  const [, setComplementos] = useState([]);
+
+  // Função para adicionar produto
+  const addProduto = (produto) => {
+    setProdutos(prev => [...prev, produto]);
+  };
+
+  // Função para atualizar produto
+  const updateProduto = (produtoAtualizado) => {
+    setProdutos(prev => prev.map(p => p.id === produtoAtualizado.id ? produtoAtualizado : p));
+  };
+
+  // Função para remover produto
+  const removeProduto = (produtoId) => {
+    setProdutos(prev => prev.filter(p => p.id !== produtoId));
+  };
+
+  // Função para adicionar complemento
+  const addComplemento = (complemento) => {
+    setComplementos(prev => [...prev, complemento]);
+  };
+
+  // Função para atualizar complemento
+  const updateComplemento = (complementoAtualizado) => {
+    setComplementos(prev => prev.map(c => c.id === complementoAtualizado.id ? complementoAtualizado : c));
+  };
+
+  // Função para remover complemento
+  const removeComplemento = (complementoId) => {
+    setComplementos(prev => prev.filter(c => c.id !== complementoId));
+  };
 
   useEffect(() => {
     // Buscar o ID do estabelecimento do localStorage
@@ -233,7 +264,9 @@ function Produtos() {
                           await Promise.all(selectedProducts.map((p) => api.put(`/produtos/${p.id}/status`)));
                           setShowActionsDropdown(false);
                           setSelectedProducts([]);
-                          setRefreshList((v) => v + 1);
+                          // Disparar evento para atualizar listas
+                          window.dispatchEvent(new CustomEvent('refreshProdutos'));
+                          window.dispatchEvent(new CustomEvent('refreshComplementos'));
                         } catch { /* noop */ }
                       }}
                       className="w-full text-left px-2 sm:px-3 py-1.5 sm:py-2 text-xs flex items-center gap-1.5 sm:gap-2 text-gray-700 hover:bg-gray-50"
@@ -248,7 +281,9 @@ function Produtos() {
                           await Promise.all(selectedProducts.map((p) => api.put(`/produtos/${p.id}/status`)));
                           setShowActionsDropdown(false);
                           setSelectedProducts([]);
-                          setRefreshList((v) => v + 1);
+                          // Disparar evento para atualizar listas
+                          window.dispatchEvent(new CustomEvent('refreshProdutos'));
+                          window.dispatchEvent(new CustomEvent('refreshComplementos'));
                         } catch { /* noop */ }
                       }}
                       className="w-full text-left px-2 sm:px-3 py-1.5 sm:py-2 text-xs flex items-center gap-1.5 sm:gap-2 text-gray-700 hover:bg-gray-50"
@@ -263,7 +298,9 @@ function Produtos() {
                           await Promise.all(selectedProducts.map((p) => api.delete(`/produtos/${p.id}`)));
                           setShowActionsDropdown(false);
                           setSelectedProducts([]);
-                          setRefreshList((v) => v + 1);
+                          // Disparar evento para atualizar listas
+                          window.dispatchEvent(new CustomEvent('refreshProdutos'));
+                          window.dispatchEvent(new CustomEvent('refreshComplementos'));
                         } catch { /* noop */ }
                       }}
                       className="w-full text-left px-2 sm:px-3 py-1.5 sm:py-2 text-xs flex items-center gap-1.5 sm:gap-2 text-gray-700 hover:bg-gray-50"

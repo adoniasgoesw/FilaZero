@@ -5,7 +5,7 @@ import EditButton from '../buttons/Edit';
 import DeleteButton from '../buttons/Delete';
 import StatusButton from '../buttons/Status';
 import ConfirmDelete from '../elements/ConfirmDelete';
-import { usePagamentos } from '../../contexts/CacheContext';
+// Removido import do cache - agora busca diretamente da API
 
 const ListPagamentos = ({ 
   onEdit, 
@@ -26,8 +26,51 @@ const ListPagamentos = ({
   const [bulkDeleteModal, setBulkDeleteModal] = useState({ isOpen: false, pagamentos: [] });
   const [bulkDeleting, setBulkDeleting] = useState(false);
 
-  // Usar hook de cache para pagamentos
-  const { pagamentos, loading, error, loadPagamentos, addPagamento, updatePagamento, removePagamento } = usePagamentos(estabelecimentoId);
+  // Estados para pagamentos (busca direta da API)
+  const [pagamentos, setPagamentos] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Função para carregar pagamentos da API
+  const loadPagamentos = useCallback(async () => {
+    if (!estabelecimentoId) return;
+    
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await api.get(`/pagamentos/${estabelecimentoId}`);
+      
+      if (response.success) {
+        setPagamentos(response.data || []);
+        if (onPagamentosLoaded) {
+          onPagamentosLoaded(response.data || []);
+        }
+      } else {
+        throw new Error(response.message || 'Erro ao carregar pagamentos');
+      }
+    } catch (err) {
+      console.error('Erro ao carregar pagamentos:', err);
+      setError(err.message || 'Erro ao carregar pagamentos');
+    } finally {
+      setLoading(false);
+    }
+  }, [estabelecimentoId, onPagamentosLoaded]);
+
+  // Função para adicionar pagamento
+  const addPagamento = useCallback((pagamento) => {
+    setPagamentos(prev => [...prev, pagamento]);
+  }, []);
+
+  // Função para atualizar pagamento
+  const updatePagamento = useCallback((pagamentoAtualizado) => {
+    setPagamentos(prev => prev.map(p => p.id === pagamentoAtualizado.id ? pagamentoAtualizado : p));
+  }, []);
+
+  // Função para remover pagamento
+  const removePagamento = useCallback((pagamentoId) => {
+    setPagamentos(prev => prev.filter(p => p.id !== pagamentoId));
+  }, []);
 
   // Buscar ID do estabelecimento
   useEffect(() => {
@@ -37,7 +80,7 @@ const ListPagamentos = ({
     }
   }, []);
 
-  // Carregar pagamentos do cache
+  // Carregar pagamentos da API
   useEffect(() => {
     if (estabelecimentoId) {
       loadPagamentos();

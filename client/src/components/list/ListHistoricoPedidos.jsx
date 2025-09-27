@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect } from 'react';
 import { Calendar, User2, CreditCard, User, Info } from 'lucide-react';
-import api from '../../services/api';
+import { useHistoricoPedidos } from '../../hooks/useRealtime';
 
 const formatCurrency = (n) => new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(n||0));
 const formatDateOnly = (iso) => {
@@ -14,56 +14,17 @@ const formatTimeOnly = (iso) => {
 };
 
 const ListHistoricoPedidos = ({ estabelecimentoId, caixaId, onVerDetalhes, onPedidosLoaded }) => {
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  // Usar tempo real para histórico de pedidos (atualização a cada 5 segundos)
+  const { data: items = [], isLoading, error, refetch } = useHistoricoPedidos(estabelecimentoId, caixaId);
 
-  const fetchData = useCallback(async () => {
-    try {
-      console.log('🔍 ListHistoricoPedidos - fetchData chamado');
-      console.log('🔍 estabelecimentoId:', estabelecimentoId);
-      console.log('🔍 caixaId:', caixaId);
-      
-      if (!estabelecimentoId || !caixaId) {
-        console.log('❌ ListHistoricoPedidos - estabelecimentoId ou caixaId não informado');
-        return;
-      }
-      
-      setLoading(true);
-      setError(null);
-      
-      const url = `/historico-pedidos/${estabelecimentoId}?caixa_id=${encodeURIComponent(caixaId)}`;
-      console.log('🔍 ListHistoricoPedidos - Fazendo requisição para:', url);
-      
-      const res = await api.get(url);
-      console.log('🔍 ListHistoricoPedidos - Resposta da API:', res);
-      
-      if (res.success) {
-        const pedidos = Array.isArray(res.data) ? res.data : (res.data?.itens || []);
-        console.log('✅ ListHistoricoPedidos - Pedidos carregados:', pedidos.length, 'pedidos');
-        console.log('✅ ListHistoricoPedidos - Primeiros pedidos:', pedidos.slice(0, 3));
-        
-        setItems(pedidos);
-        
-        // Chamar callback para calcular total de vendas
-        if (onPedidosLoaded) {
-          onPedidosLoaded(pedidos);
-        }
-      } else {
-        console.error('❌ ListHistoricoPedidos - Erro na resposta:', res.message);
-        throw new Error(res.message || 'Erro ao carregar histórico de pedidos');
-      }
-    } catch (e) {
-      console.error('❌ ListHistoricoPedidos - Erro no fetchData:', e);
-      setError(e.message || 'Erro ao carregar histórico de pedidos');
-    } finally {
-      setLoading(false);
+  // Chamar callback quando dados mudarem
+  useEffect(() => {
+    if (items.length > 0 && onPedidosLoaded) {
+      onPedidosLoaded(items);
     }
-  }, [estabelecimentoId, caixaId, onPedidosLoaded]);
+  }, [items, onPedidosLoaded]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
-
-  if (loading) return (
+  if (isLoading) return (
     <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8 min-h-[40vh] flex items-center justify-center">
       <div className="flex items-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div><span className="ml-3 text-gray-600">Carregando pedidos...</span></div>
     </div>
@@ -73,15 +34,23 @@ const ListHistoricoPedidos = ({ estabelecimentoId, caixaId, onVerDetalhes, onPed
     <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8 min-h-[40vh] flex items-center justify-center">
       <div className="text-center">
         <div className="text-emerald-500 mb-2"><CreditCard className="w-10 h-10 mx-auto"/></div>
-        <div className="text-gray-600 mb-2">{error}</div>
-        <button onClick={fetchData} className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors">Tentar novamente</button>
+        <div className="text-gray-600 mb-2">{error.message}</div>
+        <button onClick={refetch} className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors">Tentar novamente</button>
       </div>
     </div>
   );
 
   if (!items.length) return (
-    <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8 min-h-[40vh] flex items-center justify-center">
-      <div className="text-center text-gray-600">Nenhum pedido encontrado.</div>
+    <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8 min-h-[50vh] flex items-center justify-center">
+      <div className="text-center">
+        <div className="text-gray-400 mb-4">
+          <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          </svg>
+        </div>
+        <p className="text-gray-600">Nenhum pedido encontrado</p>
+        <p className="text-gray-500 text-sm">Os pedidos aparecerão aqui quando houver vendas</p>
+      </div>
     </div>
   );
 

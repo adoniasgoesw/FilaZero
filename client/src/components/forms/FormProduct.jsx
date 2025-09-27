@@ -14,7 +14,7 @@ import FormField from './FormField';
 import FormInput from './FormInput';
 import FormSelect from './FormSelect';
 import FormGrid from './FormGrid';
-import { useProdutos } from '../../contexts/CacheContext';
+// Removido import do cache - agora busca diretamente da API
 
 // Função debounce
 function debounce(func, wait) {
@@ -31,7 +31,16 @@ function debounce(func, wait) {
 
 const FormProduct = ({ produto = null, onStateChange }) => {
   // Usar hook de cache para produtos
-  const { addProduto, updateProduto } = useProdutos();
+  // Funções para gerenciar produtos (busca direta da API)
+  const addProduto = (produto) => {
+    // Esta função será chamada pelo componente pai
+    console.log('Produto adicionado:', produto);
+  };
+
+  const updateProduto = (produto) => {
+    // Esta função será chamada pelo componente pai
+    console.log('Produto atualizado:', produto);
+  };
   
   const [formData, setFormData] = useState({
     nome: '',

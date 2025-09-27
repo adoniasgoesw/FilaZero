@@ -217,10 +217,12 @@ const ListComplementos = ({
       <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8 min-h-[50vh] flex items-center justify-center">
         <div className="text-center">
           <div className="text-gray-400 mb-4">
-            <Package className="w-12 h-12 mx-auto" />
+            <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
+            </svg>
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Nenhum complemento encontrado</h3>
-          <p className="text-gray-600">Comece adicionando seu primeiro complemento.</p>
+          <p className="text-gray-600">Nenhum complemento encontrado</p>
+          <p className="text-gray-500 text-sm">Adicione um complemento para começar</p>
         </div>
       </div>
     );
