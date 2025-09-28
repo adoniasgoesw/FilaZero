@@ -81,7 +81,7 @@ const ListPontosAtendimento = ({ estabelecimentoId: propEstabelecimentoId, searc
 
   // Filtrar itens baseado na pesquisa
   const filteredItems = useMemo(() => {
-    const items = pontosAtendimento.length > 0 ? pontosAtendimento : DEFAULT_ITEMS;
+    const items = pontosAtendimento.length > 0 ? pontosAtendimento : [];
     if (!search.trim()) return items;
     
     const query = search.toLowerCase().trim();
