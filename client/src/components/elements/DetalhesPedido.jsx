@@ -94,8 +94,8 @@ const DetalhesPedido = ({ pedido, itens, cliente, pagamentos, onClose, isOpen })
       title="Detalhes da Venda"
       subtitle={`Pedido #${pedido.codigo || pedido.id}`}
       icon={Info}
-      iconBgColor="bg-blue-100"
-      iconColor="text-blue-600"
+      iconBgColor="bg-gray-100"
+      iconColor="text-gray-600"
       showButtons={false}
       printButton={
         <button
@@ -112,49 +112,41 @@ const DetalhesPedido = ({ pedido, itens, cliente, pagamentos, onClose, isOpen })
           {/* Cabeçalho Principal */}
           <FormField label="Informações do Pedido">
             <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 p-4">
+              <div className="grid grid-cols-2 xl:grid-cols-4 py-6">
                 {/* Data */}
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Calendar className="w-4 h-4 text-blue-600" />
+                <div className="flex flex-col items-start justify-between py-4 px-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-3 h-3 text-gray-600" />
+                    <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Data</span>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Data</p>
-                    <p className="text-sm font-medium text-gray-900 truncate">{formatDateOnly(pedido.criado_em)}</p>
-                  </div>
+                  <span className="text-xs font-medium text-gray-800 mt-2">{formatDateOnly(pedido.criado_em)}</span>
                 </div>
 
                 {/* Cliente */}
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                  <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <User className="w-4 h-4 text-green-600" />
+                <div className="flex flex-col items-start justify-between py-4 px-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <User className="w-3 h-3 text-gray-600" />
+                    <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Cliente</span>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Cliente</p>
-                    <p className="text-sm font-medium text-gray-900 truncate">{cliente?.nome || pedido.cliente_nome || 'Não informado'}</p>
-                  </div>
+                  <span className="text-xs font-medium text-gray-800 mt-2 w-full">{cliente?.nome || pedido.cliente_nome || 'Não informado'}</span>
                 </div>
 
                 {/* Valor Total */}
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                  <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <DollarSign className="w-4 h-4 text-emerald-600" />
+                <div className="flex flex-col items-start justify-between py-4 px-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="w-3 h-3 text-gray-600" />
+                    <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total</span>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Valor Total</p>
-                    <p className="text-sm font-bold text-gray-900 truncate">{formatCurrency(pedido.valor_total)}</p>
-                  </div>
+                  <span className="text-xs font-semibold text-gray-800 mt-2">{formatCurrency(pedido.valor_total)}</span>
                 </div>
 
                 {/* Vendido por */}
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                  <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <User className="w-4 h-4 text-purple-600" />
+                <div className="flex flex-col items-start justify-between py-4 px-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <User className="w-3 h-3 text-gray-600" />
+                    <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Atendente</span>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Vendido por</p>
-                    <p className="text-sm font-medium text-gray-900 truncate">{pedido.vendido_por || 'Sistema'}</p>
-                  </div>
+                  <span className="text-xs font-medium text-gray-800 mt-2 w-full">{pedido.vendido_por || 'Sistema'}</span>
                 </div>
               </div>
             </div>
@@ -164,8 +156,8 @@ const DetalhesPedido = ({ pedido, itens, cliente, pagamentos, onClose, isOpen })
           <FormField label="Resumo do Produto">
             <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
               {/* Header - só aparece em telas maiores */}
-              <div className="hidden sm:block bg-gray-50 px-4 py-3 border-b border-gray-200">
-                <div className="grid grid-cols-10 gap-4 text-xs font-semibold text-gray-700 uppercase tracking-wide">
+              <div className="hidden sm:block bg-gray-50 px-6 py-4 border-b border-gray-200">
+                <div className="grid grid-cols-10 gap-4 text-xs font-medium text-gray-600 uppercase tracking-wide">
                   <div className="col-span-1">Qtd</div>
                   <div className="col-span-7">Nome do Item</div>
                   <div className="col-span-2 text-right whitespace-nowrap">Valor Total</div>
@@ -174,31 +166,31 @@ const DetalhesPedido = ({ pedido, itens, cliente, pagamentos, onClose, isOpen })
               <div className="divide-y divide-gray-200">
                 {itensListados && itensListados.length > 0 ? (
                   itensListados.map((item, index) => (
-                    <div key={`${item.id}-${index}`} className="px-4 py-4">
+                    <div key={`${item.id}-${index}`} className="px-6 py-5">
                       {/* Layout responsivo */}
                       <div className="sm:hidden space-y-3">
                         {/* Mobile layout */}
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                              <span className="text-sm font-bold text-blue-600">{item.quantidade}</span>
+                            <div className="w-7 h-7 bg-gray-200 rounded-lg flex items-center justify-center">
+                              <span className="text-sm font-medium text-gray-700">{item.quantidade}</span>
                             </div>
-                            <div className="font-medium text-gray-900">{item.produto_nome}</div>
+                            <div className="font-medium text-gray-800">{item.produto_nome}</div>
                           </div>
-                          <div className="text-right font-bold text-gray-900">
+                          <div className="text-right font-semibold text-gray-800">
                             {formatCurrency(item.valor_total)}
                           </div>
                         </div>
                         {/* Complementos mobile */}
                         {item.complementos && item.complementos.length > 0 && (
-                          <div className="ml-11 space-y-1">
+                          <div className="ml-10 space-y-1">
                             {item.complementos.map((complemento) => (
                               <div key={complemento.id} className="flex items-center gap-2 text-xs text-gray-600">
-                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
                                   +{complemento.quantidade}x
                                 </span>
                                 <span>{complemento.nome_complemento}</span>
-                                <span className="text-green-600 font-medium">
+                                <span className="text-gray-600 font-medium">
                                   {formatCurrency(complemento.valor_total)}
                                 </span>
                               </div>
@@ -209,23 +201,23 @@ const DetalhesPedido = ({ pedido, itens, cliente, pagamentos, onClose, isOpen })
                       
                       {/* Desktop layout */}
                       <div className="hidden sm:grid grid-cols-10 gap-4 text-sm items-start">
-                        <div className="col-span-1 font-medium text-gray-900 flex-shrink-0 flex items-center justify-center">
-                          <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                            <span className="text-sm font-bold text-blue-600">{item.quantidade}</span>
+                        <div className="col-span-1 font-medium text-gray-800 flex-shrink-0 flex items-center justify-center">
+                          <div className="w-7 h-7 bg-gray-200 rounded-lg flex items-center justify-center">
+                            <span className="text-sm font-medium text-gray-700">{item.quantidade}</span>
                           </div>
                         </div>
-                        <div className="col-span-7 text-gray-900 min-w-0">
-                          <div className="font-medium text-gray-900">{item.produto_nome}</div>
+                        <div className="col-span-7 text-gray-800 min-w-0">
+                          <div className="font-medium text-gray-800">{item.produto_nome}</div>
                           {/* Complementos */}
                           {item.complementos && item.complementos.length > 0 && (
                             <div className="mt-2 space-y-1">
                               {item.complementos.map((complemento) => (
                                 <div key={complemento.id} className="flex items-center gap-2 text-xs text-gray-600">
-                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
                                     +{complemento.quantidade}x
                                   </span>
                                   <span>{complemento.nome_complemento}</span>
-                                  <span className="text-green-600 font-medium">
+                                  <span className="text-gray-600 font-medium">
                                     {formatCurrency(complemento.valor_total)}
                                   </span>
                                 </div>
@@ -233,7 +225,7 @@ const DetalhesPedido = ({ pedido, itens, cliente, pagamentos, onClose, isOpen })
                             </div>
                           )}
                         </div>
-                        <div className="col-span-2 text-right font-bold text-gray-900 whitespace-nowrap flex-shrink-0">
+                        <div className="col-span-2 text-right font-semibold text-gray-800 whitespace-nowrap flex-shrink-0">
                           {formatCurrency(item.valor_total)}
                         </div>
                       </div>
@@ -254,26 +246,26 @@ const DetalhesPedido = ({ pedido, itens, cliente, pagamentos, onClose, isOpen })
           {/* Resumo de Valores */}
           <FormField label="Resumo de Valores">
             <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
-              <div className="space-y-4 p-4">
-                <div className="flex justify-between items-center py-2 border-b border-gray-100">
+              <div className="space-y-3 p-6">
+                <div className="flex justify-between items-center py-3 border-b border-gray-100">
                   <span className="text-sm font-medium text-gray-600">Subtotal</span>
-                  <span className="text-sm font-semibold text-gray-900">{formatCurrency(pedido.valor_total)}</span>
+                  <span className="text-sm font-semibold text-gray-800">{formatCurrency(pedido.valor_total)}</span>
                 </div>
                 {pedido.desconto && Number(pedido.desconto) > 0 && (
-                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                  <div className="flex justify-between items-center py-3 border-b border-gray-100">
                     <span className="text-sm font-medium text-gray-600">Desconto</span>
-                    <span className="text-sm font-semibold text-red-600">- {formatCurrency(pedido.desconto)}</span>
+                    <span className="text-sm font-semibold text-gray-600">- {formatCurrency(pedido.desconto)}</span>
                   </div>
                 )}
                 {pedido.acrescimos && Number(pedido.acrescimos) > 0 && (
-                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                  <div className="flex justify-between items-center py-3 border-b border-gray-100">
                     <span className="text-sm font-medium text-gray-600">Acréscimos</span>
-                    <span className="text-sm font-semibold text-green-600">+ {formatCurrency(pedido.acrescimos)}</span>
+                    <span className="text-sm font-semibold text-gray-600">+ {formatCurrency(pedido.acrescimos)}</span>
                   </div>
                 )}
-                <div className="flex justify-between items-center py-3 bg-gray-50 -mx-4 px-4 rounded-b-lg">
-                  <span className="text-base font-bold text-gray-800">TOTAL</span>
-                  <span className="text-base font-bold text-gray-900">
+                <div className="flex justify-between items-center py-4 bg-gray-50 -mx-6 px-6 rounded-b-lg">
+                  <span className="text-base font-semibold text-gray-800">TOTAL</span>
+                  <span className="text-base font-semibold text-gray-800">
                     {formatCurrency(Number(pedido.valor_total) + Number(pedido.acrescimos || 0) - Number(pedido.desconto || 0))}
                   </span>
                 </div>
@@ -285,26 +277,26 @@ const DetalhesPedido = ({ pedido, itens, cliente, pagamentos, onClose, isOpen })
           <FormField label="Forma de Pagamento">
             <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
               {pagamentos && pagamentos.length > 0 ? (
-                <div className="space-y-3 p-4">
+                <div className="space-y-3 p-6">
                   {pagamentos.map((pagamento, index) => (
-                    <div key={index} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
+                    <div key={index} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                          <CreditCard className="w-4 h-4 text-blue-600" />
+                        <div className="w-7 h-7 bg-gray-200 rounded-lg flex items-center justify-center">
+                          <CreditCard className="w-4 h-4 text-gray-600" />
                         </div>
-                        <span className="text-sm font-medium text-gray-900">
+                        <span className="text-sm font-medium text-gray-800">
                           {pagamento.pagamento_nome || 'Pagamento não informado'}
                         </span>
                       </div>
-                      <span className="text-sm font-bold text-gray-900">
+                      <span className="text-sm font-semibold text-gray-800">
                         {formatCurrency(Math.min(pagamento.valor_pago, pedido.valor_total + Number(pedido.acrescimos || 0) - Number(pedido.desconto || 0)))}
                       </span>
                     </div>
                   ))}
                   {pagamentos.length > 1 && (
-                    <div className="flex justify-between items-center py-3 bg-gray-50 -mx-4 px-4 rounded-b-lg">
-                      <span className="text-base font-bold text-gray-800">Total Pago</span>
-                      <span className="text-base font-bold text-gray-900">
+                    <div className="flex justify-between items-center py-4 bg-gray-50 -mx-6 px-6 rounded-b-lg">
+                      <span className="text-base font-semibold text-gray-800">Total Pago</span>
+                      <span className="text-base font-semibold text-gray-800">
                         {formatCurrency(pagamentos.reduce((total, p) => total + Math.min(Number(p.valor_pago || 0), pedido.valor_total + Number(pedido.acrescimos || 0) - Number(pedido.desconto || 0)), 0))}
                       </span>
                     </div>

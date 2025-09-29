@@ -7,6 +7,9 @@ const loginController = {
   async login(req, res) {
     try {
       const { cpf, senha } = req.body;
+      
+      console.log('🔍 Login attempt - CPF recebido:', cpf);
+      console.log('🔍 Login attempt - Senha recebida:', senha ? '***' : 'vazia');
 
       // Validação dos campos obrigatórios
       if (!cpf || !senha) {
@@ -16,7 +19,7 @@ const loginController = {
         });
       }
 
-      // Buscar usuário pelo CPF
+      // Buscar usuário pelo CPF (remover formatação para comparação)
       const query = `
         SELECT 
           u.id,
@@ -32,12 +35,21 @@ const loginController = {
           e.setor as setor_estabelecimento
         FROM usuarios u
         LEFT JOIN estabelecimentos e ON u.estabelecimento_id = e.id
-        WHERE u.cpf = $1 AND u.status = true
+        WHERE REGEXP_REPLACE(u.cpf, '[^0-9]', '', 'g') = $1 AND u.status = true
       `;
 
+      console.log('🔍 Executando query com CPF:', cpf);
+      
+      // Debug: buscar todos os CPFs no banco para comparação
+      const debugQuery = 'SELECT cpf, status FROM usuarios WHERE cpf LIKE $1';
+      const debugResult = await pool.query(debugQuery, [`%${cpf}%`]);
+      console.log('🔍 CPFs similares encontrados:', debugResult.rows);
+      
       const result = await pool.query(query, [cpf]);
+      console.log('🔍 Resultado da query:', result.rows.length, 'linhas encontradas');
 
       if (result.rows.length === 0) {
+        console.log('❌ CPF não encontrado ou usuário inativo');
         return res.status(401).json({
           success: false,
           message: 'CPF não encontrado ou usuário inativo'

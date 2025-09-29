@@ -6,18 +6,13 @@ import DeleteButton from '../buttons/Delete';
 import StatusButton from '../buttons/Status';
 import { ToggleLeft, ToggleRight } from 'lucide-react';
 import ConfirmDelete from '../elements/ConfirmDelete';
-import { useCategorias, useCategoriasMutation } from '../../hooks/useCache';
 
-const ListCategory = ({ estabelecimentoId, onCategoryDelete, onCategoryEdit, searchQuery = '', isReordering = false }) => {
-  // Usar cache para categorias (3 segundos)
-  const { data: categorias = [], isLoading, error, refetch } = useCategorias(estabelecimentoId);
-  const categoriasMutation = useCategoriasMutation();
-  
+const ListCategory = ({ estabelecimentoId, onCategoryDelete, onCategoryEdit, searchQuery = '' }) => {
+  const [categorias, setCategorias] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, categoria: null });
   const [deleting, setDeleting] = useState(false);
-  const [draggedItem, setDraggedItem] = useState(null);
-  const [draggedOver, setDraggedOver] = useState(null);
-  const [reorderedCategories, setReorderedCategories] = useState([]);
 
   const displayed = React.useMemo(() => {
     const list = Array.isArray(categorias) ? categorias : [];
@@ -26,35 +21,48 @@ const ListCategory = ({ estabelecimentoId, onCategoryDelete, onCategoryEdit, sea
     return list.filter((c) => String(c.nome || '').toLowerCase().includes(q));
   }, [categorias, searchQuery]);
 
-  // Inicializar lista reordenada quando entrar no modo de reordenação
-  useEffect(() => {
-    if (isReordering && displayed.length > 0) {
-      setReorderedCategories([...displayed]);
+  // Função para buscar categorias da API
+  const fetchCategorias = async () => {
+    if (!estabelecimentoId) return;
+    
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await api.get(`/categorias/${estabelecimentoId}`);
+      if (response.success) {
+        setCategorias(response.data || []);
+      } else {
+        throw new Error(response.message || 'Erro ao carregar categorias');
+      }
+    } catch (err) {
+      console.error('Erro ao buscar categorias:', err);
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
     }
-  }, [isReordering, displayed]);
+  };
 
-  // Expor lista reordenada globalmente para a página de Categorias
+  // Carregar categorias quando o componente monta ou estabelecimentoId muda
   useEffect(() => {
-    if (isReordering) {
-      window.reorderedCategories = reorderedCategories;
-    } else {
-      window.reorderedCategories = [];
-    }
-  }, [reorderedCategories, isReordering]);
+    fetchCategorias();
+  }, [estabelecimentoId]);
 
   // Escutar eventos de atualização em tempo real
   useEffect(() => {
-    const handleCategoriaUpdate = () => {
-      console.log('🔄 ListCategory - Evento de atualização recebido, recarregando categorias...');
-      refetch(); // Recarregar dados do cache
+    const handleRefreshCategorias = () => {
+      console.log('🔄 ListCategory - Evento refreshCategorias recebido, recarregando categorias...');
+      if (estabelecimentoId) {
+        fetchCategorias();
+      }
     };
 
-    window.addEventListener('categoriaUpdated', handleCategoriaUpdate);
+    window.addEventListener('refreshCategorias', handleRefreshCategorias);
     
     return () => {
-      window.removeEventListener('categoriaUpdated', handleCategoriaUpdate);
+      window.removeEventListener('refreshCategorias', handleRefreshCategorias);
     };
-  }, [refetch]);
+  }, [estabelecimentoId, fetchCategorias]);
 
   const handleEdit = (categoria) => {
     console.log('Editar categoria:', categoria);
@@ -80,8 +88,8 @@ const ListCategory = ({ estabelecimentoId, onCategoryDelete, onCategoryEdit, sea
       if (response.success) {
         console.log('✅ Categoria deletada com sucesso:', response.data);
         
-        // Invalidar cache automaticamente
-        categoriasMutation.mutate();
+        // Atualizar lista local
+        setCategorias(prev => prev.filter(c => c.id !== deleteModal.categoria.id));
         
         // Fechar modal
         setDeleteModal({ isOpen: false, categoria: null });
@@ -113,8 +121,10 @@ const ListCategory = ({ estabelecimentoId, onCategoryDelete, onCategoryEdit, sea
       if (response.success) {
         console.log('✅ Status da categoria alterado com sucesso:', response.data);
         
-        // Invalidar cache automaticamente
-        categoriasMutation.mutate();
+        // Atualizar lista local
+        setCategorias(prev => prev.map(c => 
+          c.id === categoria.id ? { ...c, status: response.data.status } : c
+        ));
         
         // Mostrar notificação de sucesso
         const statusText = response.data.status ? 'ativada' : 'desativada';
@@ -127,138 +137,8 @@ const ListCategory = ({ estabelecimentoId, onCategoryDelete, onCategoryEdit, sea
     }
   };
 
-  // Funções de drag and drop simplificadas
-  const handleMouseDown = (e, categoria) => {
-    if (!isReordering) return;
-    e.preventDefault();
-    setDraggedItem(categoria);
-    
-    const element = e.currentTarget;
-    // Apenas aumentar um pouco e adicionar borda azul
-    element.style.transform = 'scale(1.1)';
-    element.style.zIndex = '1000';
-    element.style.position = 'relative';
-    element.style.border = '2px solid #3b82f6';
-    
-    // Adicionar listeners para mouse move e up
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-  };
-
-  const handleMouseMove = (e) => {
-    if (!draggedItem || !isReordering) return;
-    
-    // Encontrar elemento sob o mouse
-    const elementUnderMouse = document.elementFromPoint(e.clientX, e.clientY);
-    if (elementUnderMouse) {
-      const categoryCard = elementUnderMouse.closest('[data-category-id]');
-      if (categoryCard) {
-        const targetId = parseInt(categoryCard.getAttribute('data-category-id'));
-        const targetCategoria = reorderedCategories.find(cat => cat.id === targetId);
-        if (targetCategoria && targetCategoria.id !== draggedItem.id) {
-          setDraggedOver(targetCategoria);
-        }
-      }
-    }
-  };
-
-  const handleMouseUp = (e) => {
-    if (!draggedItem || !isReordering) return;
-    
-    // Encontrar elemento sob o mouse
-    const elementUnderMouse = document.elementFromPoint(e.clientX, e.clientY);
-    if (elementUnderMouse) {
-      const categoryCard = elementUnderMouse.closest('[data-category-id]');
-      if (categoryCard) {
-        const targetId = parseInt(categoryCard.getAttribute('data-category-id'));
-        const targetCategoria = reorderedCategories.find(cat => cat.id === targetId);
-        
-        if (targetCategoria && targetCategoria.id !== draggedItem.id) {
-          // Reordenar as categorias - apenas trocar posições
-          const newOrder = [...reorderedCategories];
-          const draggedIndex = newOrder.findIndex(cat => cat.id === draggedItem.id);
-          const targetIndex = newOrder.findIndex(cat => cat.id === targetCategoria.id);
-
-          // Trocar posições diretamente
-          [newOrder[draggedIndex], newOrder[targetIndex]] = [newOrder[targetIndex], newOrder[draggedIndex]];
-
-          setReorderedCategories(newOrder);
-        }
-      }
-    }
-    
-    // Resetar estado
-    setDraggedItem(null);
-    setDraggedOver(null);
-    
-    // Remover listeners
-    document.removeEventListener('mousemove', handleMouseMove);
-    document.removeEventListener('mouseup', handleMouseUp);
-    
-    // Resetar estilo do elemento
-    const draggedElement = document.querySelector(`[data-category-id="${draggedItem?.id}"]`);
-    if (draggedElement) {
-      draggedElement.style.transform = 'scale(1)';
-      draggedElement.style.zIndex = 'auto';
-      draggedElement.style.position = 'static';
-      draggedElement.style.border = '';
-    }
-  };
 
 
-  // Salvar nova ordem
-  const handleSaveOrder = useCallback(async () => {
-    try {
-      console.log('💾 Salvando ordem das categorias...');
-
-      // Atualizar cada categoria individualmente com a nova ordem
-      const updatePromises = reorderedCategories.map(async (categoria, index) => {
-        const updateData = {
-          nome: categoria.nome,
-          ordem: index + 1,
-          status: categoria.status
-        };
-
-        console.log(`📝 Atualizando categoria ${categoria.nome} para ordem ${index + 1}`);
-        
-        const response = await api.put(`/categorias/${categoria.id}`, updateData);
-        
-        if (!response.success) {
-          throw new Error(`Erro ao atualizar categoria ${categoria.nome}: ${response.message}`);
-        }
-        
-        return response;
-      });
-
-      // Aguardar todas as atualizações
-      await Promise.all(updatePromises);
-      
-      console.log('✅ Ordem das categorias atualizada com sucesso');
-      
-      // Invalidar cache automaticamente
-      categoriasMutation.mutate();
-      
-      // Disparar evento para atualizar outros componentes
-      window.dispatchEvent(new CustomEvent('refreshCategorias'));
-      
-      return true;
-    } catch (err) {
-      console.error('❌ Erro ao atualizar ordem das categorias:', err);
-      throw err;
-    }
-  }, [reorderedCategories, categoriasMutation]);
-
-  // Expor função de salvamento globalmente
-  useEffect(() => {
-    if (isReordering) {
-      window.saveCategoriesOrder = handleSaveOrder;
-    } else {
-      window.saveCategoriesOrder = null;
-    }
-  }, [isReordering, reorderedCategories, handleSaveOrder]);
-
-  // Lista a ser exibida (reordenada ou normal)
-  const categoriesToShow = isReordering ? reorderedCategories : displayed;
 
   const getImageUrl = (imagemUrl) => {
     if (!imagemUrl) return null;
@@ -324,7 +204,7 @@ const ListCategory = ({ estabelecimentoId, onCategoryDelete, onCategoryEdit, sea
           <p className="text-red-600 mb-2">Erro ao carregar categorias</p>
           <p className="text-gray-500 text-sm mb-4">{error.message}</p>
           <button 
-            onClick={() => refetch()}
+            onClick={fetchCategorias}
             className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
           >
             Tentar novamente
@@ -353,21 +233,13 @@ const ListCategory = ({ estabelecimentoId, onCategoryDelete, onCategoryEdit, sea
 
   return (
     <div>
+      
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-        {categoriesToShow.map((categoria) => (
+        {displayed.map((categoria) => (
           <div
             key={categoria.id}
             data-category-id={categoria.id}
-            onMouseDown={(e) => handleMouseDown(e, categoria)}
-            className={`group bg-white rounded-xl shadow-sm border border-gray-100 transition-all duration-200 ${
-              isReordering 
-                ? 'cursor-move select-none' 
-                : 'hover:shadow-md hover:-translate-y-0.5'
-            } ${
-              draggedOver && draggedOver.id === categoria.id 
-                ? 'ring-2 ring-blue-500 ring-opacity-50' 
-                : ''
-            }`}
+            className="group bg-white rounded-xl shadow-sm border border-gray-100 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5"
           >
             {/* Imagem da categoria */}
             <div className="p-2 sm:p-3">
@@ -390,51 +262,43 @@ const ListCategory = ({ estabelecimentoId, onCategoryDelete, onCategoryEdit, sea
                   <ImageIcon size={20} />
                 </div>
 
-                {/* Botões de ação no canto superior direito - aparecem no hover (escondidos no modo de reordenação) */}
-                {!isReordering && (
-                  <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                    <button
-                      onClick={() => handleToggleStatus(categoria)}
-                      className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${categoria.status ? 'bg-green-50 hover:bg-green-100' : 'bg-orange-50 hover:bg-orange-100'}`}
-                      title={categoria.status ? 'Desabilitar' : 'Habilitar'}
-                    >
-                      {categoria.status ? (
-                        <ToggleRight className="w-4 h-4 text-green-600" />
-                      ) : (
-                        <ToggleLeft className="w-4 h-4 text-orange-500" />
-                      )}
-                    </button>
-                    <EditButton
-                      onClick={() => handleEdit(categoria)}
-                      size="sm"
-                      variant="soft"
-                      className="rounded-full p-1 shadow-sm w-6 h-6 flex items-center justify-center"
-                    />
-                    <DeleteButton
-                      onClick={() => handleDelete(categoria)}
-                      size="sm"
-                      variant="soft"
-                      className="rounded-full p-1 shadow-sm w-6 h-6 flex items-center justify-center"
-                    />
-                  </div>
-                )}
+                {/* Botões de ação no canto superior direito - aparecem no hover */}
+                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                  <button
+                    onClick={() => handleToggleStatus(categoria)}
+                    className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${categoria.status ? 'bg-green-50 hover:bg-green-100' : 'bg-orange-50 hover:bg-orange-100'}`}
+                    title={categoria.status ? 'Desabilitar' : 'Habilitar'}
+                  >
+                    {categoria.status ? (
+                      <ToggleRight className="w-4 h-4 text-green-600" />
+                    ) : (
+                      <ToggleLeft className="w-4 h-4 text-orange-500" />
+                    )}
+                  </button>
+                  <EditButton
+                    onClick={() => handleEdit(categoria)}
+                    size="sm"
+                    variant="soft"
+                    className="rounded-full p-1 shadow-sm w-6 h-6 flex items-center justify-center"
+                  />
+                  <DeleteButton
+                    onClick={() => handleDelete(categoria)}
+                    size="sm"
+                    variant="soft"
+                    className="rounded-full p-1 shadow-sm w-6 h-6 flex items-center justify-center"
+                  />
+                </div>
                 {/* Status badge no canto inferior direito */}
                 <div className="absolute bottom-2 right-2">
-                  {isReordering ? (
-                    <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-blue-500 text-white">
-                      Arrastar
-                    </span>
-                  ) : (
-                    <span
-                      className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${
-                        categoria.status
-                          ? 'bg-green-600 text-white'
-                          : 'bg-red-500 text-white'
-                      }`}
-                    >
-                      {categoria.status ? 'Ativo' : 'Inativo'}
-                    </span>
-                  )}
+                  <span
+                    className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${
+                      categoria.status
+                        ? 'bg-green-600 text-white'
+                        : 'bg-red-500 text-white'
+                    }`}
+                  >
+                    {categoria.status ? 'Ativo' : 'Inativo'}
+                  </span>
                 </div>
               </div>
             </div>

@@ -4,6 +4,7 @@ import Sidebar from '../components/layout/Sidebar';
 import PanelDetalhes from '../components/panels/PanelDetalhes';
 import PanelPagamentos from '../components/panels/PanelPagamentos';
 import PanelItens from '../components/panels/PanelItens';
+// import { useCache } from '../providers/CacheProvider'; // Removido - não está sendo usado
 import api from '../services/api';
 
 function PontoAtendimento() {
@@ -17,6 +18,9 @@ function PontoAtendimento() {
   const [showPaymentPanel, setShowPaymentPanel] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [currentPedido, setCurrentPedido] = useState(null);
+  
+  // Hook do cache (apenas para categorias e produtos)
+  // const { } = useCache(); // Removido - não está sendo usado
   // Itens persistidos (carregados do banco)
   const [orderItems, setOrderItems] = useState([]);
   // Seleções pendentes nesta sessão (contadores)
@@ -44,6 +48,7 @@ function PontoAtendimento() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
 
   // Carregar usuário atual do localStorage
   useEffect(() => {
@@ -107,13 +112,13 @@ function PontoAtendimento() {
         
         console.log(`🚀 Acessando ponto de atendimento: ${identificador} (Estabelecimento: ${estId})`);
         
-        // Criar atendimento e pedido vazio automaticamente
+        // Criar atendimento e pedido vazio automaticamente (sem sobrescrever nome existente)
         console.log('📝 Criando atendimento...');
-        const atendimentoResponse = await api.post(`/atendimentos/ensure/${estId}/${encodeURIComponent(identificador)}`, { nome_ponto: '' });
+        const atendimentoResponse = await api.post(`/atendimentos/ensure/${estId}/${encodeURIComponent(identificador)}`, {});
         console.log('Atendimento response:', atendimentoResponse);
         
         console.log('📝 Criando/obtendo pedido...');
-        const pedidoResponse = await api.post(`/pedidos/${estId}/${encodeURIComponent(identificador)}/criar`, { nome_ponto: '' });
+        const pedidoResponse = await api.post(`/pedidos/${estId}/${encodeURIComponent(identificador)}/criar`, {});
         console.log('Pedido response:', pedidoResponse);
         
         if (pedidoResponse.success) {
@@ -177,6 +182,12 @@ function PontoAtendimento() {
         // Carregar dados do pedido se disponível
         if (res.data.pedido) {
           setCurrentPedido(res.data.pedido);
+        }
+        
+        // Carregar nome do pedido se existir (vem direto do res.data)
+        if (res.data.nome_ponto && res.data.nome_ponto !== '') {
+          setOrderName(res.data.nome_ponto);
+          console.log('✅ PontoAtendimento - Nome do pedido carregado:', res.data.nome_ponto);
         }
         
         console.log('✅ Itens do pedido carregados diretamente do banco:', itensMapped);
@@ -394,8 +405,12 @@ function PontoAtendimento() {
         <PanelDetalhes 
           identificacao={id}
           onBack={() => {
-            if (isSmallScreen) setMobileDetailsOpen(false);
-            else window.history.back();
+            if (isSmallScreen) {
+              setMobileDetailsOpen(false);
+            } else {
+              // Para telas médias e grandes, voltar para home sem recarregar
+              window.history.back();
+            }
           }}
           onSave={handleSave}
           mobileVisible={isSmallScreen && mobileDetailsOpen}

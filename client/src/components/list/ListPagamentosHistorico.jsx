@@ -20,13 +20,13 @@ const ListPagamentosHistorico = ({ caixaId, estabelecimentoId }) => {
         params: { estabelecimento_id: estabelecimentoId }
       });
 
-      if (response.data.success) {
-        setPagamentos(response.data.data.pagamentos || []);
-        setResumo(response.data.data.resumo || []);
-        setTotalGeral(response.data.data.total_geral || 0);
-        setTotalPagamentos(response.data.data.total_pagamentos || 0);
+      if (response.success) {
+        setPagamentos(response.data.pagamentos || []);
+        setResumo(response.data.resumo || []);
+        setTotalGeral(response.data.total_geral || 0);
+        setTotalPagamentos(response.data.total_formas_pagamento || 0);
       } else {
-        setError(response.data.message || 'Erro ao buscar pagamentos históricos');
+        setError(response.message || 'Erro ao buscar pagamentos históricos');
       }
     } catch (err) {
       console.error('Erro ao buscar pagamentos históricos:', err);

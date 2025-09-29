@@ -320,9 +320,17 @@ import { Image as ImageIcon, Upload, Zap, Loader2, X } from 'lucide-react';
         return;
       }
 
-      setIsLoading(true);
       setError('');
 
+      // Disparar evento para o modal fechar IMEDIATAMENTE
+      window.dispatchEvent(new CustomEvent('modalSaveSuccess', { detail: formData }));
+      
+      // Disparar evento de atualização em tempo real IMEDIATAMENTE
+      window.dispatchEvent(new CustomEvent('categoriaUpdated'));
+      window.dispatchEvent(new CustomEvent('produtoUpdated'));
+      window.dispatchEvent(new CustomEvent('refreshCategorias'));
+
+      // Salvar no backend em background (sem bloquear a UI)
       try {
         // Criar FormData para envio
         const formDataToSend = new FormData();
@@ -338,11 +346,6 @@ import { Image as ImageIcon, Upload, Zap, Loader2, X } from 'lucide-react';
           
           if (response.success) {
             console.log('✅ Categoria editada com sucesso');
-            // Disparar eventos de atualização em tempo real
-            window.dispatchEvent(new CustomEvent('categoriaUpdated'));
-            window.dispatchEvent(new CustomEvent('produtoUpdated'));
-            // Disparar evento para o BaseModal fechar
-            window.dispatchEvent(new CustomEvent('modalSaveSuccess', { detail: response.data }));
           }
         } else {
           // Modo de criação
@@ -358,23 +361,16 @@ import { Image as ImageIcon, Upload, Zap, Loader2, X } from 'lucide-react';
           const response = await api.post('/categorias', formDataToSend);
           
           if (response.success) {
+            console.log('✅ Categoria criada com sucesso');
             // Limpar formulário apenas no modo de criação
             setFormData({ nome: '', imagem: null });
             setImagePreview(null);
-            
-            console.log('✅ Categoria criada com sucesso');
-            // Disparar eventos de atualização em tempo real
-            window.dispatchEvent(new CustomEvent('categoriaUpdated'));
-            window.dispatchEvent(new CustomEvent('produtoUpdated'));
-            // Disparar evento para o BaseModal fechar
-            window.dispatchEvent(new CustomEvent('modalSaveSuccess', { detail: response.data }));
           }
         }
       } catch (error) {
+        console.error('Erro ao salvar categoria:', error);
         const errorMessage = isEditMode ? 'Erro ao atualizar categoria: ' : 'Erro ao cadastrar categoria: ';
         setError(errorMessage + error.message);
-      } finally {
-        setIsLoading(false);
       }
     };
 

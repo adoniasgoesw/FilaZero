@@ -6,6 +6,7 @@ import AddButton from '../buttons/Add';
 import ConfirmDialog from '../elements/ConfirmDialog';
 import BaseModal from '../modals/Base';
 import ListClient from '../list/ListClient';
+import { useCache } from '../../providers/CacheProvider';
 import api from '../../services/api';
 import { imprimirNotaFiscal } from '../../services/notaFiscalPrint';
 
@@ -67,10 +68,17 @@ const PanelPagamentos = ({
   const [valorRestanteBanco, setValorRestanteBanco] = useState(0);
   
   
-  // Estados para buscar pagamentos do banco
-  const [paymentMethods, setPaymentMethods] = useState([]);
-  const [loadingPayments, setLoadingPayments] = useState(true);
-  const [paymentError, setPaymentError] = useState(null);
+  // Hook do cache
+  const { 
+    paymentMethods, 
+    clientes,
+    loadingPaymentMethods, 
+    loadingClientes,
+    errorPaymentMethods, 
+    errorClientes,
+    loadPaymentMethods,
+    loadClientes
+  } = useCache();
   
   // Estados para desconto e acréscimo do banco
   const [desconto, setDesconto] = useState(0);
@@ -207,46 +215,17 @@ const PanelPagamentos = ({
   };
 
 
-  // Função para buscar pagamentos do banco
-  const fetchPaymentMethods = async () => {
-    try {
-      const estabelecimentoId = localStorage.getItem('estabelecimentoId');
-      if (!estabelecimentoId) {
-        throw new Error('Estabelecimento não identificado');
-      }
-
-
-      setLoadingPayments(true);
-      setPaymentError(null);
-
-      console.log('🔍 Buscando métodos de pagamento para estabelecimento:', estabelecimentoId);
-      
-      const response = await api.get(`/pagamentos/${estabelecimentoId}`);
-      
-      if (response.success) {
-        // Filtrar apenas pagamentos ativos e esconder compostos
-        const activePayments = response.data.filter(payment => 
-          payment.status === true && 
-          payment.nome !== 'Pagamento Composto' && 
-          payment.tipo !== 'Composto'
-        );
-        setPaymentMethods(activePayments);
-        console.log('🚫 Pagamentos compostos escondidos');
-      } else {
-        throw new Error(response.message || 'Erro ao carregar métodos de pagamento');
-      }
-    } catch (error) {
-      console.error('❌ Erro ao buscar métodos de pagamento:', error);
-      setPaymentError(error.message || 'Erro ao carregar métodos de pagamento');
-    } finally {
-      setLoadingPayments(false);
-    }
-  };
-
-  // Carregar pagamentos quando o componente monta
+  // Carregar dados do cache se necessário (evita carregamento desnecessário)
   useEffect(() => {
-    fetchPaymentMethods();
-  }, []);
+    console.log('🔄 PanelPagamentos - Verificando cache...');
+    // Se não há dados no cache, carregar
+    if (paymentMethods.length === 0) {
+      loadPaymentMethods();
+    }
+    if (clientes.length === 0) {
+      loadClientes();
+    }
+  }, []); // Carrega apenas uma vez quando o painel abre
 
   // Carregar cliente existente do pedido
   useEffect(() => {
@@ -622,7 +601,7 @@ const PanelPagamentos = ({
   };
 
   return (
-    <aside className={`${mobileVisible ? 'flex md:flex' : 'hidden md:flex'} fixed md:top-4 md:bottom-4 md:left-24 md:w-[30%] top-0 bottom-0 left-0 right-0 w-full bg-white border border-gray-200 md:rounded-2xl shadow-2xl z-50 flex-col`}>
+    <aside className={`${mobileVisible ? 'flex md:flex' : 'hidden md:flex'} fixed md:top-4 md:bottom-4 md:left-24 md:w-[30%] top-0 bottom-0 left-0 right-0 w-full bg-white border border-gray-200 md:rounded-2xl shadow-2xl z-[45] flex-col`}>
       {/* Header */}
       <div className="p-3 md:p-4 border-b border-gray-200 flex items-center gap-3">
         <div className="shrink-0">
@@ -639,19 +618,19 @@ const PanelPagamentos = ({
         <div>
           <h3 className="text-sm font-semibold text-gray-700 mb-3">Formas de Pagamento</h3>
           
-          {loadingPayments ? (
+          {loadingPaymentMethods ? (
             <div className="flex items-center justify-center py-8">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
               <span className="ml-2 text-sm text-gray-600">Carregando...</span>
             </div>
-          ) : paymentError ? (
+          ) : errorPaymentMethods ? (
             <div className="text-center py-4">
               <div className="text-red-500 mb-2">
                 <CreditCard className="w-8 h-8 mx-auto" />
               </div>
-              <p className="text-sm text-red-600 mb-2">{paymentError}</p>
+              <p className="text-sm text-red-600 mb-2">{errorPaymentMethods}</p>
               <button
-                onClick={fetchPaymentMethods}
+                onClick={() => loadPaymentMethods(true)}
                 className="text-xs text-blue-600 hover:text-blue-800 underline"
               >
                 Tentar novamente
@@ -788,7 +767,7 @@ const PanelPagamentos = ({
         <button
           type="button"
           onClick={handleFinalizeOrder}
-          disabled={selectedPayments.length === 0 || loadingPayments || finalizing}
+          disabled={selectedPayments.length === 0 || loadingPaymentMethods || finalizing}
           className="w-full h-11 md:h-12 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-semibold transition-colors"
         >
           {finalizing ? 'Finalizando...' : 'Finalizar pagamento'}
@@ -800,7 +779,7 @@ const PanelPagamentos = ({
       <BaseModal
         isOpen={showAddClientModal}
         onClose={() => setShowAddClientModal(false)}
-        title={selectedClient ? "Alterar Cliente" : "Selecionar Cliente"}
+        title="Selecionar Cliente"
         icon={selectedClient ? Users : Plus}
         iconBgColor="bg-orange-500"
         iconColor="text-white"

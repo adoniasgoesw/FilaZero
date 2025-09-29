@@ -87,7 +87,6 @@ const createTables = async () => {
         descricao TEXT,
         imagem_url TEXT,
         ativa BOOLEAN DEFAULT 1,
-        ordem INTEGER DEFAULT 0,
         criado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (estabelecimento_id) REFERENCES estabelecimentos(id)
       )

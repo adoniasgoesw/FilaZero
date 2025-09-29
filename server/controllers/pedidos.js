@@ -88,7 +88,7 @@ export const upsertPedido = async (req, res) => {
       if (clienteId !== null) {
         await client.query(
           `UPDATE pedidos 
-              SET caixa_id = COALESCE(caixa_id, $1),
+              SET caixa_id = $1,
                   status = 'pendente',
                   cliente_id = $2,
                   pagamento_id = COALESCE($3, pagamento_id),
@@ -100,7 +100,7 @@ export const upsertPedido = async (req, res) => {
       } else {
         await client.query(
           `UPDATE pedidos 
-              SET caixa_id = COALESCE(caixa_id, $1),
+              SET caixa_id = $1,
                   status = 'pendente',
                   pagamento_id = COALESCE($2, pagamento_id),
                   usuario_id = COALESCE($3, usuario_id),
@@ -348,11 +348,20 @@ export const criarPedidoVazio = async (req, res) => {
 
     const atendimentoId = await ensureAtendimentoId(estabelecimentoId, identificador);
 
-    // Atualiza nome_ponto e status do atendimento
+    // Atualiza nome_ponto e status do atendimento apenas se for fornecido
+    if (nomePonto !== '') {
+      await client.query(
+        `UPDATE atendimentos SET nome_ponto = $1, atualizado_em = NOW()
+         WHERE id = $2`,
+        [nomePonto, atendimentoId]
+      );
+    }
+    
+    // Só atualiza status para 'aberto' se o atendimento estiver 'disponivel'
     await client.query(
-      `UPDATE atendimentos SET nome_ponto = $1, status = 'aberto', atualizado_em = NOW()
-       WHERE id = $2`,
-      [nomePonto, atendimentoId]
+      `UPDATE atendimentos SET status = 'aberto', atualizado_em = NOW()
+       WHERE id = $1 AND status = 'disponivel'`,
+      [atendimentoId]
     );
 
     // Verificar se já existe um pedido pendente para este atendimento
@@ -1338,6 +1347,8 @@ export const listarHistorico = async (req, res) => {
     }
 
 
+    console.log('🔍 Buscando histórico de pedidos para caixa_id:', caixaId);
+    
     const rows = await pool.query(
       `SELECT 
          ph.id,
@@ -1370,6 +1381,9 @@ export const listarHistorico = async (req, res) => {
       LIMIT 200`,
       [caixaId]
     );
+
+    console.log('📊 Pedidos históricos encontrados:', rows.rows.length);
+    console.log('📊 Dados dos pedidos:', JSON.stringify(rows.rows, null, 2));
 
 
     return res.json({ success: true, data: rows.rows });

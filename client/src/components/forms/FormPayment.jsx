@@ -25,12 +25,18 @@ const FormPayment = ({ onSave }) => {
       alert('Nome e tipo são obrigatórios!');
       return;
     }
+    // Disparar evento de sucesso do modal IMEDIATAMENTE
+    window.dispatchEvent(new CustomEvent('modalSaveSuccess', { detail: formData }));
+    
+    // Disparar evento de atualização em tempo real
+    window.dispatchEvent(new CustomEvent('pagamentoUpdated'));
+
+    // Salvar no backend em background (sem bloquear a UI)
     try {
       if (onSave) {
         await Promise.resolve(onSave(formData));
       }
-      // Notificar o modal para fechar
-      window.dispatchEvent(new CustomEvent('modalSaveSuccess', { detail: formData }));
+      console.log('✅ Pagamento salvo com sucesso');
     } catch (err) {
       console.error('Erro ao salvar pagamento:', err);
       alert('Erro ao salvar pagamento.');

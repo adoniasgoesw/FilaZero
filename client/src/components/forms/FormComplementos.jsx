@@ -60,9 +60,15 @@ const FormComplementos = ({ complemento = null, onClose, onSave }) => {
       return;
     }
 
-    setIsLoading(true);
     setError('');
 
+    // Disparar evento para o modal fechar IMEDIATAMENTE
+    window.dispatchEvent(new CustomEvent('modalSaveSuccess', { detail: formData }));
+    
+    // Disparar evento de atualização em tempo real
+    window.dispatchEvent(new CustomEvent('complementoUpdated'));
+
+    // Salvar no backend em background (sem bloquear a UI)
     try {
       // Criar dados para envio
       const dataToSend = {
@@ -76,10 +82,6 @@ const FormComplementos = ({ complemento = null, onClose, onSave }) => {
         
         if (response.success) {
           console.log('✅ Complemento editado com sucesso');
-          // Disparar eventos de atualização em tempo real
-          window.dispatchEvent(new CustomEvent('complementoUpdated'));
-          // Notificar modal para fechar
-          window.dispatchEvent(new CustomEvent('modalSaveSuccess', { detail: response.data }));
         }
       } else {
         // Modo de criação
@@ -95,17 +97,12 @@ const FormComplementos = ({ complemento = null, onClose, onSave }) => {
         
         if (response.success) {
           console.log('✅ Complemento criado com sucesso');
-          // Disparar eventos de atualização em tempo real
-          window.dispatchEvent(new CustomEvent('complementoUpdated'));
-          // Notificar modal para fechar
-          window.dispatchEvent(new CustomEvent('modalSaveSuccess', { detail: response.data }));
         }
       }
     } catch (error) {
+      console.error('Erro ao salvar complemento:', error);
       const errorMessage = isEditMode ? 'Erro ao atualizar complemento: ' : 'Erro ao cadastrar complemento: ';
       setError(errorMessage + error.message);
-    } finally {
-      setIsLoading(false);
     }
   };
 

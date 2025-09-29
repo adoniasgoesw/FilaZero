@@ -10,7 +10,7 @@ const Header = ({ onAccessClick }) => {
         <div className="flex items-center">
           <Logo size="large" />
           <div className="ml-4">
-            <h1 className="text-2xl font-bold text-gray-800">FilaZero</h1>
+            <h1 className="text-2xl font-bold text-gray-800">FilaZero PDV </h1>
             <p className="text-sm text-gray-600">Sistema de Gestão para Restaurantes</p>
           </div>
         </div>

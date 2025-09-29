@@ -60,7 +60,7 @@ function Landing() {
                 size="small" 
                 className="bg-gray-900 hover:bg-gray-800 rounded-lg"
               />
-              <span className="text-2xl font-bold text-gray-900">FilaZero</span>
+              <span className="text-2xl font-bold text-gray-900">FilaZero PDV</span>
             </div>
             <button
               onClick={handleAccessClick}

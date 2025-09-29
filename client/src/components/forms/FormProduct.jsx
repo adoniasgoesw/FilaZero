@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Image as ImageIcon, Upload, Zap, Loader2, Plus, X } from 'lucide-react';
+import { Package, Image as ImageIcon, Upload, Zap, Loader2, Plus, X, Search } from 'lucide-react';
 import api, { buscarImagens } from '../../services/api';
 import AddButton from '../buttons/Add';
 import CopyButton from '../buttons/Copy';
@@ -14,7 +14,7 @@ import FormField from './FormField';
 import FormInput from './FormInput';
 import FormSelect from './FormSelect';
 import FormGrid from './FormGrid';
-// Removido import do cache - agora busca diretamente da API
+import SearchBar from '../layout/SeachBar';
 
 // Função debounce
 function debounce(func, wait) {
@@ -30,7 +30,6 @@ function debounce(func, wait) {
 }
 
 const FormProduct = ({ produto = null, onStateChange }) => {
-  // Usar hook de cache para produtos
   // Funções para gerenciar produtos (busca direta da API)
   const addProduto = (produto) => {
     // Esta função será chamada pelo componente pai
@@ -83,6 +82,10 @@ const FormProduct = ({ produto = null, onStateChange }) => {
   // Estado para armazenar complementos selecionados
   const [complementosSelecionados, setComplementosSelecionados] = useState([]);
   
+  // Estados para pesquisa de complementos
+  const [isSearchingComplementos, setIsSearchingComplementos] = useState(false);
+  const [searchTermComplementos, setSearchTermComplementos] = useState('');
+  
   // Estado para armazenar a categoria atual sendo editada
   const [categoriaAtualEditando, setCategoriaAtualEditando] = useState(null);
   
@@ -103,6 +106,11 @@ const FormProduct = ({ produto = null, onStateChange }) => {
   const [produtosComComplementos, setProdutosComComplementos] = useState([]);
   const [produtoSelecionadoParaCopiar, setProdutoSelecionadoParaCopiar] = useState(null);
   const [loadingProdutos, setLoadingProdutos] = useState(false);
+  
+  // Estados para pesquisa de produtos (copiar complementos)
+  const [isSearchingProdutos, setIsSearchingProdutos] = useState(false);
+  const [searchTermProdutos, setSearchTermProdutos] = useState('');
+  
   
   // Estado para notificações
   const [notification, setNotification] = useState({ show: false, message: '', type: 'success' });
@@ -153,13 +161,20 @@ const FormProduct = ({ produto = null, onStateChange }) => {
     };
   }, []);
 
-  // Interceptar o cancelar do modal quando estiver na seleção de complementos
+  // Interceptar o cancelar do modal quando estiver na seleção de complementos ou copiar complementos
   useEffect(() => {
     const handleModalCancel = (event) => {
       if (showComplementoForm) {
         // Se estiver na seleção de complementos, cancelar a seleção em vez de fechar o modal
         event.preventDefault();
         handleCancelarComplementos();
+      } else if (showCopyComplementos) {
+        // Se estiver no modo de copiar complementos, voltar para a área de complementos
+        event.preventDefault();
+        setShowCopyComplementos(false);
+        setProdutoSelecionadoParaCopiar(null);
+        setSearchTermProdutos('');
+        setIsSearchingProdutos(false);
       }
     };
 
@@ -169,7 +184,7 @@ const FormProduct = ({ produto = null, onStateChange }) => {
     return () => {
       window.removeEventListener('modalCancel', handleModalCancel);
     };
-  }, [showComplementoForm]);
+  }, [showComplementoForm, showCopyComplementos]);
 
   // Notificar a página sobre mudanças de estado
   useEffect(() => {
@@ -606,6 +621,32 @@ const FormProduct = ({ produto = null, onStateChange }) => {
     setCategoriaAtualEditando(null);
   };
 
+  // Função para toggle da pesquisa de complementos
+  const toggleSearchComplementos = () => {
+    setIsSearchingComplementos(prev => !prev);
+    if (isSearchingComplementos) {
+      setSearchTermComplementos('');
+    }
+  };
+
+  // Função para toggle da pesquisa de produtos
+  const toggleSearchProdutos = () => {
+    setIsSearchingProdutos(prev => !prev);
+    if (isSearchingProdutos) {
+      setSearchTermProdutos('');
+    }
+  };
+
+  // Filtrar complementos baseado na pesquisa
+  const filteredComplementos = complementosDisponiveis.filter(complemento => 
+    complemento.nome.toLowerCase().includes(searchTermComplementos.toLowerCase())
+  );
+
+  // Filtrar produtos baseado na pesquisa
+  const filteredProdutos = produtosComComplementos.filter(produto => 
+    produto.nome.toLowerCase().includes(searchTermProdutos.toLowerCase())
+  );
+
   // Função para salvar complementos selecionados
   const handleSalvarComplementos = async () => {
     if (complementosSelecionados.length === 0) {
@@ -861,9 +902,16 @@ const FormProduct = ({ produto = null, onStateChange }) => {
       }
     }
 
-    setIsLoading(true);
     setError('');
 
+    // Disparar evento para o modal fechar IMEDIATAMENTE
+    window.dispatchEvent(new CustomEvent('modalSaveSuccess', { detail: formData }));
+    
+    // Disparar evento de atualização em tempo real IMEDIATAMENTE
+    window.dispatchEvent(new CustomEvent('produtoUpdated'));
+    window.dispatchEvent(new CustomEvent('categoriaUpdated'));
+
+    // Salvar no backend em background (sem bloquear a UI)
     try {
       // Criar FormData para envio
       const formDataToSend = new FormData();
@@ -891,10 +939,6 @@ const FormProduct = ({ produto = null, onStateChange }) => {
         
         if (response.success) {
           console.log('✅ Produto editado com sucesso');
-          // Atualizar produto no cache
-          updateProduto(response.data.id, response.data);
-          // Disparar evento para o BaseModal fechar
-          window.dispatchEvent(new CustomEvent('modalSaveSuccess', { detail: response.data }));
         }
       } else {
         // Modo de criação
@@ -913,48 +957,49 @@ const FormProduct = ({ produto = null, onStateChange }) => {
         if (response.success) {
           const novoProduto = response.data;
           
-          // Adicionar produto ao cache
-          addProduto(novoProduto);
+          console.log('✅ Produto criado com sucesso');
           
-          // Salvar categorias temporárias se existirem
+          // Salvar categorias temporárias se existirem (em background)
           if (categoriasTemporarias.length > 0) {
-            for (const categoria of categoriasTemporarias) {
-              try {
-                const categoriaResponse = await api.post('/categorias-complementos', {
-                  produto_id: novoProduto.id,
-                  nome: categoria.nome,
-                  quantidade_minima: categoria.quantidadeMinima,
-                  quantidade_maxima: categoria.quantidadeMaxima,
-                  preenchimento_obrigatorio: categoria.preenchimentoObrigatorio
-                });
-                
-                console.log('✅ Categoria temporária salva:', categoria.nome);
-                
-                // Salvar complementos temporários para esta categoria
-                const complementosParaEstaCategoria = complementosTemporarios.filter(
-                  comp => comp.categoria_temporaria?.nome === categoria.nome
-                );
-                
-                if (complementosParaEstaCategoria.length > 0) {
-                  try {
-                    const complementosIds = complementosParaEstaCategoria.map(c => c.complemento_id);
-                    await api.post('/itens-complementos', {
-                      categoria_id: categoriaResponse.data.id,
-                      complementos: complementosIds
-                    });
-                    
-                    console.log('✅ Complementos temporários salvos na categoria:', complementosIds.length);
-                  } catch (error) {
-                    console.error('❌ Erro ao salvar complementos temporários:', error);
+            setTimeout(async () => {
+              for (const categoria of categoriasTemporarias) {
+                try {
+                  const categoriaResponse = await api.post('/categorias-complementos', {
+                    produto_id: novoProduto.id,
+                    nome: categoria.nome,
+                    quantidade_minima: categoria.quantidadeMinima,
+                    quantidade_maxima: categoria.quantidadeMaxima,
+                    preenchimento_obrigatorio: categoria.preenchimentoObrigatorio
+                  });
+                  
+                  console.log('✅ Categoria temporária salva:', categoria.nome);
+                  
+                  // Salvar complementos temporários para esta categoria
+                  const complementosParaEstaCategoria = complementosTemporarios.filter(
+                    comp => comp.categoria_temporaria?.nome === categoria.nome
+                  );
+                  
+                  if (complementosParaEstaCategoria.length > 0) {
+                    try {
+                      const complementosIds = complementosParaEstaCategoria.map(c => c.complemento_id);
+                      await api.post('/itens-complementos', {
+                        categoria_id: categoriaResponse.data.id,
+                        complementos: complementosIds
+                      });
+                      
+                      console.log('✅ Complementos temporários salvos na categoria:', complementosIds.length);
+                    } catch (error) {
+                      console.error('❌ Erro ao salvar complementos temporários:', error);
+                    }
                   }
+                } catch (error) {
+                  console.error('❌ Erro ao salvar categoria temporária:', error);
                 }
-              } catch (error) {
-                console.error('❌ Erro ao salvar categoria temporária:', error);
               }
-            }
-            // Limpar categorias e complementos temporários
-            setCategoriasTemporarias([]);
-            setComplementosTemporarios([]);
+              // Limpar categorias e complementos temporários
+              setCategoriasTemporarias([]);
+              setComplementosTemporarios([]);
+            }, 200);
           }
           
           // Limpar formulário apenas no modo de criação
@@ -971,20 +1016,12 @@ const FormProduct = ({ produto = null, onStateChange }) => {
             tempoPreparo: ''
           });
           setImagePreview(null);
-          
-          console.log('✅ Produto criado com sucesso');
-          // Disparar eventos de atualização em tempo real
-          window.dispatchEvent(new CustomEvent('produtoUpdated'));
-          window.dispatchEvent(new CustomEvent('categoriaUpdated'));
-          // Disparar evento para o BaseModal fechar
-          window.dispatchEvent(new CustomEvent('modalSaveSuccess', { detail: response.data }));
         }
       }
     } catch (error) {
+      console.error('Erro ao salvar produto:', error);
       const errorMessage = isEditMode ? 'Erro ao atualizar produto: ' : 'Erro ao cadastrar produto: ';
       setError(errorMessage + error.message);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -1391,24 +1428,49 @@ const FormProduct = ({ produto = null, onStateChange }) => {
             {/* Se estiver mostrando a listagem de complementos, esconder tudo */}
             {showComplementoForm ? (
               <div className="space-y-6">
-                {/* Header */}
-                <div className="bg-gray-100 rounded-lg p-4 flex items-center justify-between">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-800">Selecionar Complementos</h3>
-                    <p className="text-sm text-gray-600 mt-1">Escolha os complementos para esta categoria</p>
-                  </div>
-                  <button
-                    onClick={handleCancelarComplementos}
-                    className="text-gray-400 hover:text-gray-600 transition-colors p-2 hover:bg-gray-200 rounded-lg"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
+                {/* Header cinza com lupa ou barra de pesquisa */}
+                <div className="bg-gray-100 rounded-lg p-4 flex-shrink-0">
+                   {!isSearchingComplementos ? (
+                     <div className="flex items-center justify-between">
+                       <div>
+                         <h3 className="text-lg font-semibold text-gray-800">Complementos</h3>
+                         <p className="text-sm text-gray-600 mt-1">Escolha os complementos para esta categoria</p>
+                       </div>
+                       <button
+                         onClick={toggleSearchComplementos}
+                         className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-lg hover:bg-gray-200"
+                       >
+                         <Search size={20} />
+                       </button>
+                     </div>
+                  ) : (
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                        <input
+                          type="text"
+                          value={searchTermComplementos}
+                          onChange={(e) => setSearchTermComplementos(e.target.value)}
+                          placeholder="Pesquisar complementos..."
+                          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm outline-none"
+                          autoFocus
+                        />
+                      </div>
+                      <button
+                        onClick={toggleSearchComplementos}
+                        className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-lg hover:bg-gray-200"
+                      >
+                        <X size={20} />
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Listagem de complementos */}
-                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                  <div className="max-h-64 overflow-y-auto">
-                    {complementosDisponiveis.map((complemento) => (
+                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden flex-1">
+                  <div className="h-full overflow-y-auto scrollbar-hide">
+                    {filteredComplementos.length > 0 ? (
+                      filteredComplementos.map((complemento) => (
                       <div key={complemento.id} className="flex items-center space-x-4 p-4 hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0">
                         <div className="relative flex-shrink-0 flex items-center">
                           <input
@@ -1438,32 +1500,70 @@ const FormProduct = ({ produto = null, onStateChange }) => {
                           </span>
                         )}
                       </div>
-                    ))}
+                    ))
+                    ) : (
+                      <div className="text-center py-12">
+                        <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                        <h4 className="text-gray-600 font-semibold mb-2">Nenhum complemento encontrado</h4>
+                        <p className="text-gray-500 text-sm">
+                          {searchTermComplementos ? 'Tente um termo diferente' : 'Não há complementos disponíveis'}
+                        </p>
+                        {searchTermComplementos && (
+                          <button
+                            onClick={() => setSearchTermComplementos('')}
+                            className="text-blue-600 hover:text-blue-800 text-sm mt-2"
+                          >
+                            Limpar pesquisa
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
             ) : showCopyComplementos ? (
               <div className="space-y-6">
-                {/* Header com botão de voltar */}
-                <div className="bg-gray-100 rounded-lg p-4 flex items-center justify-between">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-800">Copiar Complementos</h3>
-                    <p className="text-sm text-gray-600 mt-1">Selecione um produto para copiar suas categorias</p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setShowCopyComplementos(false);
-                      setProdutoSelecionadoParaCopiar(null);
-                    }}
-                    className="text-gray-400 hover:text-gray-600 transition-colors p-2 hover:bg-gray-200 rounded-lg"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
+                {/* Header cinza com lupa ou barra de pesquisa */}
+                <div className="bg-gray-100 rounded-lg p-4 flex-shrink-0">
+                  {!isSearchingProdutos ? (
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-800">Complementos</h3>
+                        <p className="text-sm text-gray-600 mt-1">Selecione um produto para copiar suas categorias</p>
+                      </div>
+                      <button
+                        onClick={toggleSearchProdutos}
+                        className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-lg hover:bg-gray-200"
+                      >
+                        <Search size={20} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                        <input
+                          type="text"
+                          value={searchTermProdutos}
+                          onChange={(e) => setSearchTermProdutos(e.target.value)}
+                          placeholder="Pesquisar produtos..."
+                          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm outline-none"
+                          autoFocus
+                        />
+                      </div>
+                      <button
+                        onClick={toggleSearchProdutos}
+                        className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-lg hover:bg-gray-200"
+                      >
+                        <X size={20} />
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Listagem de produtos */}
-                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                  <div className="max-h-64 overflow-y-auto">
+                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden flex-1">
+                  <div className="h-full overflow-y-auto scrollbar-hide">
                     {loadingProdutos ? (
                       <div className="flex items-center justify-center py-12">
                         <div className="text-center">
@@ -1471,8 +1571,8 @@ const FormProduct = ({ produto = null, onStateChange }) => {
                           <p className="text-gray-600 font-medium">Carregando produtos...</p>
                         </div>
                       </div>
-                    ) : produtosComComplementos.length > 0 ? (
-                      produtosComComplementos.map((produto) => (
+                    ) : filteredProdutos.length > 0 ? (
+                      filteredProdutos.map((produto) => (
                         <div key={produto.id} className="flex items-center space-x-4 p-4 hover:bg-purple-50 transition-colors border-b border-gray-100 last:border-b-0">
                           <div className="relative">
                             <input
@@ -1508,7 +1608,17 @@ const FormProduct = ({ produto = null, onStateChange }) => {
                       <div className="text-center py-12">
                         <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                         <h4 className="text-gray-600 font-semibold mb-2">Nenhum produto encontrado</h4>
-                        <p className="text-gray-500 text-sm">Não há produtos com categorias de complementos</p>
+                        <p className="text-gray-500 text-sm">
+                          {searchTermProdutos ? 'Tente um termo diferente' : 'Não há produtos com categorias de complementos'}
+                        </p>
+                        {searchTermProdutos && (
+                          <button
+                            onClick={() => setSearchTermProdutos('')}
+                            className="text-blue-600 hover:text-blue-800 text-sm mt-2"
+                          >
+                            Limpar pesquisa
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>

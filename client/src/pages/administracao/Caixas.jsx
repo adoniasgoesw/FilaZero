@@ -74,7 +74,8 @@ const Caixas = () => {
       {/* Header com botão voltar e barra de pesquisa */}
       <div className="bg-white sticky top-0 z-40">
         <div className="px-4 md:px-6 py-4">
-          <div className="flex items-center gap-4">
+          {/* Linha 1: Botão voltar + Barra de pesquisa + Botão Margem */}
+          <div className="flex items-center gap-4 mb-3">
             <BackButton onClick={handleBack} />
             <SearchBar 
               placeholder="Pesquisar caixas..."
@@ -88,30 +89,27 @@ const Caixas = () => {
               }}
             />
           </div>
+
+          {/* Linha 2: User + Título */}
+          <div className="flex items-center gap-3">
+            <Calculator className="w-6 h-6 text-emerald-600" />
+            <h1 className="text-2xl font-bold text-gray-900">Caixas</h1>
+          </div>
         </div>
       </div>
 
-      {/* Título com ícone */}
-      <div className="px-4 md:px-6 py-6">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center shadow-sm">
-            <Calculator className="w-5 h-5 text-emerald-600" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Caixas</h1>
-            <p className="text-sm text-gray-500">Histórico de caixas fechados</p>
-          </div>
+      {/* Listagem */}
+      <div className="px-4 md:px-6 py-6 flex-1 overflow-hidden">
+        <div className="h-full overflow-y-auto scrollbar-hide">
+          {estabelecimentoId && (
+            <ListCaixas 
+              estabelecimentoId={estabelecimentoId}
+              apenasFechados={true}
+              searchQuery={search}
+              onVerDetalhes={handleVerDetalhes}
+            />
+          )}
         </div>
-
-        {/* Listagem */}
-        {estabelecimentoId && (
-          <ListCaixas 
-            estabelecimentoId={estabelecimentoId}
-            apenasFechados={true}
-            searchQuery={search}
-            onVerDetalhes={handleVerDetalhes}
-          />
-        )}
       </div>
 
       {/* Modal de Detalhes do Caixa */}

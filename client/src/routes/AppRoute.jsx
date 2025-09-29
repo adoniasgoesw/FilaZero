@@ -14,7 +14,7 @@ import Categorias from '../pages/gestao/Categorias';
 import Produtos from '../pages/gestao/Produtos';
 import PontoAtendimento from '../pages/PontoAtendimento';
 import Caixas from '../pages/administracao/Caixas';
-// import { useAutoSync } from '../hooks/useAutoSync';
+import CacheProvider from '../providers/CacheProvider';
 
 // Componente wrapper para gerenciar o Sidebar
 function AppContent() {
@@ -24,8 +24,6 @@ function AppContent() {
   // Obter ID do estabelecimento para sincronização
   // const estabelecimentoId = localStorage.getItem('estabelecimentoId');
   
-  // Iniciar sincronização automática (desabilitada temporariamente para evitar loops)
-  // useAutoSync(estabelecimentoId);
   
   React.useEffect(() => {
     // Forçar o scroll para o topo ao trocar de rota (especialmente no mobile)
@@ -51,12 +49,14 @@ function AppContent() {
 
   if (isPontoAtendimento) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <Routes>
-          <Route path="/ponto-atendimento/:id" element={<PontoAtendimento />} />
-          <Route path="*" element={<Navigate to="/ponto-atendimento/unknown" replace />} />
-        </Routes>
-      </div>
+      <CacheProvider>
+        <div className="min-h-screen bg-gray-50">
+          <Routes>
+            <Route path="/ponto-atendimento/:id" element={<PontoAtendimento />} />
+            <Route path="*" element={<Navigate to="/ponto-atendimento/unknown" replace />} />
+          </Routes>
+        </div>
+      </CacheProvider>
     );
   }
 

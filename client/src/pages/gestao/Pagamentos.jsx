@@ -42,7 +42,7 @@ function Pagamentos() {
     setIsEditModalOpen(false);
     setPagamentoEditando(null);
     // Recarregar lista de pagamentos
-    window.dispatchEvent(new CustomEvent('reloadPagamentos'));
+    window.dispatchEvent(new CustomEvent('refreshPagamentos'));
     showNotification('success', 'Sucesso!', 'Pagamento salvo com sucesso!');
   };
 
@@ -70,7 +70,8 @@ function Pagamentos() {
     <div className="h-screen bg-gray-50 flex flex-col md:min-h-screen">
       {/* Header - fixo apenas em mobile */}
       <div className="fixed md:relative top-0 left-0 right-0 md:left-auto md:right-auto z-30 md:z-auto bg-white px-4 md:px-6 pt-6 pb-4">
-        <div className="flex items-center gap-3 w-full">
+        {/* Linha 1: Botão voltar + Barra de pesquisa + Botão Add */}
+        <div className="flex items-center gap-3 w-full mb-3">
           {/* Botão voltar */}
           <BackButton />
           
@@ -90,14 +91,12 @@ function Pagamentos() {
             onClick={() => setIsAddModalOpen(true)}
           />
         </div>
-      </div>
 
-      {/* Título padronizado com outras páginas */}
-      <div className="px-4 md:px-6 pt-4 pb-2 mt-16 md:mt-0">
+        {/* Linha 2: Ícone + Título + Pagamento selecionado */}
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-            <CreditCard className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600 flex-shrink-0" />
-            <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 truncate">
+            <CreditCard className="w-6 h-6 text-purple-600 flex-shrink-0" />
+            <h1 className="text-2xl font-bold text-gray-900 truncate">
               Pagamentos
             </h1>
           </div>
@@ -175,9 +174,9 @@ function Pagamentos() {
       </div>
 
       {/* Conteúdo Principal */}
-      <div className="px-4 md:px-6 pb-6">
-        {/* Área de conteúdo com rolagem */}
-        <div ref={contentRef} className="flex-1 overflow-y-auto scrollbar-hide">
+      <div className="px-4 md:px-6 pb-6 flex-1 overflow-hidden">
+        {/* Área de conteúdo com rolagem oculta */}
+        <div ref={contentRef} className="h-full overflow-y-auto scrollbar-hide">
           <ListPagamentos
             onEdit={handleEditPagamento}
             onPagamentosLoaded={handlePagamentosLoaded}

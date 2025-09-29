@@ -1,7 +1,7 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle2, Users, Clock, Flag, DollarSign, Lock } from 'lucide-react';
-import { usePontosAtendimento } from '../../hooks/useRealtime';
+import api from '../../services/api';
 
 // Configuração de status (cores e ícone) no estilo do design fornecido
 const STATUS_CONFIG = {
@@ -77,7 +77,51 @@ const ListPontosAtendimento = ({ estabelecimentoId: propEstabelecimentoId, searc
   const navigate = useNavigate();
 
   // Usar tempo real para pontos de atendimento (atualização a cada 5 segundos)
-  const { data: pontosAtendimento = [], isLoading, error, refetch } = usePontosAtendimento(estabId);
+  // Estados para pontos de atendimento
+  const [pontosAtendimento, setPontosAtendimento] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Função para buscar pontos de atendimento
+  const fetchPontosAtendimento = useCallback(async () => {
+    if (!estabId) return;
+    
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await api.get(`/pontos-atendimento/${estabId}`);
+      if (response.success) {
+        setPontosAtendimento(response.data || []);
+      } else {
+        setError(response.message || 'Erro ao carregar pontos de atendimento');
+      }
+    } catch (err) {
+      setError('Erro ao carregar pontos de atendimento');
+      console.error('Erro ao buscar pontos de atendimento:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [estabId]);
+
+  // Buscar pontos quando o componente montar ou estabelecimentoId mudar
+  useEffect(() => {
+    fetchPontosAtendimento();
+  }, [fetchPontosAtendimento]);
+
+  // Escutar eventos de atualização em tempo real
+  useEffect(() => {
+    const handleRefreshPontosAtendimento = () => {
+      console.log('🔄 ListPontosAtendimento - Evento de atualização recebido, recarregando pontos...');
+      fetchPontosAtendimento();
+    };
+
+    window.addEventListener('refreshPontosAtendimento', handleRefreshPontosAtendimento);
+    
+    return () => {
+      window.removeEventListener('refreshPontosAtendimento', handleRefreshPontosAtendimento);
+    };
+  }, [fetchPontosAtendimento]);
 
   // Filtrar itens baseado na pesquisa
   const filteredItems = useMemo(() => {
@@ -128,7 +172,7 @@ const ListPontosAtendimento = ({ estabelecimentoId: propEstabelecimentoId, searc
           </div>
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Erro ao carregar pontos</h3>
           <p className="text-gray-600 mb-4">{error.message}</p>
-          <button onClick={refetch} className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors">
+          <button onClick={fetchPontosAtendimento} className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors">
             Tentar novamente
           </button>
         </div>
@@ -155,7 +199,7 @@ const ListPontosAtendimento = ({ estabelecimentoId: propEstabelecimentoId, searc
   }
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
+    <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4 mt-4 mb-10 sm:mt-6 sm:mb-10 md:mt-0 md:mb-6">
       {filteredItems.map((item) => {
         const status = normalizeStatus(item.status);
         const config = STATUS_CONFIG[status];

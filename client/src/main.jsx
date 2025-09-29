@@ -4,7 +4,7 @@ import './index.css'
 import './styles/theme.css'
 import './styles/animations.css'
 import AppRoute from './routes/AppRoute.jsx'
-import QueryProvider from './providers/QueryProvider.jsx'
+import CacheProvider from './providers/CacheProvider.jsx'
 import printService from './services/printService.js'
 // Listener para impressão de nota fiscal
 window.addEventListener('printInvoice', async (event) => {
@@ -34,8 +34,8 @@ window.addEventListener('printInvoice', async (event) => {
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <QueryProvider>
+    <CacheProvider>
       <AppRoute />
-    </QueryProvider>
+    </CacheProvider>
   </StrictMode>,
 )

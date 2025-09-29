@@ -43,11 +43,18 @@ const FormClient = ({ onSave }) => {
       return;
     }
 
+    // Disparar evento de sucesso do modal IMEDIATAMENTE
+    window.dispatchEvent(new CustomEvent('modalSaveSuccess', { detail: formData }));
+    
+    // Disparar evento de atualização em tempo real
+    window.dispatchEvent(new CustomEvent('clienteUpdated'));
+
+    // Salvar no backend em background (sem bloquear a UI)
     try {
       if (onSave) {
         await Promise.resolve(onSave(formData));
       }
-      window.dispatchEvent(new CustomEvent('modalSaveSuccess', { detail: formData }));
+      console.log('✅ Cliente salvo com sucesso');
     } catch (err) {
       console.error('Erro ao salvar cliente:', err);
     }

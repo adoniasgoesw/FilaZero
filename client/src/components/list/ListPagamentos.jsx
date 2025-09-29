@@ -5,7 +5,6 @@ import EditButton from '../buttons/Edit';
 import DeleteButton from '../buttons/Delete';
 import StatusButton from '../buttons/Status';
 import ConfirmDelete from '../elements/ConfirmDelete';
-// Removido import do cache - agora busca diretamente da API
 
 const ListPagamentos = ({ 
   onEdit, 
@@ -87,6 +86,22 @@ const ListPagamentos = ({
     }
   }, [estabelecimentoId, loadPagamentos]);
 
+  // Escutar eventos de atualização em tempo real
+  useEffect(() => {
+    const handleRefreshPagamentos = () => {
+      console.log('🔄 ListPagamentos - Evento refreshPagamentos recebido, recarregando pagamentos...');
+      if (estabelecimentoId) {
+        loadPagamentos();
+      }
+    };
+
+    window.addEventListener('refreshPagamentos', handleRefreshPagamentos);
+    
+    return () => {
+      window.removeEventListener('refreshPagamentos', handleRefreshPagamentos);
+    };
+  }, [estabelecimentoId, loadPagamentos]);
+
   const displayedPagamentos = React.useMemo(() => {
     const list = Array.isArray(pagamentos) ? pagamentos : [];
     const q = String(searchQuery || '').toLowerCase().trim();
@@ -132,7 +147,7 @@ const ListPagamentos = ({
       });
       
       if (response.success) {
-        // Atualizar o pagamento no cache
+        // Atualizar o pagamento na lista local
         updatePagamento(pagamento.id, { status: !pagamento.status });
         
         console.log('✅ Status do pagamento alterado:', pagamento.nome, 'Novo status:', !pagamento.status);
@@ -183,7 +198,7 @@ const ListPagamentos = ({
       
       await Promise.all(promises);
       
-      // Remover pagamentos do cache
+      // Remover pagamentos da lista local
       externalSelectedPagamentos.forEach(pagamento => {
         removePagamento(pagamento.id);
       });
@@ -208,7 +223,7 @@ const ListPagamentos = ({
       const response = await api.delete(`/pagamentos/${pagamento.id}`);
       
       if (response.success) {
-        // Remover pagamento do cache
+        // Remover pagamento da lista local
         removePagamento(pagamento.id);
         
         // Fechar modal
@@ -313,12 +328,12 @@ const ListPagamentos = ({
   }
 
   return (
-    <div>
-      {/* Tabela responsiva */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="overflow-x-auto">
+    <div className="h-full flex flex-col">
+      {/* Tabela única com cabeçalho fixo */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col h-full mt-33 md:mt-0">
+        <div className="flex-1 overflow-y-auto scrollbar-hide">
           <table className="min-w-full">
-            <thead className="bg-gray-100">
+            <thead className="bg-gray-100 sticky top-0 z-10">
               <tr>
                 <th className="px-1 py-4 text-left">
                   <div className="flex items-center h-6 ml-2">
@@ -331,8 +346,8 @@ const ListPagamentos = ({
                   </div>
                 </th>
                 <th className="px-1 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Pagamento</th>
-                <th className="px-3 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden sm:table-cell">Tipo</th>
-                <th className="px-3 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Taxa</th>
+                <th className="px-3 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Tipo</th>
+                <th className="px-3 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden sm:table-cell">Taxa</th>
                 <th className="px-3 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden md:table-cell">Conta Bancária</th>
                 <th className="px-3 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider hidden lg:table-cell">Ações</th>
               </tr>
@@ -367,12 +382,12 @@ const ListPagamentos = ({
                       </div>
                     </div>
                   </td>
-                  <td className="px-3 py-6 hidden sm:table-cell">
+                  <td className="px-3 py-6">
                     <span className="text-sm font-medium text-gray-600">
                       {pagamento.tipo}
                     </span>
                   </td>
-                  <td className="px-3 py-6">
+                  <td className="px-3 py-6 hidden sm:table-cell">
                     <span className="text-sm font-medium text-gray-600">
                       {pagamento.taxa ? `${pagamento.taxa}%` : '0%'}
                     </span>
