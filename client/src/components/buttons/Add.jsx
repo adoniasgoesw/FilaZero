@@ -23,11 +23,11 @@ const AddButton = ({ text = "Adicionar", color = "blue", onClick, className = ""
   return (
     <button
       onClick={onClick}
-      className={`h-12 px-3 sm:px-4 ${getColorClasses(color)} text-white text-sm font-medium rounded-xl flex items-center gap-2 transition-all duration-200 shadow-sm hover:shadow-md ${className}`}
+      className={`h-12 w-12 sm:w-auto px-3 sm:px-4 ${getColorClasses(color)} text-white text-sm font-medium rounded-xl flex items-center justify-center sm:justify-start gap-2 transition-all duration-200 shadow-sm hover:shadow-md ${className}`}
       title={`Adicionar ${text}`}
     >
       <Plus size={16} />
-      <span className="inline">{text}</span>
+      <span className="hidden sm:inline">{text}</span>
     </button>
   );
 };

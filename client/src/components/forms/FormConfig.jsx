@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Settings, Table, Receipt, Store } from 'lucide-react';
 import api from '../../services/api';
 import FormContainer from './FormContainer';
@@ -21,42 +21,8 @@ const FormConfig = ({ estabelecimentoId: propEstabelecimentoId }) => {
   const [formData, setFormData] = useState({ ...DEFAULTS });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
-  const saveDebounceRef = useRef(null);
 
-  const scheduleAutoSave = (nextState) => {
-    if (!estabId) return;
-    if (saveDebounceRef.current) {
-      clearTimeout(saveDebounceRef.current);
-    }
-    saveDebounceRef.current = setTimeout(async () => {
-      try {
-        setSaving(true);
-        const payload = { ...nextState };
-        payload.quantidadeMesas = Math.max(1, Number(payload.quantidadeMesas || 1));
-        if (payload.comandasEnabled) {
-          payload.quantidadeComandas = Math.max(1, Number(payload.quantidadeComandas || 1));
-        } else {
-          payload.quantidadeComandas = 0;
-        }
-        if (payload.balcaoEnabled) {
-          payload.quantidadeBalcao = Math.max(1, Number(payload.quantidadeBalcao || 1));
-        } else {
-          payload.quantidadeBalcao = 0;
-        }
-        const res = await api.put(`/pontos-atendimento/config/${estabId}`, payload);
-        
-        // Disparar evento para atualizar a listagem de pontos de atendimento
-        if (res && res.success) {
-          console.log('🔄 FormConfig - Disparando evento para atualizar pontos de atendimento');
-          window.dispatchEvent(new CustomEvent('refreshPontosAtendimento'));
-        }
-      } catch (err) {
-        setError(err?.message || 'Erro ao salvar configuração');
-      } finally {
-        setSaving(false);
-      }
-    }, 400);
-  };
+  // Removido o salvamento automático - agora só salva quando clicar no botão Salvar
 
   const handleToggle = (field) => {
     setFormData(prev => {
@@ -84,7 +50,7 @@ const FormConfig = ({ estabelecimentoId: propEstabelecimentoId }) => {
       }
       
       setError(null);
-      scheduleAutoSave(next);
+      // Removido o scheduleAutoSave - agora só salva quando clicar no botão Salvar
       return next;
     });
   };
@@ -92,7 +58,7 @@ const FormConfig = ({ estabelecimentoId: propEstabelecimentoId }) => {
   const handleInputChange = (field, value) => {
     setFormData(prev => {
       const next = { ...prev, [field]: value };
-      scheduleAutoSave(next);
+      // Removido o scheduleAutoSave - agora só salva quando clicar no botão Salvar
       return next;
     });
   };
@@ -145,15 +111,17 @@ const FormConfig = ({ estabelecimentoId: propEstabelecimentoId }) => {
       setError('Estabelecimento não identificado. Faça login novamente.');
       return;
     }
+    
+    // Guard extra: não permitir enviar todos desabilitados
+    if (!formData.mesasEnabled && !formData.comandasEnabled && !formData.balcaoEnabled) {
+      setError('Pelo menos um tipo de atendimento deve estar habilitado.');
+      return;
+    }
+    
+    setSaving(true);
+    setError(null);
+    
     try {
-      setSaving(true);
-      setError(null);
-      // Guard extra: não permitir enviar todos desabilitados
-      if (!formData.mesasEnabled && !formData.comandasEnabled && !formData.balcaoEnabled) {
-        setError('Pelo menos um tipo de atendimento deve estar habilitado.');
-        setSaving(false);
-        return;
-      }
       const payload = { ...formData };
       // Regras de validação: mesas >= 1; se comandas habilitadas, >= 1, caso contrário manter o valor atual (pode ser 0)
       payload.quantidadeMesas = Math.max(1, Number(payload.quantidadeMesas || 1));
@@ -167,18 +135,21 @@ const FormConfig = ({ estabelecimentoId: propEstabelecimentoId }) => {
       } else {
         payload.quantidadeBalcao = 0;
       }
+      
       const res = await api.put(`/pontos-atendimento/config/${estabId}`, payload);
-      if (!(res && res.success)) {
-        throw new Error('Falha ao salvar configuração');
+      
+      if (res && res.success) {
+        // Disparar evento para atualizar a listagem de pontos de atendimento
+        console.log('🔄 FormConfig - Disparando evento para atualizar pontos de atendimento');
+        window.dispatchEvent(new CustomEvent('refreshPontosAtendimento'));
+        
+        // Disparar evento para o modal fechar
+        window.dispatchEvent(new CustomEvent('modalSaveSuccess', { detail: { data: payload } }));
+      } else {
+        throw new Error(res?.message || 'Erro ao salvar configuração');
       }
-      
-      // Disparar evento para atualizar a listagem de pontos de atendimento
-      console.log('🔄 FormConfig - Disparando evento para atualizar pontos de atendimento');
-      window.dispatchEvent(new CustomEvent('refreshPontosAtendimento'));
-      
-      // Disparar evento para o modal fechar automaticamente
-      window.dispatchEvent(new CustomEvent('modalSaveSuccess', { detail: { data: res.data || payload } }));
     } catch (err) {
+      console.error('Erro ao salvar configuração:', err);
       setError(err?.message || 'Erro ao salvar configuração');
     } finally {
       setSaving(false);
@@ -338,13 +309,6 @@ const FormConfig = ({ estabelecimentoId: propEstabelecimentoId }) => {
           </div>
         </div>
 
-        {/* Status de Salvamento */}
-        {saving && (
-          <div className="flex items-center justify-center gap-2 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
-            <span className="text-sm text-gray-700 font-medium">Salvando configurações...</span>
-          </div>
-        )}
 
         {/* Mensagem de Erro */}
         {error && (

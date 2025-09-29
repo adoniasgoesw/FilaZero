@@ -12,7 +12,6 @@ import Notification from '../../components/elements/Notification';
 import api from '../../services/api';
 import StatusButton from '../../components/buttons/Status';
 import DeleteButton from '../../components/buttons/Delete';
-// Removido import do cache - agora busca diretamente da API
 
 function Produtos() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -44,7 +43,6 @@ function Produtos() {
   const [selectedComplementos, setSelectedComplementos] = useState([]);
   const [showActionsDropdown, setShowActionsDropdown] = useState(false);
 
-  // Usar hooks de cache
   // Estados para produtos e complementos (busca direta da API)
   const [, setProdutos] = useState([]);
   const [, setComplementos] = useState([]);
@@ -108,8 +106,10 @@ function Produtos() {
 
   const handleProductSave = (data) => {
     console.log('Produto salvo:', data);
-    // Adicionar produto ao cache
+    // Adicionar produto à lista local
     addProduto(data);
+    // Disparar evento para atualizar a lista
+    window.dispatchEvent(new CustomEvent('refreshProdutos'));
     // Fechar modal primeiro
     setIsAddModalOpen(false);
     // Mostrar notificação de sucesso
@@ -122,7 +122,7 @@ function Produtos() {
   };
 
   const handleProductDelete = (produto) => {
-    // Remover produto do cache
+    // Remover produto da lista local
     removeProduto(produto.id);
     // Mostrar notificação de sucesso após deletar
     showNotification('success', 'Excluído!', `Produto "${produto.nome}" foi excluído com sucesso!`);
@@ -136,8 +136,10 @@ function Produtos() {
 
   const handleProductEditSave = (data) => {
     console.log('Produto editado:', data);
-    // Atualizar produto no cache
+    // Atualizar produto na lista local
     updateProduto(data.id, data);
+    // Disparar evento para atualizar a lista
+    window.dispatchEvent(new CustomEvent('refreshProdutos'));
     // Fechar modal primeiro
     setIsEditModalOpen(false);
     setProdutoToEdit(null);
@@ -153,8 +155,10 @@ function Produtos() {
   // Funções para complementos
   const handleComplementoSave = (data) => {
     console.log('Complemento salvo:', data);
-    // Adicionar complemento ao cache
+    // Adicionar complemento à lista local
     addComplemento(data);
+    // Disparar evento para atualizar a lista
+    window.dispatchEvent(new CustomEvent('refreshComplementos'));
     setIsAddComplementoModalOpen(false);
     showNotification('success', 'Sucesso!', 'Complemento cadastrado com sucesso!');
   };
@@ -164,7 +168,7 @@ function Produtos() {
   };
 
   const handleComplementoDelete = (complemento) => {
-    // Remover complemento do cache
+    // Remover complemento da lista local
     removeComplemento(complemento.id);
     showNotification('success', 'Excluído!', `Complemento "${complemento.nome}" foi excluído com sucesso!`);
   };
@@ -177,8 +181,10 @@ function Produtos() {
 
   const handleComplementoEditSave = (data) => {
     console.log('Complemento editado:', data);
-    // Atualizar complemento no cache
+    // Atualizar complemento na lista local
     updateComplemento(data.id, data);
+    // Disparar evento para atualizar a lista
+    window.dispatchEvent(new CustomEvent('refreshComplementos'));
     setIsEditComplementoModalOpen(false);
     setComplementoToEdit(null);
     showNotification('success', 'Atualizado!', 'Complemento atualizado com sucesso!');
@@ -203,7 +209,8 @@ function Produtos() {
     <div className="h-screen bg-gray-50 flex flex-col md:min-h-screen">
       {/* Header - fixo apenas em mobile */}
       <div className="fixed md:relative top-0 left-0 right-0 md:left-auto md:right-auto z-30 md:z-auto bg-white px-4 md:px-6 pt-6 pb-4">
-        <div className="flex items-center gap-3 w-full">
+        {/* Linha 1: Botão voltar + Barra de pesquisa + Botão Add */}
+        <div className="flex items-center gap-3 w-full mb-3">
           {/* Botão voltar */}
           <BackButton />
           
@@ -229,14 +236,12 @@ function Produtos() {
             }}
           />
         </div>
-      </div>
 
-      {/* Título padronizado com outras páginas (Clientes/Categorias) */}
-      <div className="px-4 md:px-6 pt-4 pb-2 mt-18 md:mt-0">
+        {/* Linha 2: Ícone + Título + Produto selecionado */}
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-            <Package className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 flex-shrink-0" />
-            <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 truncate">
+            <Package className="w-6 h-6 text-blue-600 flex-shrink-0" />
+            <h1 className="text-2xl font-bold text-gray-900 truncate">
               {activeTab === 'produtos' ? 'Produtos' : 'Complementos'}
             </h1>
           </div>
@@ -314,43 +319,38 @@ function Produtos() {
             );
           })()}
         </div>
+
+        {/* Linha 3: Abas Produtos/Complementos */}
+        <div className="border-b border-gray-200">
+          <nav className="-mb-px flex space-x-8">
+            <button
+              onClick={() => setActiveTab('produtos')}
+              className={`py-3 px-1 border-b-2 font-semibold text-sm transition-colors ${
+                activeTab === 'produtos'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Produtos
+            </button>
+            <button
+              onClick={() => setActiveTab('complementos')}
+              className={`py-3 px-1 border-b-2 font-semibold text-sm transition-colors ${
+                activeTab === 'complementos'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Complementos
+            </button>
+          </nav>
+        </div>
       </div>
 
       {/* Conteúdo Principal */}
-      <div className="px-4 md:px-6 pb-6">
-        {/* Abas modernas */}
-        <div className="mb-6">
-          <div className="border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <nav className="-mb-px flex space-x-8">
-                <button
-                  onClick={() => setActiveTab('produtos')}
-                  className={`py-3 px-1 border-b-2 font-semibold text-sm transition-colors ${
-                    activeTab === 'produtos'
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  Produtos
-                </button>
-                <button
-                  onClick={() => setActiveTab('complementos')}
-                  className={`py-3 px-1 border-b-2 font-semibold text-sm transition-colors ${
-                    activeTab === 'complementos'
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  Complementos
-                </button>
-              </nav>
-              
-            </div>
-          </div>
-        </div>
-
-        {/* Área de conteúdo com rolagem */}
-        <div ref={contentRef} className="flex-1 overflow-y-auto scrollbar-hide">
+      <div className="px-4 md:px-6 pb-6 flex-1 overflow-hidden">
+        {/* Área de conteúdo com rolagem oculta */}
+        <div ref={contentRef} className="h-full overflow-y-auto scrollbar-hide">
           {/* Conteúdo baseado na aba ativa */}
           {estabelecimentoId ? (
             activeTab === 'produtos' ? (

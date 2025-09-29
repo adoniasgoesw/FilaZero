@@ -63,10 +63,19 @@ const ListComplementos = ({
       }
     };
 
+    const handleRefreshComplementos = () => {
+      console.log('🔄 ListComplementos - Evento refreshComplementos recebido, recarregando complementos...');
+      if (estabelecimentoId) {
+        fetchComplementos();
+      }
+    };
+
     window.addEventListener('complementoUpdated', handleComplementoUpdate);
+    window.addEventListener('refreshComplementos', handleRefreshComplementos);
     
     return () => {
       window.removeEventListener('complementoUpdated', handleComplementoUpdate);
+      window.removeEventListener('refreshComplementos', handleRefreshComplementos);
     };
   }, [estabelecimentoId, fetchComplementos]);
 
@@ -229,13 +238,12 @@ const ListComplementos = ({
   }
 
   return (
-    <div>
-
-      {/* Tabela responsiva */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-8" style={{ scrollBehavior: 'smooth' }}>
-        <div className="overflow-x-auto">
+    <div className="h-full flex flex-col">
+      {/* Tabela única com cabeçalho fixo */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col h-full mt-33 md:mt-0" style={{ scrollBehavior: 'smooth' }}>
+        <div className="flex-1 overflow-y-auto scrollbar-hide">
           <table className="min-w-full">
-            <thead className="bg-gray-100">
+            <thead className="bg-gray-100 sticky top-0 z-10">
               <tr>
                 <th className="px-1 py-4 text-left">
                   <div className="flex items-center h-6 ml-2">
@@ -249,7 +257,7 @@ const ListComplementos = ({
                 </th>
                 <th className="px-1 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Complemento</th>
                 <th className="px-3 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Preço</th>
-                <th className="px-3 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden md:table-cell">Status</th>
+                <th className="px-3 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden sm:table-cell">Status</th>
                 <th className="px-3 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider hidden lg:table-cell">Ações</th>
               </tr>
             </thead>
@@ -279,7 +287,7 @@ const ListComplementos = ({
                   <td className="px-3 py-6 whitespace-nowrap">
                     <span className="text-sm font-bold text-gray-400">{formatCurrency(complemento.valor_venda)}</span>
                   </td>
-                  <td className="px-3 py-6 hidden md:table-cell">
+                  <td className="px-3 py-6 hidden sm:table-cell">
                     <span
                       className={`px-2 py-1 text-xs font-medium rounded-full ${
                         complemento.status
@@ -325,7 +333,6 @@ const ListComplementos = ({
           </table>
         </div>
       </div>
-
 
       {/* Modal de confirmação de exclusão */}
       <ConfirmDelete

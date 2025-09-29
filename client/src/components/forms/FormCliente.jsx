@@ -194,12 +194,25 @@ const FormCliente = ({ onSave, clienteData, onClose }) => {
       return;
     }
 
-    setSaving(true);
+    // Disparar evento de sucesso do modal IMEDIATAMENTE
+    window.dispatchEvent(new CustomEvent('modalSaveSuccess', { 
+      detail: { 
+        message: clienteData ? 'Cliente atualizado com sucesso!' : 'Cliente cadastrado com sucesso!',
+        data: formData
+      }
+    }));
     
+    // Disparar evento de atualização em tempo real
+    window.dispatchEvent(new CustomEvent('clienteUpdated'));
+    window.dispatchEvent(new CustomEvent('reloadClientes'));
+    
+    if (onClose) onClose();
+    
+    // Salvar no backend em background (sem bloquear a UI)
     try {
       const estabelecimentoId = Number(localStorage.getItem('estabelecimentoId')) || null;
       if (!estabelecimentoId) {
-        alert('Estabelecimento não definido. Faça login novamente.');
+        console.error('Estabelecimento não definido. Faça login novamente.');
         return;
       }
 
@@ -229,21 +242,12 @@ const FormCliente = ({ onSave, clienteData, onClose }) => {
 
       if (res.success) {
         if (onSave) onSave(res.data);
-        window.dispatchEvent(new CustomEvent('modalSaveSuccess', { 
-          detail: { 
-            message: clienteData ? 'Cliente atualizado com sucesso!' : 'Cliente cadastrado com sucesso!',
-            data: res.data
-          }
-        }));
-        if (onClose) onClose();
+        console.log('✅ Cliente salvo com sucesso');
       } else {
-        alert(res.message || 'Erro ao salvar cliente');
+        console.error('Erro ao salvar cliente:', res.message);
       }
     } catch (err) {
       console.error('Erro ao salvar cliente:', err);
-      alert('Erro ao salvar cliente');
-    } finally {
-      setSaving(false);
     }
   };
 

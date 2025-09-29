@@ -6,6 +6,7 @@ import ConfigButton from '../components/buttons/Config';
 import BaseModal from '../components/modals/Base';
 import FormConfig from '../components/forms/FormConfig';
 import ConfirmDialog from '../components/elements/ConfirmDialog';
+import { useCache } from '../providers/CacheProvider';
 import api from '../services/api';
 
 function Home() {
@@ -14,6 +15,9 @@ function Home() {
   const [search, setSearch] = useState('');
   const [caixaInfo, setCaixaInfo] = useState({ loading: true, aberto: null });
   const [show24hNotice, setShow24hNotice] = useState(false);
+  
+  // Hook do cache
+  const { preloadHomeData } = useCache();
 
   useEffect(() => {
     // Garantir que o scroll começa no topo ao entrar nesta página (especialmente no mobile)
@@ -21,6 +25,12 @@ function Home() {
       contentRef.current.scrollTo({ top: 0, behavior: 'auto' });
     }
   }, []);
+
+  // Pré-carregar dados da Home
+  useEffect(() => {
+    console.log('🚀 Home - Iniciando pré-carregamento...');
+    preloadHomeData();
+  }, [preloadHomeData]);
 
   // Checar status do caixa ao entrar na Home
   useEffect(() => {

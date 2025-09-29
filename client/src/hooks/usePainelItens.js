@@ -90,7 +90,7 @@ export const usePainelItens = (estabelecimentoId) => {
     limparSelecaoCategoria,
     
     // Estados
-    isLoading: false, // Cache sempre disponível
+    isLoading: false,
     error: null
   };
 };

@@ -194,29 +194,33 @@ const ListMovimentacoesCaixa = ({
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full">
-        <thead className="bg-gray-100">
-          <tr>
-            {/* Tipo - sempre visível */}
-            <th className="px-2 sm:px-3 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-              Tipo
-            </th>
-            {/* Descrição - sempre visível */}
-            <th className="px-2 sm:px-3 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-              Descrição
-            </th>
-            {/* Valor - visível em tablet+ */}
-            <th className="hidden sm:table-cell px-3 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-              Valor
-            </th>
-            {/* Adicionado por - visível em desktop+ */}
-            <th className="hidden md:table-cell px-3 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-              Adicionado por
-            </th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-100">
+    <div className="h-full flex flex-col">
+      {/* Tabela única com cabeçalho fixo */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col h-full">
+        <div className="flex-1 overflow-y-auto scrollbar-hide">
+          <div className="overflow-x-auto">
+            <table className="min-w-full">
+              <thead className="bg-gray-100 sticky top-0 z-10">
+                <tr>
+                  {/* Tipo - sempre visível */}
+                  <th className="px-2 sm:px-3 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    Tipo
+                  </th>
+                  {/* Descrição - sempre visível */}
+                  <th className="px-2 sm:px-3 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    Descrição
+                  </th>
+                  {/* Valor - visível em tablet+ */}
+                  <th className="hidden sm:table-cell px-3 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    Valor
+                  </th>
+                  {/* Adicionado por - visível em desktop+ */}
+                  <th className="hidden md:table-cell px-3 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    Adicionado por
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
           {displayedMovimentacoes.map((movimentacao) => (
             <tr 
               key={movimentacao.id}
@@ -259,16 +263,19 @@ const ListMovimentacoesCaixa = ({
               </td>
             </tr>
           ))}
-        </tbody>
-      </table>
+              </tbody>
+            </table>
+          </div>
 
-      {/* Indicador de carregamento para rolagem infinita */}
-      {loadingMore && (
-        <div className="flex justify-center items-center py-6 border-t border-gray-200">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-500"></div>
-          <span className="ml-2 text-sm text-gray-600">Carregando mais movimentações...</span>
+          {/* Indicador de carregamento para rolagem infinita */}
+          {loadingMore && (
+            <div className="flex justify-center items-center py-6 border-t border-gray-200">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-500"></div>
+              <span className="ml-2 text-sm text-gray-600">Carregando mais movimentações...</span>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 };

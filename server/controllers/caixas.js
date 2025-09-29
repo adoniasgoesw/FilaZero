@@ -480,6 +480,61 @@ const caixasController = {
       return res.status(500).json({ success: false, message: 'Erro interno do servidor' });
     }
   },
+
+  // Buscar detalhes de um caixa específico com nomes dos usuários
+  async getDetalhes(req, res) {
+    try {
+      const { caixa_id } = req.params;
+
+      if (!caixa_id) {
+        return res.status(400).json({ success: false, message: 'caixa_id é obrigatório' });
+      }
+
+      const query = `
+        SELECT 
+          c.*,
+          u_abertura.nome as aberto_por_nome,
+          u_fechamento.nome as fechado_por_nome
+        FROM caixas c
+        LEFT JOIN usuarios u_abertura ON c.aberto_por = u_abertura.id
+        LEFT JOIN usuarios u_fechamento ON c.fechado_por = u_fechamento.id
+        WHERE c.id = $1
+      `;
+
+      const result = await pool.query(query, [caixa_id]);
+      
+      if (result.rows.length === 0) {
+        return res.status(404).json({ success: false, message: 'Caixa não encontrado' });
+      }
+
+      const caixa = result.rows[0];
+
+      // Buscar movimentações do caixa
+      const movimentacoesQuery = `
+        SELECT 
+          mc.*,
+          u.nome as usuario_nome
+        FROM movimentacoes_caixa mc
+        LEFT JOIN usuarios u ON mc.usuario_id = u.id
+        WHERE mc.caixa_id = $1
+        ORDER BY mc.criado_em DESC
+      `;
+
+      const movimentacoesResult = await pool.query(movimentacoesQuery, [caixa_id]);
+
+      return res.json({
+        success: true,
+        data: {
+          caixa,
+          movimentacoes: movimentacoesResult.rows
+        }
+      });
+
+    } catch (error) {
+      console.error('Erro ao buscar detalhes do caixa:', error);
+      return res.status(500).json({ success: false, message: 'Erro interno do servidor' });
+    }
+  },
 };
 
 export default caixasController;

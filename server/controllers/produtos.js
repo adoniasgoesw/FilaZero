@@ -898,22 +898,32 @@ const produtosController = {
     }
   },
 
-  // Deletar complemento (soft delete)
+  // Deletar complemento (hard delete)
   async deletarComplemento(req, res) {
     try {
       const { id } = req.params;
 
-      const query = `
-        UPDATE complementos 
-        SET status = false 
-        WHERE id = $1
-      `;
+      // Primeiro, verificar se o complemento existe
+      const complementoExiste = await pool.query('SELECT id, nome FROM complementos WHERE id = $1', [id]);
+      if (complementoExiste.rows.length === 0) {
+        return res.status(404).json({ success: false, message: 'Complemento não encontrado' });
+      }
 
-      await pool.query(query, [id]);
+      // Deletar relacionamentos primeiro (se houver)
+      await pool.query('DELETE FROM itens_complementos WHERE complemento_id = $1', [id]);
+      await pool.query('DELETE FROM complementos_itens_pedido WHERE complemento_id = $1', [id]);
+
+      // Deletar o complemento do banco de dados
+      const query = `DELETE FROM complementos WHERE id = $1 RETURNING id, nome`;
+
+      const result = await pool.query(query, [id]);
+
+      console.log('✅ Complemento deletado permanentemente:', result.rows[0]);
 
       res.json({
         success: true,
-        message: 'Complemento deletado com sucesso'
+        message: 'Complemento deletado permanentemente com sucesso',
+        data: result.rows[0]
       });
 
     } catch (error) {

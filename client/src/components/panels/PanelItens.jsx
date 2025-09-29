@@ -1,31 +1,37 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
+import { Package } from 'lucide-react';
 import SearchBar from '../layout/SeachBar';
 import SaveButton from '../buttons/Save';
 import CancelButton from '../buttons/Cancel';
 import Back from '../buttons/Back';
 import Information from '../buttons/Information';
+import { useCache } from '../../providers/CacheProvider';
 import api from '../../services/api';
 import Counter from '../elements/Counter';
 import ConfirmDialog from '../elements/ConfirmDialog';
 import BaseModal from '../modals/Base';
 import { imprimirNotaCozinha } from '../../services/notaFiscalPrint';
-// Removido import do cache - agora busca diretamente da API
 
 const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, onAddItem, onSave, selectedCounts = {}, totalSelectedCount = 0, disabled = false, isBalcao = false, identificacao, nomePonto, vendedor, usuarioId, pedido, pendingCombosByProductId = {} }) => {
   const navigate = useNavigate();
   
-  // Estados para categorias e produtos (busca direta da API)
-  const [categorias, setCategorias] = React.useState([]);
-  const [loadingCats, setLoadingCats] = React.useState(false);
-  const [errorCats, setErrorCats] = React.useState(null);
+  // Hook do cache
+  const { 
+    categorias, 
+    produtos, 
+    loadingCategorias, 
+    loadingProdutos, 
+    errorCategorias, 
+    errorProdutos,
+    loadCategorias,
+    loadProdutos
+  } = useCache();
+  
+  // Estados locais
   const [selectedCategoryId, setSelectedCategoryId] = React.useState(null);
   const [search, setSearch] = React.useState('');
-
-  const [produtos, setProdutos] = React.useState([]);
-  const [loadingProdutos, setLoadingProdutos] = React.useState(true);
-  const [erroProdutos, setErroProdutos] = React.useState(null);
   const [confirmUnsavedOpen, setConfirmUnsavedOpen] = React.useState(false);
   const [savingAndExit, setSavingAndExit] = React.useState(false);
   const [pendingNavAction, setPendingNavAction] = React.useState(null); // 'home' | 'back'
@@ -42,19 +48,17 @@ const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, on
   const [modalSelectedByCategoria, setModalSelectedByCategoria] = React.useState({});
   const [modalCategoryErrors, setModalCategoryErrors] = React.useState({});
 
+  // Função para obter estabelecimento ID (mantida para compatibilidade)
   const resolveEstabelecimentoId = React.useCallback(() => {
-    // Tenta interpretar a prop como número
     if (estabelecimentoId !== undefined && estabelecimentoId !== null) {
       const parsed = parseInt(estabelecimentoId, 10);
       if (!Number.isNaN(parsed)) return parsed;
     }
-    // Tenta obter do localStorage chave direta
     const fromStorage = localStorage.getItem('estabelecimentoId');
     if (fromStorage) {
       const parsedStorage = parseInt(fromStorage, 10);
       if (!Number.isNaN(parsedStorage)) return parsedStorage;
     }
-    // Tenta obter do usuário logado
     try {
       const usuarioRaw = localStorage.getItem('usuario');
       if (usuarioRaw) {
@@ -68,47 +72,20 @@ const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, on
     return null;
   }, [estabelecimentoId]);
 
-  // Função para carregar categorias diretamente da API
-  const loadCategorias = React.useCallback(async (forceRefresh = false) => {
-    const id = resolveEstabelecimentoId();
-    if (!id) {
-      console.warn('⚠️ PanelItens: estabelecimentoId não encontrado');
-      return;
-    }
-
-    try {
-      setLoadingCats(true);
-      setErrorCats(null);
-      console.log('🔄 PanelItens - Carregando categorias da API...');
-      
-      const response = await api.get(`/categorias/${id}`);
-      if (response.success && response.data) {
-        const categoriasData = Array.isArray(response.data) ? response.data : response.data.categorias || [];
-        setCategorias(categoriasData);
-        console.log('✅ PanelItens - Categorias carregadas:', categoriasData.length);
-      } else {
-        console.warn('⚠️ PanelItens - Resposta da API sem sucesso para categorias');
-        setCategorias([]);
-      }
-    } catch (error) {
-      console.warn('⚠️ PanelItens - Erro ao carregar categorias:', error.message);
-      setErrorCats(error.message);
-      setCategorias([]);
-    } finally {
-      setLoadingCats(false);
-    }
-  }, [resolveEstabelecimentoId]);
-
-  // Carregar categorias da API
+  // Carregar dados do cache se necessário (apenas uma vez)
   React.useEffect(() => {
     const id = resolveEstabelecimentoId();
     if (id) {
-      console.log('🔄 PanelItens - Carregando categorias da API...');
-      loadCategorias().catch(error => {
-        console.warn('⚠️ Erro ao carregar categorias, continuando sem categorias:', error);
-      });
+      console.log('🔄 PanelItens - Verificando cache...');
+      // Se não há dados no cache, carregar
+      if (categorias.length === 0) {
+        loadCategorias();
+      }
+      if (produtos.length === 0) {
+        loadProdutos();
+      }
     }
-  }, [resolveEstabelecimentoId, loadCategorias]);
+  }, []); // Removidas as dependências que causavam o loop
 
   // Atualizar categoria selecionada quando categorias mudarem
   React.useEffect(() => {
@@ -121,60 +98,6 @@ const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, on
     }
   }, [categorias, selectedCategoryId]);
 
-  // Listener para atualizações de categorias em tempo real
-  React.useEffect(() => {
-    const handleCategoriaUpdate = () => {
-      console.log('🔄 PanelItens - Evento de atualização de categoria recebido, recarregando...');
-      const id = resolveEstabelecimentoId();
-      if (id) {
-        loadCategorias(true); // Forçar recarregamento
-      }
-    };
-
-    window.addEventListener('categoriaUpdated', handleCategoriaUpdate);
-    
-    return () => {
-      window.removeEventListener('categoriaUpdated', handleCategoriaUpdate);
-    };
-  }, [resolveEstabelecimentoId, loadCategorias]);
-
-  React.useEffect(() => {
-    let isMounted = true;
-    async function fetchProdutos() {
-      const id = resolveEstabelecimentoId();
-      if (id === null) {
-        if (isMounted) {
-          setErroProdutos('Estabelecimento não definido');
-          setLoadingProdutos(false);
-        }
-        return;
-      }
-      
-      try {
-
-        setLoadingProdutos(true);
-        setErroProdutos(null);
-        const response = await api.get(`/produtos/${id}?page=1&limit=200`);
-        if (!isMounted) return;
-        if (response.success) {
-          const list = response.data?.produtos || response.data || [];
-          const filtered = Array.isArray(list)
-            ? list.filter((p) => (p?.status === true || p?.status === 1) && (p?.categoria_status === true || p?.categoria_status === 1))
-            : [];
-          setProdutos(filtered);
-        } else {
-          setErroProdutos('Erro ao carregar produtos');
-        }
-      } catch {
-        if (!isMounted) return;
-        setErroProdutos('Erro ao carregar produtos');
-      } finally {
-        if (isMounted) setLoadingProdutos(false);
-      }
-    }
-    fetchProdutos();
-    return () => { isMounted = false; };
-  }, [resolveEstabelecimentoId]);
 
   const getImageUrl = (imagemUrl) => {
     if (!imagemUrl) return null;
@@ -450,7 +373,7 @@ const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, on
 
   return (
     <>
-      <main className={`${mobileHidden ? 'hidden md:flex' : 'flex md:flex'} fixed md:top-4 md:bottom-4 md:right-4 md:left-[calc(35%+7rem)] lg:left-[calc(30%+7rem)] top-0 bottom-0 left-0 right-0 bg-white border border-gray-200 md:rounded-2xl shadow-2xl z-50 flex-col ${disabled ? 'opacity-50 pointer-events-none' : ''}`}>
+      <main className={`${mobileHidden ? 'hidden md:flex' : 'flex md:flex'} fixed md:top-4 md:bottom-4 md:right-4 md:left-[calc(35%+7rem)] lg:left-[calc(30%+7rem)] top-0 bottom-0 left-0 right-0 bg-white border border-gray-200 md:rounded-2xl shadow-2xl z-[40] flex-col ${disabled ? 'opacity-50 pointer-events-none' : ''}`}>
       {/* Header com barra de pesquisa no topo */}
       <div className="p-3 md:p-4 border-b border-gray-200">
         <div className="flex items-center gap-2">
@@ -483,12 +406,12 @@ const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, on
           </div>
         )}
         <div className="overflow-x-auto scrollbar-hide">
-          {loadingCats ? (
+          {loadingCategorias ? (
             <div className="text-xs text-slate-500 px-1">Carregando categorias...</div>
-          ) : errorCats ? (
-            <div className="text-xs text-red-500 px-1">{errorCats}</div>
+          ) : errorCategorias ? (
+            <div className="text-xs text-red-500 px-1">{errorCategorias}</div>
           ) : categorias && categorias.length ? (
-            <div className="flex items-start gap-2 md:gap-3">
+            <div className="flex items-start gap-2 md:gap-3 pb-2">
               {categorias.map((cat) => {
                 const isSelected = Number(selectedCategoryId) === Number(cat.id);
                 return (
@@ -529,8 +452,8 @@ const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, on
                 </div>
               ))}
             </div>
-          ) : erroProdutos ? (
-            <div className="text-sm text-red-500">{erroProdutos}</div>
+          ) : errorProdutos ? (
+            <div className="text-sm text-red-500">{errorProdutos}</div>
           ) : (
             (() => {
               const filtered = Array.isArray(produtos)
@@ -545,7 +468,15 @@ const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, on
                   })
                 : [];
               if (!filtered.length) {
-                return <div className="text-sm text-slate-400">Nenhum produto para esta categoria.</div>;
+                return (
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                      <Package className="w-8 h-8 text-gray-400" />
+                    </div>
+                    <p className="text-sm text-gray-500 font-medium">Nenhum produto para esta categoria</p>
+                    <p className="text-xs text-gray-400 mt-1">Tente selecionar outra categoria</p>
+                  </div>
+                );
               }
               const formatCurrency = (value) => {
                 if (!value) return 'R$\u00A00,00';
@@ -578,7 +509,7 @@ const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, on
 
       {/* Footer com botões Information, Cancelar e Salvar alinhados à direita */}
       {!isBalcao && (
-        <div className="border-t border-gray-200 p-2 md:p-3">
+        <div className="border-t border-gray-200 p-3 md:p-3">
           <div className="flex items-center justify-end gap-2 w-full flex-nowrap">
             <div className="flex items-center justify-end gap-2 ml-auto">
               {/* Information apenas no mobile */}
@@ -592,8 +523,8 @@ const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, on
                 } else {
                   navigate(-1);
                 }
-              }} className="w-auto min-w-[120px] px-4 py-2.5 text-xs md:text-sm rounded-lg whitespace-nowrap" />
-              <SaveButton onClick={handleSaveAndPrint} disabled={savingAndPrinting} className="w-auto min-w-[120px] px-4 py-2.5 text-xs md:text-sm rounded-lg whitespace-nowrap">
+              }} className="w-auto min-w-[120px] px-4 py-3 md:py-2.5 text-xs md:text-sm rounded-lg whitespace-nowrap" />
+              <SaveButton onClick={handleSaveAndPrint} disabled={savingAndPrinting} className="w-auto min-w-[120px] px-4 py-3 md:py-2.5 text-xs md:text-sm rounded-lg whitespace-nowrap">
                 {savingAndPrinting ? (
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -610,7 +541,7 @@ const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, on
 
       {/* Footer para balcão com botão de informação */}
       {isBalcao && (
-        <div className="border-t border-gray-200 p-2 md:p-3">
+        <div className="border-t border-gray-200 p-3 md:p-3">
           <div className="flex items-center justify-end gap-2 w-full flex-nowrap">
             <Information onClick={onOpenDetails} variant="orange" />
           </div>

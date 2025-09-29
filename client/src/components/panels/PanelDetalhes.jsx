@@ -89,11 +89,12 @@ const PanelDetalhes = ({ identificacao, onBack, orderName, onOrderNameChange, mo
         }
         if (estId === null) return;
         const ident = String(identificacao || '').toLowerCase();
-        // Usar a nova rota que busca diretamente do banco
-        const res = await api.get(`/pedidos/${estId}/${encodeURIComponent(ident)}/itens`);
+        // Usar a rota que busca dados completos incluindo nome_ponto
+        const res = await api.get(`/pedidos/${estId}/${encodeURIComponent(ident)}`);
         if (!isMounted) return;
         if (res.success && res.data) {
-          const itens = Array.isArray(res.data.itens) ? res.data.itens : [];
+          // Usar itens_exibicao que já vem formatado
+          const itens = Array.isArray(res.data.itens_exibicao) ? res.data.itens_exibicao : [];
           const itensMapped = itens.map((item) => ({
             id: item.produto_id,
             qty: Number(item.quantidade) || 0,
@@ -142,9 +143,12 @@ const PanelDetalhes = ({ identificacao, onBack, orderName, onOrderNameChange, mo
             });
           }
           
-          // Só preencher o nome se ainda não houver edição local
-          if (!hasUserEditedName && res.data.nome_ponto !== undefined && res.data.nome_ponto !== null) {
+          // Preencher o nome do pedido se existir no banco
+          if (res.data.nome_ponto !== undefined && res.data.nome_ponto !== null && res.data.nome_ponto !== '') {
             onOrderNameChange?.(res.data.nome_ponto);
+            // Resetar flag de edição local para permitir carregamento futuro
+            setHasUserEditedName(false);
+            console.log('✅ PanelDetalhes - Nome do pedido carregado:', res.data.nome_ponto);
           }
       } catch (error) {
         if (!isMounted) return;
@@ -175,15 +179,23 @@ const PanelDetalhes = ({ identificacao, onBack, orderName, onOrderNameChange, mo
         const pagamentoIniciado = (Number(pedido.valor_pago) || 0) > 0;
         setPagamentoFinalizado(pagamentoIniciado);
         
+        // Atualizar nome do pedido se existir (vem direto do res.data)
+        if (response.data.nome_ponto && response.data.nome_ponto !== '') {
+          onOrderNameChange?.(response.data.nome_ponto);
+          setHasUserEditedName(false);
+          console.log('✅ PanelDetalhes - Nome do pedido atualizado:', response.data.nome_ponto);
+        }
+        
         console.log('✅ Valores de pagamento atualizados:', {
           valor_pago: Number(pedido.valor_pago) || 0,
-          pagamento_finalizado: pagamentoIniciado
+          pagamento_finalizado: pagamentoIniciado,
+          nome_ponto: response.data.nome_ponto
         });
       }
     } catch (error) {
       console.warn('Erro ao recarregar dados do pedido:', error);
     }
-  }, [identificacao]);
+  }, [identificacao, onOrderNameChange]);
 
   // Recarregar dados quando o componente é focado novamente (volta do painel de pagamentos)
   React.useEffect(() => {
@@ -515,12 +527,15 @@ const PanelDetalhes = ({ identificacao, onBack, orderName, onOrderNameChange, mo
               onBack?.();
               return;
             }
+            
+            // Para telas médias e grandes, verificar se há itens pendentes
             if (isBalcao) {
               // Balcão: sair sem confirmação (não salva itens)
               onBack?.();
             } else if (totalPendingQty > 0) {
               setConfirmUnsavedOpen(true);
             } else {
+              // Sem itens pendentes, voltar diretamente
               onBack?.();
             }
           }} />
@@ -539,7 +554,7 @@ const PanelDetalhes = ({ identificacao, onBack, orderName, onOrderNameChange, mo
                 value={orderName}
                 onChange={handleOrderNameChange}
                 placeholder="Nome do pedido"
-                className="h-10 sm:h-12 pl-7 sm:pl-9 pr-2 sm:pr-3 w-56 sm:w-52 md:w-40 lg:w-48 xl:w-60 max-w-full border border-gray-300 rounded-lg sm:rounded-xl bg-white text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="h-10 sm:h-12 pl-7 sm:pl-9 pr-2 sm:pr-3 w-56 sm:w-52 md:w-32 lg:w-48 xl:w-60 max-w-full border border-gray-300 rounded-lg sm:rounded-xl bg-white text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
           </div>

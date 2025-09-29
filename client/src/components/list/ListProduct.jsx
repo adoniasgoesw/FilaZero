@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Image as ImageIcon, Package, MoreHorizontal, Check, X, ToggleLeft, ToggleRight } from 'lucide-react';
 import api from '../../services/api';
 import EditButton from '../buttons/Edit';
 import DeleteButton from '../buttons/Delete';
 import StatusButton from '../buttons/Status';
 import ConfirmDelete from '../elements/ConfirmDelete';
-import { useProdutos, useProdutosMutation } from '../../hooks/useCache';
 
 const ListProduct = ({ 
   estabelecimentoId, 
@@ -15,9 +14,10 @@ const ListProduct = ({
   selectedProducts: externalSelectedProducts = [],
   onSelectionChange
 }) => {
-  // Usar cache para produtos (3 segundos)
-  const { data: produtos = [], isLoading, error, refetch } = useProdutos(estabelecimentoId);
-  const produtosMutation = useProdutosMutation();
+  // Estados para produtos
+  const [produtos, setProdutos] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
   
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, produto: null });
   const [deleting, setDeleting] = useState(false);
@@ -29,6 +29,33 @@ const ListProduct = ({
   const [showActionsDropdown, setShowActionsDropdown] = useState(false);
   const [bulkDeleteModal, setBulkDeleteModal] = useState({ isOpen: false, produtos: [] });
   const [bulkDeleting, setBulkDeleting] = useState(false);
+
+  // Função para buscar produtos
+  const fetchProdutos = useCallback(async () => {
+    if (!estabelecimentoId) return;
+    
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await api.get(`/produtos/${estabelecimentoId}`);
+      if (response.success) {
+        setProdutos(response.data.produtos || []);
+      } else {
+        setError(response.message || 'Erro ao carregar produtos');
+      }
+    } catch (err) {
+      setError('Erro ao carregar produtos');
+      console.error('Erro ao buscar produtos:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [estabelecimentoId]);
+
+  // Buscar produtos quando o componente montar ou estabelecimentoId mudar
+  useEffect(() => {
+    fetchProdutos();
+  }, [fetchProdutos]);
 
   const displayedProdutos = React.useMemo(() => {
     const list = Array.isArray(produtos) ? produtos : [];
@@ -46,15 +73,22 @@ const ListProduct = ({
   useEffect(() => {
     const handleProdutoUpdate = () => {
       console.log('🔄 ListProduct - Evento de atualização recebido, recarregando produtos...');
-      refetch(); // Recarregar dados do cache
+      fetchProdutos(); // Recarregar dados
+    };
+
+    const handleRefreshProdutos = () => {
+      console.log('🔄 ListProduct - Evento refreshProdutos recebido, recarregando produtos...');
+      fetchProdutos(); // Recarregar dados
     };
 
     window.addEventListener('produtoUpdated', handleProdutoUpdate);
+    window.addEventListener('refreshProdutos', handleRefreshProdutos);
     
     return () => {
       window.removeEventListener('produtoUpdated', handleProdutoUpdate);
+      window.removeEventListener('refreshProdutos', handleRefreshProdutos);
     };
-  }, [refetch]);
+  }, [fetchProdutos]);
 
   // Controlar seleção baseada nos produtos selecionados externos
   useEffect(() => {
@@ -68,8 +102,8 @@ const ListProduct = ({
       const response = await api.put(`/produtos/${produto.id}/status`);
       
       if (response.success) {
-        // Invalidar cache automaticamente
-        produtosMutation.mutate();
+        // Recarregar produtos
+        await fetchProdutos();
         
         console.log('✅ Status do produto alterado:', produto.nome, 'Novo status:', !produto.status);
       } else {
@@ -121,8 +155,8 @@ const ListProduct = ({
       
       await Promise.all(promises);
       
-      // Invalidar cache automaticamente
-      produtosMutation.mutate();
+      // Recarregar produtos
+      await fetchProdutos();
       
       // Fechar modal e limpar seleção
       setBulkDeleteModal({ isOpen: false, produtos: [] });
@@ -148,8 +182,13 @@ const ListProduct = ({
       const response = await api.delete(`/produtos/${produto.id}`);
       
       if (response.success) {
-        // Invalidar cache automaticamente
-        produtosMutation.mutate();
+        console.log('✅ Produto deletado:', produto.nome);
+        
+        // Recarregar produtos
+        await fetchProdutos();
+        
+        // Disparar evento de atualização em tempo real
+        window.dispatchEvent(new CustomEvent('produtoUpdated'));
         
         // Fechar modal
         setDeleteModal({ isOpen: false, produto: null });
@@ -158,8 +197,6 @@ const ListProduct = ({
         if (onProductDelete) {
           onProductDelete(produto);
         }
-        
-        console.log('✅ Produto deletado:', produto.nome);
       } else {
         throw new Error(response.message || 'Erro ao deletar produto');
       }
@@ -251,7 +288,7 @@ const ListProduct = ({
           <p className="text-red-600 mb-2">Erro ao carregar produtos</p>
           <p className="text-gray-500 text-sm">{error.message}</p>
           <button 
-            onClick={refetch}
+            onClick={fetchProdutos}
             className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
             Tentar novamente
@@ -283,14 +320,12 @@ const ListProduct = ({
   }
 
   return (
-    <div>
-      {/* Removida barra de ações duplicada dentro da lista (movida para o cabeçalho da página) */}
-
-      {/* Tabela responsiva */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="overflow-x-auto">
+    <div className="h-full flex flex-col">
+      {/* Tabela única com cabeçalho fixo */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col h-full mt-44 md:mt-0">
+        <div className="flex-1 overflow-y-auto scrollbar-hide">
           <table className="min-w-full">
-            <thead className="bg-gray-100">
+            <thead className="bg-gray-100 sticky top-0 z-10">
               <tr>
                 <th className="px-1 py-4 text-left">
                   <div className="flex items-center h-6 ml-2">
@@ -303,64 +338,64 @@ const ListProduct = ({
                   </div>
                 </th>
                 <th className="px-1 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Produto</th>
-                <th className="px-3 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden sm:table-cell">Categoria</th>
-                <th className="px-3 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Preço</th>
+                <th className="px-3 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Categoria</th>
+                <th className="px-3 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden sm:table-cell">Preço</th>
                 <th className="px-3 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden md:table-cell">Status</th>
                 <th className="px-3 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider hidden lg:table-cell">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-          {displayedProdutos.map((produto) => (
+              {displayedProdutos.map((produto) => (
                 <tr 
-              key={produto.id}
+                  key={produto.id}
                   className="transition-colors cursor-pointer"
                   onClick={() => handleProductClick(produto)}
                 >
-                    <td className="px-1 py-6" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center h-6 ml-2">
-                        <input 
-                          type="checkbox" 
-                          checked={externalSelectedProducts.some(p => p.id === produto.id)}
-                          onChange={() => handleProductSelect(produto)}
-                          className="w-4 h-4 text-blue-600 bg-white border-2 border-blue-500 rounded-full focus:ring-blue-500 focus:ring-2 checked:bg-blue-500 checked:border-blue-500" 
-                        />
-                      </div>
-                    </td>
+                  <td className="px-1 py-6" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center h-6 ml-2">
+                      <input 
+                        type="checkbox" 
+                        checked={externalSelectedProducts.some(p => p.id === produto.id)}
+                        onChange={() => handleProductSelect(produto)}
+                        className="w-4 h-4 text-blue-600 bg-white border-2 border-blue-500 rounded-full focus:ring-blue-500 focus:ring-2 checked:bg-blue-500 checked:border-blue-500" 
+                      />
+                    </div>
+                  </td>
                   <td className="px-1 py-6">
                     <div className="flex items-center">
-                      <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-xl flex items-center justify-center mr-2 shadow-sm flex-shrink-0">
-                    {getImageUrl(produto.imagem_url) ? (
-                      <img
-                        src={getImageUrl(produto.imagem_url)}
-                        alt={produto.nome}
+                      <div className="w-12 h-12 flex items-center justify-center mr-2 flex-shrink-0">
+                        {getImageUrl(produto.imagem_url) ? (
+                          <img
+                            src={getImageUrl(produto.imagem_url)}
+                            alt={produto.nome}
                             className="w-full h-full object-cover rounded-xl"
-                        onError={(e) => {
-                          e.target.style.display = 'none';
-                          e.target.nextSibling.style.display = 'flex';
-                        }}
-                      />
-                    ) : null}
-                    <div 
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              e.target.nextSibling.style.display = 'flex';
+                            }}
+                          />
+                        ) : null}
+                        <div 
                           className="w-full h-full flex items-center justify-center text-white"
-                      style={{ display: getImageUrl(produto.imagem_url) ? 'none' : 'flex' }}
-                    >
+                          style={{ display: getImageUrl(produto.imagem_url) ? 'none' : 'flex' }}
+                        >
                           <Package className="w-5 h-5" />
-                    </div>
+                        </div>
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="text-sm font-semibold text-gray-900 truncate">{produto.nome}</div>
                         <div className="text-xs text-gray-500 truncate">
                           {produto.descricao || 'Produto do cardápio'}
-                  </div>
-                </div>
+                        </div>
+                      </div>
                     </div>
                   </td>
-                  <td className="px-3 py-6 hidden sm:table-cell">
+                  <td className="px-3 py-6">
                     <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
                       {produto.categoria_nome || 'Sem categoria'}
                     </span>
                   </td>
-                  <td className="px-3 py-6 whitespace-nowrap">
+                  <td className="px-3 py-6 whitespace-nowrap hidden sm:table-cell">
                     <span className="text-sm font-bold text-gray-400">{formatCurrency(produto.valor_venda)}</span>
                   </td>
                   <td className="px-3 py-6 hidden md:table-cell">
@@ -403,33 +438,32 @@ const ListProduct = ({
                       />
                     </div>
                   </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 
+      {/* Modal de confirmação de exclusão */}
+      <ConfirmDelete
+        isOpen={deleteModal.isOpen}
+        onClose={() => setDeleteModal({ isOpen: false, produto: null })}
+        onConfirm={() => handleDelete(deleteModal.produto)}
+        title="Excluir Produto"
+        message={`Tem certeza que deseja excluir o produto "${deleteModal.produto?.nome}"? Esta ação não pode ser desfeita.`}
+        isLoading={deleting}
+      />
 
-        {/* Modal de confirmação de exclusão */}
-        <ConfirmDelete
-          isOpen={deleteModal.isOpen}
-          onClose={() => setDeleteModal({ isOpen: false, produto: null })}
-          onConfirm={() => handleDelete(deleteModal.produto)}
-          title="Excluir Produto"
-          message={`Tem certeza que deseja excluir o produto "${deleteModal.produto?.nome}"? Esta ação não pode ser desfeita.`}
-          isLoading={deleting}
-        />
-
-        {/* Modal de confirmação de exclusão em lote */}
-        <ConfirmDelete
-          isOpen={bulkDeleteModal.isOpen}
-          onClose={() => setBulkDeleteModal({ isOpen: false, produtos: [] })}
-          onConfirm={handleBulkDelete}
-          title="Excluir Produtos"
-          message={`Tem certeza que deseja excluir ${bulkDeleteModal.produtos.length} produto${bulkDeleteModal.produtos.length > 1 ? 's' : ''}? Esta ação não pode ser desfeita.`}
-          isLoading={bulkDeleting}
-        />
+      {/* Modal de confirmação de exclusão em lote */}
+      <ConfirmDelete
+        isOpen={bulkDeleteModal.isOpen}
+        onClose={() => setBulkDeleteModal({ isOpen: false, produtos: [] })}
+        onConfirm={handleBulkDelete}
+        title="Excluir Produtos"
+        message={`Tem certeza que deseja excluir ${bulkDeleteModal.produtos.length} produto${bulkDeleteModal.produtos.length > 1 ? 's' : ''}? Esta ação não pode ser desfeita.`}
+        isLoading={bulkDeleting}
+      />
     </div>
   );
 };

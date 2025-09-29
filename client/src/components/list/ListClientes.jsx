@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { User, Mail, Phone, CreditCard, ToggleLeft, ToggleRight } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { User, Phone, ToggleLeft, ToggleRight } from 'lucide-react';
 import api from '../../services/api';
 import EditButton from '../buttons/Edit';
 import DeleteButton from '../buttons/Delete';
 import StatusButton from '../buttons/Status';
 import ConfirmDelete from '../elements/ConfirmDelete';
-import { useClientes, useClientesMutation } from '../../hooks/useCache';
 
 const ListClientes = ({ 
   estabelecimentoId,
@@ -17,12 +16,40 @@ const ListClientes = ({
 }) => {
   console.log('🔍 ListClientes renderizado com estabelecimentoId:', estabelecimentoId);
   
-  // Usar cache para clientes (3 segundos)
-  const { data: clientes = [], isLoading, error, refetch } = useClientes(estabelecimentoId);
-  const clientesMutation = useClientesMutation();
+  // Estados para clientes
+  const [clientes, setClientes] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
   
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, cliente: null });
   const [deleting, setDeleting] = useState(false);
+
+  // Função para buscar clientes
+  const fetchClientes = useCallback(async () => {
+    if (!estabelecimentoId) return;
+    
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await api.get(`/clientes/${estabelecimentoId}`);
+      if (response.success) {
+        setClientes(response.data || []);
+      } else {
+        setError(response.message || 'Erro ao carregar clientes');
+      }
+    } catch (err) {
+      setError('Erro ao carregar clientes');
+      console.error('Erro ao buscar clientes:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [estabelecimentoId]);
+
+  // Buscar clientes quando o componente montar ou estabelecimentoId mudar
+  useEffect(() => {
+    fetchClientes();
+  }, [fetchClientes]);
 
   // Chamar callback quando dados mudarem
   useEffect(() => {
@@ -30,6 +57,27 @@ const ListClientes = ({
       onClientesLoaded(clientes);
     }
   }, [clientes, onClientesLoaded]);
+
+  // Escutar eventos de atualização em tempo real
+  useEffect(() => {
+    const handleClienteUpdate = () => {
+      console.log('🔄 ListClientes - Evento de atualização recebido, recarregando clientes...');
+      fetchClientes();
+    };
+
+    const handleReloadClientes = () => {
+      console.log('🔄 ListClientes - Evento reloadClientes recebido, recarregando clientes...');
+      fetchClientes();
+    };
+
+    window.addEventListener('clienteUpdated', handleClienteUpdate);
+    window.addEventListener('reloadClientes', handleReloadClientes);
+    
+    return () => {
+      window.removeEventListener('clienteUpdated', handleClienteUpdate);
+      window.removeEventListener('reloadClientes', handleReloadClientes);
+    };
+  }, [fetchClientes]);
   
   // Estados para seleção múltipla
   const [selectAll, setSelectAll] = useState(false);
@@ -62,8 +110,8 @@ const ListClientes = ({
 
   // Função para recarregar a lista
   const refreshList = useCallback(() => {
-    refetch();
-  }, [refetch]);
+    fetchClientes();
+  }, [fetchClientes]);
 
   // Função para alternar status do cliente
   const toggleStatus = async (cliente) => {
@@ -73,8 +121,8 @@ const ListClientes = ({
       });
       
       if (response.success) {
-        // Invalidar cache automaticamente
-        clientesMutation.mutate();
+        // Recarregar clientes
+        await fetchClientes();
         
         console.log('✅ Status do cliente alterado:', cliente.nome, 'Novo status:', !cliente.status);
       } else {
@@ -125,8 +173,8 @@ const ListClientes = ({
       
       await Promise.all(promises);
       
-      // Invalidar cache automaticamente
-      clientesMutation.mutate();
+      // Recarregar clientes
+      await fetchClientes();
       
       // Fechar modal e limpar seleção
       setBulkDeleteModal({ isOpen: false, clientes: [] });
@@ -149,8 +197,8 @@ const ListClientes = ({
       const response = await api.delete(`/clientes/${cliente.id}`);
       
       if (response.success) {
-        // Invalidar cache automaticamente
-        clientesMutation.mutate();
+        // Recarregar clientes
+        await fetchClientes();
         
         // Fechar modal
         setDeleteModal({ isOpen: false, cliente: null });
@@ -225,12 +273,12 @@ const ListClientes = ({
   }
 
   return (
-    <div>
-      {/* Tabela responsiva */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="overflow-x-auto">
+    <div className="h-full flex flex-col">
+      {/* Tabela única com cabeçalho fixo */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col h-full mt-33 md:mt-0">
+        <div className="flex-1 overflow-y-auto scrollbar-hide">
           <table className="min-w-full">
-            <thead className="bg-gray-100">
+            <thead className="bg-gray-100 sticky top-0 z-10">
               <tr>
                 <th className="px-1 py-4 text-left">
                   <div className="flex items-center h-6 ml-2">
@@ -243,10 +291,10 @@ const ListClientes = ({
                   </div>
                 </th>
                 <th className="px-1 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Cliente</th>
-                <th className="px-3 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden sm:table-cell">CPF/CNPJ</th>
-                <th className="px-3 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Contato</th>
-                <th className="px-3 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden md:table-cell">Status</th>
-                <th className="px-3 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden lg:table-cell">Ações</th>
+                <th className="px-3 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">CPF/CNPJ</th>
+                <th className="px-3 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden sm:table-cell">WhatsApp</th>
+                <th className="px-3 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider hidden md:table-cell">Status</th>
+                <th className="px-3 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider hidden lg:table-cell">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -267,41 +315,31 @@ const ListClientes = ({
                     </div>
                   </td>
                   <td className="px-1 py-6">
-                    <div className="flex items-center">
-                      <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-xl flex items-center justify-center mr-2 shadow-sm flex-shrink-0">
-                        <User className="w-5 h-5 text-white" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="text-sm font-semibold text-gray-900 truncate">{cliente.nome}</div>
-                        <div className="text-xs text-gray-500 truncate">
-                          {cliente.cpf || cliente.cnpj || 'Sem documento'}
-                        </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-semibold text-gray-900 truncate">{cliente.nome}</div>
+                      <div className="text-xs text-gray-500 truncate">
+                        {cliente.cpf || cliente.cnpj || 'Sem documento'}
                       </div>
                     </div>
                   </td>
-                  <td className="px-3 py-6 hidden sm:table-cell">
+                  <td className="px-3 py-6 text-center">
                     <span className="text-sm font-medium text-gray-600">
                       {cliente.cpf || cliente.cnpj || '—'}
                     </span>
                   </td>
-                  <td className="px-3 py-6">
-                    <div className="space-y-1">
-                      {cliente.whatsapp && (
-                        <div className="flex items-center gap-1">
+                  <td className="px-3 py-6 hidden sm:table-cell">
+                    <div className="flex items-center gap-1">
+                      {cliente.whatsapp ? (
+                        <>
                           <Phone className="w-3 h-3 text-gray-400"/>
                           <span className="text-sm font-medium text-gray-600">{cliente.whatsapp}</span>
-                        </div>
+                        </>
+                      ) : (
+                        <span className="text-sm text-gray-400">—</span>
                       )}
-                      {cliente.email && (
-                        <div className="flex items-center gap-1">
-                          <Mail className="w-3 h-3 text-gray-400"/>
-                          <span className="text-sm font-medium text-gray-600 truncate max-w-[200px]">{cliente.email}</span>
-                        </div>
-                      )}
-                      {!cliente.whatsapp && !cliente.email && '—'}
                     </div>
                   </td>
-                  <td className="px-3 py-6 hidden md:table-cell">
+                  <td className="px-3 py-6 hidden md:table-cell text-center">
                     <span
                       className={`px-2 py-1 text-xs font-medium rounded-full ${
                         cliente.status

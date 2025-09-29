@@ -61,7 +61,7 @@ export const usePainelPagamentos = (estabelecimentoId) => {
     limparSelecaoPagamento,
     
     // Estados
-    isLoading: false, // Cache sempre disponível
+    isLoading: false,
     error: null
   };
 };

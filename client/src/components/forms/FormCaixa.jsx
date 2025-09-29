@@ -170,15 +170,24 @@ const FormCaixa = ({ onSave }) => {
       return;
     }
     
+    // Disparar evento de sucesso do modal IMEDIATAMENTE
+    window.dispatchEvent(new CustomEvent('modalSaveSuccess', { detail: formData }));
+    
+    // Disparar evento de atualização em tempo real
+    window.dispatchEvent(new CustomEvent('caixaUpdated'));
+    
+    if (onSave) onSave(formData);
+    
+    // Salvar no backend em background (sem bloquear a UI)
     try {
       const estabelecimentoId = Number(localStorage.getItem('estabelecimentoId')) || null;
       if (!estabelecimentoId) {
-        alert('Estabelecimento não definido. Faça login novamente.');
+        console.error('Estabelecimento não definido. Faça login novamente.');
         return;
       }
       const userId = Number(localStorage.getItem('userId')) || null;
       if (!userId) {
-        alert('Usuário não identificado. Faça login novamente.');
+        console.error('Usuário não identificado. Faça login novamente.');
         return;
       }
       
@@ -191,14 +200,12 @@ const FormCaixa = ({ onSave }) => {
       });
       
       if (res.success) {
-        if (onSave) onSave(res.data);
-        window.dispatchEvent(new CustomEvent('modalSaveSuccess', { detail: res.data }));
+        console.log('✅ Caixa aberto com sucesso');
       } else {
-        alert(res.message || 'Erro ao abrir caixa');
+        console.error('Erro ao abrir caixa:', res.message);
       }
     } catch (err) {
       console.error('Erro ao abrir caixa:', err);
-      alert('Erro ao abrir caixa');
     }
   };
 

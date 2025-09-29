@@ -210,31 +210,33 @@ const ListPagamentoHistorico = ({
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-      {/* Tabela de pagamentos */}
-      <div className="overflow-x-auto">
-        <table className="min-w-full">
-          <thead className="bg-gray-100">
-            <tr>
-              {/* Pagamento - sempre visível */}
-              <th className="px-2 sm:px-3 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                Pagamento
-              </th>
-              {/* Valor Total - sempre visível */}
-              <th className="px-2 sm:px-3 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                Valor Total
-              </th>
-              {/* Quantidade de Pedidos - visível em tablet+ */}
-              <th className="hidden sm:table-cell px-3 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                Pedidos
-              </th>
-              {/* Percentual - visível em desktop+ */}
-              <th className="hidden md:table-cell px-3 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                % do Total
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
+    <div className="h-full flex flex-col">
+      {/* Tabela única com cabeçalho fixo */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col h-full">
+        <div className="flex-1 overflow-y-auto scrollbar-hide">
+          <div className="overflow-x-auto">
+            <table className="min-w-full">
+              <thead className="bg-gray-100 sticky top-0 z-10">
+                <tr>
+                  {/* Pagamento - sempre visível */}
+                  <th className="px-2 sm:px-3 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    Pagamento
+                  </th>
+                  {/* Valor Total - sempre visível */}
+                  <th className="px-2 sm:px-3 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    Valor Total
+                  </th>
+                  {/* Quantidade de Pedidos - visível em tablet+ */}
+                  <th className="hidden sm:table-cell px-3 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    Pedidos
+                  </th>
+                  {/* Percentual - visível em desktop+ */}
+                  <th className="hidden md:table-cell px-3 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    % do Total
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
             {displayedPagamentos.map((pagamento, index) => (
               <tr 
                 key={pagamento.pagamento_id || index}
@@ -287,8 +289,10 @@ const ListPagamentoHistorico = ({
                 </td>
               </tr>
             ))}
-          </tbody>
-        </table>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
   );

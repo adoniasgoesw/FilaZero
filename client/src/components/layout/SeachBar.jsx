@@ -11,7 +11,7 @@ const SearchBar = ({ placeholder = "Pesquisar...", value, onChange }) => {
           placeholder={placeholder}
           value={typeof value === 'string' ? value : undefined}
           onChange={(e) => onChange?.(e.target.value)}
-          className="w-full h-full pl-10 pr-4 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white hover:border-gray-300 shadow-sm"
+          className="w-full h-full pl-10 pr-4 text-sm border border-gray-300 rounded-xl transition-all duration-200 bg-white hover:border-gray-300 shadow-sm outline-none"
         />
       </div>
     </div>

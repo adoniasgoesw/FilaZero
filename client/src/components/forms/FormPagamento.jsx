@@ -80,12 +80,25 @@ const FormPagamento = ({ onSave, pagamentoData, onClose }) => {
       return;
     }
 
-    setSaving(true);
+    // Disparar evento de sucesso do modal IMEDIATAMENTE
+    window.dispatchEvent(new CustomEvent('modalSaveSuccess', { 
+      detail: { 
+        message: pagamentoData ? 'Pagamento atualizado com sucesso!' : 'Pagamento cadastrado com sucesso!',
+        data: formData
+      }
+    }));
     
+    // Disparar evento de atualização em tempo real
+    window.dispatchEvent(new CustomEvent('pagamentoUpdated'));
+    window.dispatchEvent(new CustomEvent('refreshPagamentos'));
+    
+    if (onClose) onClose();
+    
+    // Salvar no backend em background (sem bloquear a UI)
     try {
       const estabelecimentoId = Number(localStorage.getItem('estabelecimentoId')) || null;
       if (!estabelecimentoId) {
-        alert('Estabelecimento não definido. Faça login novamente.');
+        console.error('Estabelecimento não definido. Faça login novamente.');
         return;
       }
 
@@ -108,21 +121,12 @@ const FormPagamento = ({ onSave, pagamentoData, onClose }) => {
 
       if (res.success) {
         if (onSave) onSave(res.data);
-        window.dispatchEvent(new CustomEvent('modalSaveSuccess', { 
-          detail: { 
-            message: pagamentoData ? 'Pagamento atualizado com sucesso!' : 'Pagamento cadastrado com sucesso!',
-            data: res.data
-          }
-        }));
-        if (onClose) onClose();
+        console.log('✅ Forma de pagamento salva com sucesso');
       } else {
-        alert(res.message || 'Erro ao salvar pagamento');
+        console.error('Erro ao salvar pagamento:', res.message);
       }
     } catch (err) {
       console.error('Erro ao salvar pagamento:', err);
-      alert('Erro ao salvar pagamento');
-    } finally {
-      setSaving(false);
     }
   };
 

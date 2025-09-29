@@ -239,32 +239,32 @@ const DetalhesCaixa = ({ caixa, onPrintDataReady }) => {
             <FormField label="Resumo Financeiro">
               <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
-                  <div className="space-y-4 p-4">
-                    <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                  <div className="space-y-4 p-6">
+                    <div className="flex justify-between items-center py-3 border-b border-gray-100">
                       <span className="text-sm font-medium text-gray-600">Valor de Abertura</span>
-                      <span className="text-sm font-semibold text-gray-900 whitespace-nowrap">{formatCurrency(caixa.valor_abertura)}</span>
+                      <span className="text-sm font-semibold text-gray-800 whitespace-nowrap">{formatCurrency(caixa.valor_abertura)}</span>
                     </div>
-                    <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <div className="flex justify-between items-center py-3 border-b border-gray-100">
                       <span className="text-sm font-medium text-gray-600">Entradas</span>
-                      <span className="text-sm font-semibold text-green-600 whitespace-nowrap">+ {formatCurrency(caixa.entradas)}</span>
+                      <span className="text-sm font-semibold text-gray-600 whitespace-nowrap">+ {formatCurrency(caixa.entradas)}</span>
                     </div>
-                    <div className="flex justify-between items-center py-2">
+                    <div className="flex justify-between items-center py-3">
                       <span className="text-sm font-medium text-gray-600">Saídas</span>
-                      <span className="text-sm font-semibold text-red-600 whitespace-nowrap">- {formatCurrency(caixa.saidas)}</span>
+                      <span className="text-sm font-semibold text-gray-600 whitespace-nowrap">- {formatCurrency(caixa.saidas)}</span>
                     </div>
                   </div>
-                  <div className="space-y-4 p-4">
-                    <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                  <div className="space-y-4 p-6">
+                    <div className="flex justify-between items-center py-3 border-b border-gray-100">
                       <span className="text-sm font-medium text-gray-600">Fechamento</span>
-                      <span className="text-sm font-semibold text-gray-900 whitespace-nowrap">{formatCurrency(caixa.valor_fechamento)}</span>
+                      <span className="text-sm font-semibold text-gray-800 whitespace-nowrap">{formatCurrency(caixa.valor_fechamento)}</span>
                     </div>
-                    <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <div className="flex justify-between items-center py-3 border-b border-gray-100">
                       <span className="text-sm font-medium text-gray-600">Saldo Total</span>
-                      <span className="text-sm font-semibold text-gray-900 whitespace-nowrap">{formatCurrency(caixa.saldo_total)}</span>
+                      <span className="text-sm font-semibold text-gray-800 whitespace-nowrap">{formatCurrency(caixa.saldo_total)}</span>
                     </div>
-                    <div className="flex justify-between items-center py-3 bg-gray-50 -mx-4 px-4 rounded-b-lg">
-                      <span className="text-base font-bold text-gray-800">Diferença</span>
-                      <span className="text-base font-bold text-gray-900 whitespace-nowrap">{formatCurrency(caixa.diferenca)}</span>
+                    <div className="flex justify-between items-center py-4 bg-gray-50 -mx-6 px-6 rounded-b-lg">
+                      <span className="text-base font-semibold text-gray-800">Diferença</span>
+                      <span className="text-base font-semibold text-gray-800 whitespace-nowrap">{formatCurrency(caixa.diferenca)}</span>
                     </div>
                   </div>
                 </div>
@@ -276,15 +276,15 @@ const DetalhesCaixa = ({ caixa, onPrintDataReady }) => {
           <div>
             <FormField label="Responsáveis">
               <div className="space-y-4">
-                <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                      <User className="w-4 h-4 text-blue-600" />
+                <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-7 h-7 bg-gray-200 rounded-lg flex items-center justify-center">
+                      <User className="w-4 h-4 text-gray-600" />
                     </div>
                     <span className="text-sm font-semibold text-gray-800">Abertura</span>
                   </div>
-                  <div className="pl-11 space-y-2">
-                    <p className="text-sm font-medium text-gray-900">{usuarioAbertura ? usuarioAbertura.nome : 'Usuário não encontrado'}</p>
+                  <div className="pl-10 space-y-2">
+                    <p className="text-sm font-medium text-gray-800">{usuarioAbertura ? usuarioAbertura.nome : 'Usuário não encontrado'}</p>
                     <div className="flex items-center gap-4 text-xs text-gray-500">
                       <div className="flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
@@ -298,15 +298,15 @@ const DetalhesCaixa = ({ caixa, onPrintDataReady }) => {
                   </div>
                 </div>
                 {caixa.data_fechamento && (
-                  <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                        <User className="w-4 h-4 text-green-600" />
+                  <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-7 h-7 bg-gray-200 rounded-lg flex items-center justify-center">
+                        <User className="w-4 h-4 text-gray-600" />
                       </div>
                       <span className="text-sm font-semibold text-gray-800">Fechamento</span>
                     </div>
-                    <div className="pl-11 space-y-2">
-                      <p className="text-sm font-medium text-gray-900">{usuarioFechamento ? usuarioFechamento.nome : 'Usuário não encontrado'}</p>
+                    <div className="pl-10 space-y-2">
+                      <p className="text-sm font-medium text-gray-800">{usuarioFechamento ? usuarioFechamento.nome : 'Usuário não encontrado'}</p>
                       <div className="flex items-center gap-4 text-xs text-gray-500">
                         <div className="flex items-center gap-1">
                           <Calendar className="w-3 h-3" />
@@ -332,15 +332,15 @@ const DetalhesCaixa = ({ caixa, onPrintDataReady }) => {
                   {pagamentos.map((pagamento, index) => {
                     const IconComponent = getPagamentoIcon(pagamento.forma_pagamento);
                     return (
-                      <div key={index} className="bg-white border border-gray-200 rounded-lg shadow-sm p-4">
+                      <div key={index} className="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${getPagamentoColor(pagamento.forma_pagamento).split(' ')[1]}`}>
-                              <IconComponent className={`w-4 h-4 ${getPagamentoColor(pagamento.forma_pagamento).split(' ')[0]}`} />
+                            <div className="w-7 h-7 bg-gray-200 rounded-lg flex items-center justify-center">
+                              <IconComponent className="w-4 h-4 text-gray-600" />
                             </div>
-                            <span className="text-sm font-medium text-gray-900">{pagamento.forma_pagamento}</span>
+                            <span className="text-sm font-medium text-gray-800">{pagamento.forma_pagamento}</span>
                           </div>
-                          <span className="text-sm font-bold text-gray-900">{formatCurrency(pagamento.valor_total)}</span>
+                          <span className="text-sm font-semibold text-gray-800">{formatCurrency(pagamento.valor_total)}</span>
                         </div>
                       </div>
                     );
@@ -356,8 +356,8 @@ const DetalhesCaixa = ({ caixa, onPrintDataReady }) => {
               <FormField label="Movimentações">
                 <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
                   {/* Header - só aparece em telas maiores */}
-                  <div className="hidden sm:block bg-gray-50 px-4 py-3 border-b border-gray-200">
-                    <div className="grid grid-cols-4 gap-4 text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                  <div className="hidden sm:block bg-gray-50 px-6 py-4 border-b border-gray-200">
+                    <div className="grid grid-cols-4 gap-4 text-xs font-medium text-gray-600 uppercase tracking-wide">
                       <div>Descrição</div>
                       <div>Data/Hora</div>
                       <div>Tipo</div>
@@ -366,15 +366,15 @@ const DetalhesCaixa = ({ caixa, onPrintDataReady }) => {
                   </div>
                   <div className="divide-y divide-gray-200">
                     {movimentacoes.map((mov) => (
-                      <div key={mov.id} className="px-4 py-4">
+                      <div key={mov.id} className="px-6 py-5">
                         {/* Mobile layout */}
                         <div className="sm:hidden space-y-3">
                           <div className="flex items-center justify-between">
-                            <div className="font-medium text-gray-900">{mov.descricao}</div>
+                            <div className="font-medium text-gray-800">{mov.descricao}</div>
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                               mov.tipo === 'entrada' 
-                                ? 'bg-green-100 text-green-800' 
-                                : 'bg-red-100 text-red-800'
+                                ? 'bg-gray-100 text-gray-700' 
+                                : 'bg-gray-100 text-gray-700'
                             }`}>
                               {mov.tipo === 'entrada' ? 'Entrada' : 'Saída'}
                             </span>
@@ -390,8 +390,8 @@ const DetalhesCaixa = ({ caixa, onPrintDataReady }) => {
                                 <span>{formatDateTime(mov.criado_em).time}</span>
                               </div>
                             </div>
-                            <div className="text-right font-medium text-gray-900">
-                              <span className={mov.tipo === 'entrada' ? 'text-green-600' : 'text-red-600'}>
+                            <div className="text-right font-medium text-gray-800">
+                              <span className="text-gray-600">
                                 {mov.tipo === 'entrada' ? '+' : '-'}{formatCurrency(mov.valor)}
                               </span>
                             </div>
@@ -400,7 +400,7 @@ const DetalhesCaixa = ({ caixa, onPrintDataReady }) => {
                         
                         {/* Desktop layout */}
                         <div className="hidden sm:grid grid-cols-4 gap-4 items-center">
-                          <div className="font-medium text-gray-900">{mov.descricao}</div>
+                          <div className="font-medium text-gray-800">{mov.descricao}</div>
                           <div className="text-sm text-gray-600">
                             <div className="flex items-center gap-1">
                               <Calendar className="w-3 h-3" />
@@ -414,14 +414,14 @@ const DetalhesCaixa = ({ caixa, onPrintDataReady }) => {
                           <div>
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                               mov.tipo === 'entrada' 
-                                ? 'bg-green-100 text-green-800' 
-                                : 'bg-red-100 text-red-800'
+                                ? 'bg-gray-100 text-gray-700' 
+                                : 'bg-gray-100 text-gray-700'
                             }`}>
                               {mov.tipo === 'entrada' ? 'Entrada' : 'Saída'}
                             </span>
                           </div>
-                          <div className="text-right font-medium text-gray-900">
-                            <span className={mov.tipo === 'entrada' ? 'text-green-600' : 'text-red-600'}>
+                          <div className="text-right font-medium text-gray-800">
+                            <span className="text-gray-600">
                               {mov.tipo === 'entrada' ? '+' : '-'}{formatCurrency(mov.valor)}
                             </span>
                           </div>

@@ -15,7 +15,7 @@ html, body {
 /* Garantir que o sidebar sempre seja clicável */
 .sidebar-navigation {
   pointer-events: auto !important;
-  z-index: 9999 !important;
+  z-index: 40 !important;
 }
 
 /* Estilos para scroll horizontal das sugestões de imagens */

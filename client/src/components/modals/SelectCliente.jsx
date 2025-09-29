@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users } from 'lucide-react';
+import { Users, Search } from 'lucide-react';
 import BaseModal from './Base';
 import SearchBar from '../layout/SeachBar';
 import ListClientes from '../list/ListClientes';
@@ -10,6 +10,7 @@ const SelectCliente = ({ isOpen, onClose, onSelectCliente, identificacao, onSave
   const [clientes, setClientes] = useState([]);
   const [selectedCliente, setSelectedCliente] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
 
   // Carregar clientes quando o modal abre
   useEffect(() => {
@@ -120,7 +121,7 @@ const SelectCliente = ({ isOpen, onClose, onSelectCliente, identificacao, onSave
     <BaseModal
       isOpen={isOpen}
       onClose={handleCancel}
-      title="Selecionar Cliente"
+      title=""
       icon={Users}
       iconBgColor="bg-blue-100"
       iconColor="text-blue-600"
@@ -130,22 +131,38 @@ const SelectCliente = ({ isOpen, onClose, onSelectCliente, identificacao, onSave
       cancelText="Cancelar"
     >
       <div className="space-y-6 p-2 sm:p-4">
+        {/* Header cinza com lupa - igual aos complementos */}
+        <div className="bg-gray-100 rounded-lg p-4 flex-shrink-0">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-800">Clientes</h3>
+              <p className="text-sm text-gray-600 mt-1">Selecione um cliente para o pedido</p>
+            </div>
+            <button
+              onClick={() => setShowSearch(!showSearch)}
+              className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-lg hover:bg-gray-200"
+            >
+              <Search size={20} />
+            </button>
+          </div>
+        </div>
+
         {/* Barra de pesquisa */}
-        <div className="w-full">
-          <SearchBar
-            placeholder="Pesquisar clientes..."
-            value={search}
-            onChange={setSearch}
-          />
-        </div>
+        {showSearch && (
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <input
+              type="text"
+              placeholder="Pesquisar clientes..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none"
+            />
+          </div>
+        )}
 
-        {/* Cabeçalho cinza - igual aos complementos */}
-        <div className="bg-gray-100 rounded-lg py-3 px-4">
-          <h3 className="text-base font-semibold text-gray-800">Clientes</h3>
-        </div>
-
-        {/* Lista de clientes com checkboxes redondos - responsiva */}
-        <div className="space-y-2 max-h-80 overflow-y-auto scrollbar-hide">
+        {/* Listagem de clientes */}
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div className="max-h-64 overflow-y-auto">
           {loading ? (
             <div className="flex justify-center items-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
@@ -160,19 +177,28 @@ const SelectCliente = ({ isOpen, onClose, onSelectCliente, identificacao, onSave
             filteredClientes.map((cliente) => (
               <div 
                 key={cliente.id} 
-                className="flex items-center space-x-4 py-4 px-3 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer"
+                className="flex items-center space-x-4 p-4 hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0"
                 onClick={() => handleClienteSelect(cliente)}
               >
-                <input
-                  type="checkbox"
-                  id={`cliente-${cliente.id}`}
-                  checked={selectedCliente?.id === cliente.id}
-                  onChange={() => handleClienteSelect(cliente)}
-                  className="h-5 w-5 appearance-none rounded-full border-2 border-blue-500 checked:bg-blue-600 checked:border-blue-600 cursor-pointer focus:ring-2 focus:ring-blue-300"
-                />
+                <div className="relative flex-shrink-0 flex items-center">
+                  <input
+                    type="checkbox"
+                    id={`cliente-${cliente.id}`}
+                    checked={selectedCliente?.id === cliente.id}
+                    onChange={() => handleClienteSelect(cliente)}
+                    className="h-5 w-5 appearance-none rounded-full border-2 border-gray-300 checked:bg-blue-600 checked:border-blue-600 cursor-pointer transition-all duration-200 focus:ring-2 focus:ring-blue-200"
+                  />
+                  {selectedCliente?.id === cliente.id && (
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
                 <label 
                   htmlFor={`cliente-${cliente.id}`}
-                  className="flex-1 text-sm font-medium text-gray-700 cursor-pointer tracking-wide"
+                  className="flex-1 text-sm font-light text-gray-500 cursor-pointer tracking-wide flex items-center"
                 >
                   {cliente.nome}
                 </label>
@@ -184,6 +210,7 @@ const SelectCliente = ({ isOpen, onClose, onSelectCliente, identificacao, onSave
               </div>
             ))
           )}
+          </div>
         </div>
       </div>
     </BaseModal>

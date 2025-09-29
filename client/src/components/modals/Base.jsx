@@ -82,17 +82,17 @@ const BaseModal = ({
     <>
       {/* Overlay para fechar ao clicar fora */}
       <div
-        className="fixed inset-0 z-[99999] bg-black/40"
+        className="fixed inset-0 z-[999999] bg-black/40"
         onClick={handleClose}
       />
 
       {/* Modal base com animação de gaveta */}
       <div
-        className={`fixed top-0 right-0 h-full z-[100000] transition-transform duration-300 ease-in-out w-full sm:w-1/2 lg:w-[40%] xl:w-[35%] max-w-2xl ${
+        className={`fixed top-0 right-0 h-full z-[1000000] transition-transform duration-300 ease-in-out w-full sm:w-1/2 lg:w-[40%] xl:w-[35%] max-w-2xl ${
           isAnimating ? 'transform translate-x-0' : 'transform translate-x-full'
         }`}
       >
-        <div ref={modalRef} className={`h-full bg-white shadow-2xl flex flex-col relative z-10 ${showBorder ? 'border border-gray-200' : ''}`}>
+        <div ref={modalRef} className={`h-full bg-white shadow-2xl flex flex-col relative z-[60] ${showBorder ? 'border border-gray-200' : ''}`}>
           {/* Borda esquerda mais grossa - apenas quando showBorder for true */}
           {showBorder && (
             <div className="absolute left-0 top-0 bottom-0 w-2 bg-gray-800"></div>

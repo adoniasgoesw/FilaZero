@@ -18,6 +18,8 @@ function Usuarios() {
 
   const handleUserSave = (data) => {
     console.log('Usuário salvo:', data);
+    // Disparar evento para atualizar a lista
+    window.dispatchEvent(new CustomEvent('refreshUsuarios'));
     setIsAddModalOpen(false);
   };
 
@@ -29,7 +31,8 @@ function Usuarios() {
     <div className="h-screen bg-gray-50 flex flex-col md:min-h-screen">
       {/* Header - fixo apenas em mobile */}
       <div className="fixed md:relative top-0 left-0 right-0 md:left-auto md:right-auto z-50 md:z-auto bg-white px-4 md:px-6 py-4">
-        <div className="flex items-center gap-3 w-full">
+        {/* Linha 1: Botão voltar + Barra de pesquisa + Botão Add */}
+        <div className="flex items-center gap-3 w-full mb-3">
           {/* Botão voltar */}
           <BackButton />
           
@@ -45,18 +48,20 @@ function Usuarios() {
             onClick={() => setIsAddModalOpen(true)}
           />
         </div>
+
+        {/* Linha 2: Ícone + Título */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <User className="w-6 h-6 text-indigo-600" />
+            <h1 className="text-2xl font-bold text-gray-900">
+              Usuários
+            </h1>
+          </div>
+        </div>
       </div>
 
-      {/* Título fixo */}
-      <div className="fixed md:relative top-16 md:top-auto left-0 right-0 md:left-auto md:right-auto z-40 md:z-auto bg-white px-4 md:px-6 py-4">
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <User className="w-6 h-6 text-indigo-500" />
-          Usuários
-        </h1>
-      </div>
-
-      {/* Área de conteúdo com rolagem */}
-      <div className="flex-1 overflow-y-auto px-4 md:px-6 py-6 mt-32 md:mt-8">
+      {/* Área de conteúdo com rolagem oculta */}
+      <div className="flex-1 overflow-y-auto scrollbar-hide px-4 md:px-6 py-6 mt-33 md:mt-8">
         <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
           <p className="text-gray-600">Lista de usuários será exibida aqui...</p>
         </div>

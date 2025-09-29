@@ -17,7 +17,7 @@ function Sidebar({ hideMobileFooter = false }) {
   return (
     <>
       {/* Sidebar para telas médias e grandes (>= 900px) */}
-      <div className="hidden md:flex fixed left-0 top-0 h-screen w-20 bg-white border-r border-gray-200 flex-col items-center py-4 z-[9998] shadow-lg sidebar-navigation" style={{ height: '100vh' }}>
+      <div className="hidden md:flex fixed left-0 top-0 h-screen w-20 bg-white border-r border-gray-200 flex-col items-center py-4 z-[40] shadow-lg sidebar-navigation" style={{ height: '100vh' }}>
         {/* Logo */}
         <div className="mb-12">
           <Link to="/home" className="block">

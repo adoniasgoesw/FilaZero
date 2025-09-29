@@ -56,11 +56,19 @@ const FormUser = ({ onSave }) => {
       return;
     }
 
+    // Disparar evento de sucesso do modal IMEDIATAMENTE
+    window.dispatchEvent(new CustomEvent('modalSaveSuccess', { detail: formData }));
+    
+    // Disparar evento de atualização em tempo real
+    window.dispatchEvent(new CustomEvent('usuarioUpdated'));
+    window.dispatchEvent(new CustomEvent('refreshUsuarios'));
+
+    // Salvar no backend em background (sem bloquear a UI)
     try {
       if (onSave) {
         await Promise.resolve(onSave(formData));
       }
-      window.dispatchEvent(new CustomEvent('modalSaveSuccess', { detail: formData }));
+      console.log('✅ Usuário salvo com sucesso');
     } catch (err) {
       console.error('Erro ao salvar usuário:', err);
     }

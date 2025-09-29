@@ -190,6 +190,7 @@ router.post('/caixas/entrada', loginController.verificarToken, caixasController.
 router.post('/caixas/saida', loginController.verificarToken, caixasController.adicionarSaida);
 router.get('/caixas/movimentacoes/:estabelecimento_id', loginController.verificarToken, caixasController.listarMovimentacoes);
 router.get('/movimentacoes-caixa/:caixa_id', loginController.verificarToken, caixasController.listarMovimentacoesPorCaixa);
+router.get('/caixas/detalhes/:caixa_id', loginController.verificarToken, caixasController.getDetalhes);
 
 // ===== ROTAS DE CLIENTES =====
 // Rota para cadastrar cliente (requer autenticação)

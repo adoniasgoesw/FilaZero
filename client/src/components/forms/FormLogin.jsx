@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { User, Lock, Eye, EyeOff } from 'lucide-react';
 import { login, setAuthData } from '../../services/api';
 import { useNavigate } from 'react-router-dom';
+import { formatCPF, unformatCPF } from '../../utils/cpfFormatter';
 
 function FormLogin() {
   const [showPassword, setShowPassword] = useState(false);
@@ -17,10 +18,20 @@ function FormLogin() {
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
+    
+    // Aplicar formatação automática para CPF
+    if (name === 'cpf') {
+      const formattedValue = formatCPF(value);
+      setFormData(prev => ({
+        ...prev,
+        [name]: formattedValue
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: type === 'checkbox' ? checked : value
+      }));
+    }
     
     // Limpar erro quando o usuário digitar
     if (error) setError('');
@@ -32,9 +43,13 @@ function FormLogin() {
     setError('');
 
     try {
-      // Fazer login via API
+      // Fazer login via API (enviar CPF sem formatação)
+      const cpfUnformatted = unformatCPF(formData.cpf);
+      console.log('🔍 CPF formatado:', formData.cpf);
+      console.log('🔍 CPF sem formatação:', cpfUnformatted);
+      
       const response = await login({
-        cpf: formData.cpf,
+        cpf: cpfUnformatted,
         senha: formData.password
       });
 
