@@ -150,11 +150,11 @@ const Dashboard = () => {
                   <div key={item.id} className="flex items-center justify-between py-1">
                     <div className="flex items-center gap-1 flex-1 min-w-0">
                       <div className="bg-gray-200 rounded px-1 py-0.5 flex-shrink-0">
-                        <span className="text-xs font-medium text-gray-700">{item.quantity}x</span>
+                        <span className="text-[8px] xs:text-[10px] sm:text-xs font-medium text-gray-700">{item.quantity}x</span>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <span className="text-xs text-gray-800 block truncate">{item.name}</span>
-                        <span className="text-xs font-semibold text-gray-800">R$ {item.total.toFixed(2).replace('.', ',')}</span>
+                        <span className="text-[8px] xs:text-[10px] sm:text-xs text-gray-800 block truncate">{item.name}</span>
+                        <span className="text-[8px] xs:text-[10px] sm:text-xs font-semibold text-gray-800 truncate">R$ {item.total.toFixed(2).replace('.', ',')}</span>
                       </div>
                     </div>
                     <div className="flex-shrink-0 ml-1">
@@ -178,12 +178,12 @@ const Dashboard = () => {
           {/* Subtotal e Total */}
           <div className="space-y-1">
             <div className="flex justify-between items-center min-w-0">
-              <span className="text-xs text-gray-600 flex-shrink-0">Subtotal:</span>
-              <span className="text-xs font-semibold text-gray-800 whitespace-nowrap ml-2">R$ {calculateSubtotal().toFixed(2).replace('.', ',')}</span>
+              <span className="text-[8px] xs:text-[10px] sm:text-xs text-gray-600 flex-shrink-0">Subtotal:</span>
+              <span className="text-[8px] xs:text-[10px] sm:text-xs font-semibold text-gray-800 truncate ml-2">R$ {calculateSubtotal().toFixed(2).replace('.', ',')}</span>
             </div>
             <div className="flex justify-between items-center min-w-0">
-              <span className="text-xs font-semibold text-gray-800 flex-shrink-0">Total:</span>
-              <span className="text-xs font-bold text-gray-800 whitespace-nowrap ml-2">R$ {calculateSubtotal().toFixed(2).replace('.', ',')}</span>
+              <span className="text-[8px] xs:text-[10px] sm:text-xs font-semibold text-gray-800 flex-shrink-0">Total:</span>
+              <span className="text-[8px] xs:text-[10px] sm:text-xs font-bold text-gray-800 truncate ml-2">R$ {calculateSubtotal().toFixed(2).replace('.', ',')}</span>
             </div>
           </div>
         </div>
