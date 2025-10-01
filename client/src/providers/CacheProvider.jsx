@@ -190,11 +190,33 @@ export const CacheProvider = ({ children }) => {
   // Função para pré-carregar dados da Home
   const preloadHomeData = useCallback(async () => {
     console.log('🚀 Cache - Iniciando pré-carregamento da Home...');
-    await Promise.all([
-      loadCategorias(true),
-      loadProdutos(true),
-      loadPaymentMethods(true)
-    ]);
+    
+    // Verificar se já temos dados no cache
+    const hasCategorias = categorias.length > 0;
+    const hasProdutos = produtos.length > 0;
+    const hasPaymentMethods = paymentMethods.length > 0;
+    
+    console.log('📊 Cache - Status atual:', { hasCategorias, hasProdutos, hasPaymentMethods });
+    
+    // Só carregar se não temos dados
+    const promises = [];
+    if (!hasCategorias) {
+      console.log('🔄 Cache - Carregando categorias...');
+      promises.push(loadCategorias(false));
+    }
+    if (!hasProdutos) {
+      console.log('🔄 Cache - Carregando produtos...');
+      promises.push(loadProdutos(false));
+    }
+    if (!hasPaymentMethods) {
+      console.log('🔄 Cache - Carregando métodos de pagamento...');
+      promises.push(loadPaymentMethods(false));
+    }
+    
+    if (promises.length > 0) {
+      await Promise.all(promises);
+    }
+    
     console.log('✅ Cache - Pré-carregamento da Home concluído');
   }, [loadCategorias, loadProdutos, loadPaymentMethods]);
 
@@ -289,7 +311,15 @@ export const CacheProvider = ({ children }) => {
     
     // Funções de controle
     clearCache,
-    invalidateCache
+    invalidateCache,
+    
+    // Status do cache
+    isDataLoaded: {
+      categorias: categorias.length > 0,
+      produtos: produtos.length > 0,
+      paymentMethods: paymentMethods.length > 0,
+      clientes: clientes.length > 0
+    }
   };
 
   return (

@@ -40,17 +40,17 @@ const HeroSection = () => {
                   <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-sm sm:text-base">Pedidos Digitais</h3>
+                  <h3 className="font-semibold text-xs sm:text-base">Pedidos Digitais</h3>
                   <p className="text-xs sm:text-sm text-gray-600">PDVs e sistemas de gestão</p>
                 </div>
               </div>
 
               <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 p-1.5 sm:p-2 md:p-3 lg:p-4 rounded-lg bg-white border border-gray-200 hover:shadow-md transition-shadow h-16 sm:h-18 md:h-20">
-                <div className="p-1.5 sm:p-2 rounded-lg bg-gray-100">
-                  <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" />
+                <div className="p-1.5 sm:p-2 rounded-lg bg-blue-100">
+                  <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-sm sm:text-base">Relatórios</h3>
+                  <h3 className="font-semibold text-xs sm:text-base">Relatórios</h3>
                   <p className="text-xs sm:text-sm text-gray-600">Dashboards, NFe e NFCe</p>
                 </div>
               </div>
@@ -60,17 +60,17 @@ const HeroSection = () => {
                   <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-sm sm:text-base">Painel Administrativo</h3>
+                  <h3 className="font-semibold text-xs sm:text-base">Painel Administrativo</h3>
                   <p className="text-xs sm:text-sm text-gray-600">Controle de estoque e financeiro</p>
                 </div>
               </div>
 
               <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 p-1.5 sm:p-2 md:p-3 lg:p-4 rounded-lg bg-white border border-gray-200 hover:shadow-md transition-shadow h-16 sm:h-18 md:h-20">
-                <div className="p-1.5 sm:p-2 rounded-lg bg-gray-100">
-                  <Truck className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" />
+                <div className="p-1.5 sm:p-2 rounded-lg bg-blue-100">
+                  <Truck className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-sm sm:text-base">Delivery</h3>
+                  <h3 className="font-semibold text-xs sm:text-base">Delivery</h3>
                   <p className="text-xs sm:text-sm text-gray-600">Sistema próprio</p>
                 </div>
               </div>
@@ -78,7 +78,7 @@ const HeroSection = () => {
 
             <Button 
               size="lg" 
-              className="text-base sm:text-lg px-6 sm:px-8 py-4 sm:py-6 animate-pulse-glow w-full sm:w-auto"
+              className="text-base sm:text-lg px-6 sm:px-8 py-4 sm:py-6 animate-pulse-glow w-full sm:w-auto mt-4 sm:mt-0"
               onClick={() => {
                 // Disparar evento para abrir modal de registro
                 window.dispatchEvent(new CustomEvent('openRegisterModal'));

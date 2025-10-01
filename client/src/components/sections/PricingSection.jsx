@@ -80,7 +80,7 @@ const PricingSection = () => {
           <Badge variant="secondary" className="mb-4">
             Preços Transparentes
           </Badge>
-          <h2 className="text-3xl sm:text-4xl font-bold mb-4">
+          <h2 className="text-3xl sm:text-4xl font-bold mb-4 text-center sm:text-left">
             Escolha o plano ideal para seu <span className="text-gray-900">restaurante</span>
           </h2>
           <p className="text-base sm:text-lg md:text-xl text-gray-600 max-w-2xl mx-auto">
@@ -88,7 +88,7 @@ const PricingSection = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 lg:gap-6 max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 lg:gap-6 max-w-7xl mx-auto">
           {plans.map((plan) => (
             <Card
               key={plan.name}

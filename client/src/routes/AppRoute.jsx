@@ -14,6 +14,8 @@ import Categorias from '../pages/gestao/Categorias';
 import Produtos from '../pages/gestao/Produtos';
 import PontoAtendimento from '../pages/PontoAtendimento';
 import Caixas from '../pages/administracao/Caixas';
+import PrivacyPolicy from '../pages/PrivacyPolicy';
+import TermsOfUse from '../pages/TermsOfUse';
 import CacheProvider from '../providers/CacheProvider';
 
 // Componente wrapper para gerenciar o Sidebar
@@ -46,6 +48,7 @@ function AppContent() {
   }, [location.pathname, navigate]);
   const isLandingPage = location.pathname === '/' || location.pathname === '/landing';
   const isPontoAtendimento = location.pathname.startsWith('/ponto-atendimento');
+  const isPublicPage = location.pathname === '/privacy-policy' || location.pathname === '/terms-of-use';
 
   if (isPontoAtendimento) {
     return (
@@ -66,6 +69,19 @@ function AppContent() {
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/landing" element={<Landing />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/terms-of-use" element={<TermsOfUse />} />
+        </Routes>
+      </div>
+    );
+  }
+
+  if (isPublicPage) {
+    return (
+      <div className="min-h-screen">
+        <Routes>
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/terms-of-use" element={<TermsOfUse />} />
         </Routes>
       </div>
     );

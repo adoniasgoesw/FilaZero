@@ -6,6 +6,7 @@ import { User, UserPlus } from 'lucide-react';
 import HeroSection from '../components/sections/HeroSection';
 import PricingSection from '../components/sections/PricingSection';
 import ContactSection from '../components/sections/ContactSection';
+import Footer from '../components/sections/Footer';
 import Logo from '../assets/logo';
 
 function Landing() {
@@ -60,11 +61,11 @@ function Landing() {
                 size="small" 
                 className="bg-gray-900 hover:bg-gray-800 rounded-lg"
               />
-              <span className="text-2xl font-bold text-gray-900">FilaZero PDV</span>
+              <span className="text-lg sm:text-2xl font-bold text-gray-900">FilaZero PDV</span>
             </div>
             <button
               onClick={handleAccessClick}
-              className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
+              className="px-4 sm:px-6 py-2 bg-gray-900 text-white text-sm sm:text-base rounded-lg hover:bg-gray-800 transition-colors"
             >
               Acessar Sistema
             </button>
@@ -73,9 +74,20 @@ function Landing() {
       </div>
 
       <div className="pt-20">
-        <HeroSection />
-        <PricingSection />
-        <ContactSection />
+        <div id="hero">
+          <HeroSection />
+        </div>
+        <div id="pricing">
+          <PricingSection />
+        </div>
+        <div id="contact">
+          <ContactSection />
+        </div>
+      </div>
+
+      {/* Footer com margem */}
+      <div className="mt-16 sm:mt-20 md:mt-24">
+        <Footer />
       </div>
 
       {/* Modal de Login/Registro */}

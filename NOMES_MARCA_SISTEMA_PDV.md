@@ -184,3 +184,7 @@ Todos os nomes foram criados considerando:
 **Recomendação Principal**: **Zyxo**, **Vexa** ou **Kyro** por combinarem perfeitamente a essência do sistema com apelo visual moderno e profissional, seguindo o padrão dos exemplos mencionados (Yoga, Timy, Wyppe, Kyte).
 
 
+
+
+
+

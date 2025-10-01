@@ -12,6 +12,7 @@ import caixasController from '../controllers/caixas.js';
 import clientesController from '../controllers/clientes.js';
 import pagamentosController from '../controllers/pagamentos.js';
 import * as estabelecimentosController from '../controllers/estabelecimentos.js';
+import * as chatController from '../controllers/chat.js';
 
 const router = express.Router();
 
@@ -459,5 +460,12 @@ router.post('/fale-conosco', async (req, res) => {
     });
   }
 });
+
+// ===== ROTAS DE CHAT (ZERINHO AI) =====
+// Rota para processar mensagens do chat (pública)
+router.post('/chat', chatController.processMessage);
+
+// Rota para obter status da IA (pública)
+router.get('/chat/status', chatController.getStatus);
 
 export default router;

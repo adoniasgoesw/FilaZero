@@ -34,12 +34,19 @@ const ListProduct = ({
   const fetchProdutos = useCallback(async () => {
     if (!estabelecimentoId) return;
     
-    setIsLoading(true);
+    console.log('🔄 ListProduct - fetchProdutos chamado, estabelecimentoId:', estabelecimentoId);
+    console.log('🔄 ListProduct - produtos.length:', produtos.length);
+    
+    // Só mostrar loading se não há produtos carregados
+    if (produtos.length === 0) {
+      setIsLoading(true);
+    }
     setError(null);
     
     try {
       const response = await api.get(`/produtos/${estabelecimentoId}`);
       if (response.success) {
+        console.log('🔄 ListProduct - Produtos carregados:', response.data.produtos?.length || 0);
         setProdutos(response.data.produtos || []);
       } else {
         setError(response.message || 'Erro ao carregar produtos');
@@ -50,12 +57,14 @@ const ListProduct = ({
     } finally {
       setIsLoading(false);
     }
-  }, [estabelecimentoId]);
+  }, [estabelecimentoId, produtos.length]);
 
   // Buscar produtos quando o componente montar ou estabelecimentoId mudar
   useEffect(() => {
-    fetchProdutos();
-  }, [fetchProdutos]);
+    if (estabelecimentoId) {
+      fetchProdutos();
+    }
+  }, [estabelecimentoId]);
 
   const displayedProdutos = React.useMemo(() => {
     const list = Array.isArray(produtos) ? produtos : [];
@@ -78,7 +87,10 @@ const ListProduct = ({
 
     const handleRefreshProdutos = () => {
       console.log('🔄 ListProduct - Evento refreshProdutos recebido, recarregando produtos...');
-      fetchProdutos(); // Recarregar dados
+      console.log('🔄 ListProduct - estabelecimentoId:', estabelecimentoId);
+      if (estabelecimentoId) {
+        fetchProdutos(); // Recarregar dados
+      }
     };
 
     window.addEventListener('produtoUpdated', handleProdutoUpdate);
@@ -88,7 +100,7 @@ const ListProduct = ({
       window.removeEventListener('produtoUpdated', handleProdutoUpdate);
       window.removeEventListener('refreshProdutos', handleRefreshProdutos);
     };
-  }, [fetchProdutos]);
+  }, [estabelecimentoId]);
 
   // Controlar seleção baseada nos produtos selecionados externos
   useEffect(() => {
@@ -265,8 +277,8 @@ const ListProduct = ({
     displayedProdutos: displayedProdutos?.length || 0
   });
 
-  // Mostrar loading se estiver carregando
-  if (isLoading) {
+  // Mostrar loading apenas no carregamento inicial
+  if (isLoading && produtos.length === 0) {
     return (
       <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8 min-h-[50vh] flex items-center justify-center">
         <div className="text-center">

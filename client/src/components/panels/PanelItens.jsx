@@ -26,7 +26,8 @@ const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, on
     errorCategorias, 
     errorProdutos,
     loadCategorias,
-    loadProdutos
+    loadProdutos,
+    isDataLoaded
   } = useCache();
   
   // Estados locais
@@ -77,15 +78,19 @@ const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, on
     const id = resolveEstabelecimentoId();
     if (id) {
       console.log('🔄 PanelItens - Verificando cache...');
-      // Se não há dados no cache, carregar
-      if (categorias.length === 0) {
+      console.log('📊 PanelItens - Status do cache:', isDataLoaded);
+      
+      // Só carregar se realmente não há dados no cache
+      if (!isDataLoaded.categorias && !loadingCategorias) {
+        console.log('🔄 PanelItens - Carregando categorias...');
         loadCategorias();
       }
-      if (produtos.length === 0) {
+      if (!isDataLoaded.produtos && !loadingProdutos) {
+        console.log('🔄 PanelItens - Carregando produtos...');
         loadProdutos();
       }
     }
-  }, []); // Removidas as dependências que causavam o loop
+  }, [isDataLoaded, loadingCategorias, loadingProdutos, loadCategorias, loadProdutos, resolveEstabelecimentoId]); // Dependências otimizadas
 
   // Atualizar categoria selecionada quando categorias mudarem
   React.useEffect(() => {
@@ -406,7 +411,7 @@ const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, on
           </div>
         )}
         <div className="overflow-x-auto scrollbar-hide">
-          {loadingCategorias ? (
+          {loadingCategorias && !isDataLoaded.categorias ? (
             <div className="text-xs text-slate-500 px-1">Carregando categorias...</div>
           ) : errorCategorias ? (
             <div className="text-xs text-red-500 px-1">{errorCategorias}</div>
@@ -438,7 +443,7 @@ const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, on
         </div>
         {/* Produtos filtrados */}
         <div className="pt-2 md:pt-3">
-          {loadingProdutos && (!produtos || produtos.length === 0) ? (
+          {loadingProdutos && !isDataLoaded.produtos ? (
             <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 md:gap-2.5 animate-pulse">
               {Array.from({ length: 8 }).map((_, i) => (
                 <div key={i} className="bg-white border border-gray-200 rounded-xl p-1.5 md:p-2">

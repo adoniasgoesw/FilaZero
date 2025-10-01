@@ -98,4 +98,20 @@ export const buscarImagens = async (query) => {
   });
 };
 
+// ===== FUNÇÕES DE CHAT (ZERINHO AI) =====
+// Função para processar mensagem do chat
+export const processChatMessage = async (message) => {
+  return apiRequest('/chat', {
+    method: 'POST',
+    body: JSON.stringify({ message }),
+  });
+};
+
+// Função para obter status da IA
+export const getChatStatus = async () => {
+  return apiRequest('/chat/status', {
+    method: 'GET',
+  });
+};
+
 export default api;
