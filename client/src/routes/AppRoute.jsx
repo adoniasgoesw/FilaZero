@@ -17,6 +17,7 @@ import Caixas from '../pages/administracao/Caixas';
 import PrivacyPolicy from '../pages/PrivacyPolicy';
 import TermsOfUse from '../pages/TermsOfUse';
 import CacheProvider from '../providers/CacheProvider';
+import ZerinhoChat from '../components/ia/ZerinhoChat';
 
 // Componente wrapper para gerenciar o Sidebar
 function AppContent() {
@@ -58,6 +59,7 @@ function AppContent() {
             <Route path="/ponto-atendimento/:id" element={<PontoAtendimento />} />
             <Route path="*" element={<Navigate to="/ponto-atendimento/unknown" replace />} />
           </Routes>
+          <ZerinhoChat />
         </div>
       </CacheProvider>
     );
@@ -72,6 +74,7 @@ function AppContent() {
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/terms-of-use" element={<TermsOfUse />} />
         </Routes>
+        <ZerinhoChat />
       </div>
     );
   }
@@ -83,6 +86,7 @@ function AppContent() {
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/terms-of-use" element={<TermsOfUse />} />
         </Routes>
+        <ZerinhoChat />
       </div>
     );
   }
@@ -107,6 +111,7 @@ function AppContent() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
+      <ZerinhoChat />
     </div>
   );
 }

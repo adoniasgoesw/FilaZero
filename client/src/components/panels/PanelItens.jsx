@@ -32,6 +32,7 @@ const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, on
   
   // Estados locais
   const [selectedCategoryId, setSelectedCategoryId] = React.useState(null);
+  const [isInitialized, setIsInitialized] = React.useState(false);
   const [search, setSearch] = React.useState('');
   const [confirmUnsavedOpen, setConfirmUnsavedOpen] = React.useState(false);
   const [savingAndExit, setSavingAndExit] = React.useState(false);
@@ -96,12 +97,41 @@ const PanelItens = ({ estabelecimentoId, onOpenDetails, mobileHidden = false, on
   React.useEffect(() => {
     if (categorias && categorias.length > 0) {
       const activeCategorias = categorias.filter((c) => c && (c.status === true || c.status === 1));
-      if ((!selectedCategoryId || !activeCategorias.some((c) => Number(c.id) === Number(selectedCategoryId))) && activeCategorias.length) {
-        console.log('🔄 PanelItens - Selecionando primeira categoria:', activeCategorias[0].nome);
+      
+      // Sempre selecionar a primeira categoria disponível quando as categorias carregarem
+      if (activeCategorias.length > 0) {
+        // Se não há categoria selecionada OU a categoria selecionada não existe mais
+        if (!selectedCategoryId || !activeCategorias.some((c) => Number(c.id) === Number(selectedCategoryId))) {
+          console.log('🔄 PanelItens - Selecionando primeira categoria automaticamente:', activeCategorias[0].nome);
+          setSelectedCategoryId(activeCategorias[0].id);
+        }
+      }
+    }
+  }, [categorias, selectedCategoryId]);
+
+  // Garantir que sempre há uma categoria selecionada quando o componente montar
+  React.useEffect(() => {
+    if (categorias && categorias.length > 0) {
+      const activeCategorias = categorias.filter((c) => c && (c.status === true || c.status === 1));
+      if (activeCategorias.length > 0 && !selectedCategoryId) {
+        console.log('🔄 PanelItens - Inicializando com primeira categoria:', activeCategorias[0].nome);
         setSelectedCategoryId(activeCategorias[0].id);
       }
     }
   }, [categorias, selectedCategoryId]);
+
+  // Forçar seleção da primeira categoria quando o componente montar (independente do estado)
+  React.useEffect(() => {
+    if (categorias && categorias.length > 0 && !isInitialized) {
+      const activeCategorias = categorias.filter((c) => c && (c.status === true || c.status === 1));
+      if (activeCategorias.length > 0) {
+        // Sempre selecionar a primeira categoria disponível
+        console.log('🔄 PanelItens - Forçando seleção da primeira categoria:', activeCategorias[0].nome);
+        setSelectedCategoryId(activeCategorias[0].id);
+        setIsInitialized(true);
+      }
+    }
+  }, [categorias, isInitialized]);
 
 
   const getImageUrl = (imagemUrl) => {

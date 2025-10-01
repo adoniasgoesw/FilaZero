@@ -1,30 +1,18 @@
 import React from 'react';
-import { Send } from 'lucide-react';
+import { Send, Loader2 } from 'lucide-react';
 
-const SendButton = ({ 
-  children = null, 
-  onClick, 
-  disabled = false, 
-  className = "", 
-  ...props 
-}) => {
+const SendButton = ({ onClick, disabled = false, isLoading = false, className = "" }) => {
   return (
     <button
-      type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`
-        inline-flex items-center justify-center p-2 
-        bg-gray-900 text-white rounded-lg 
-        hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed 
-        transition-colors duration-200
-        focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2
-        ${className}
-      `}
-      {...props}
+      className={`bg-gray-900 hover:bg-gray-800 disabled:bg-gray-300 text-white p-2 rounded-full transition-colors w-10 h-10 flex items-center justify-center ${className}`}
     >
-      <Send className="w-5 h-5" />
-      {children}
+      {isLoading ? (
+        <Loader2 className="w-4 h-4 animate-spin" />
+      ) : (
+        <Send className="w-4 h-4" />
+      )}
     </button>
   );
 };

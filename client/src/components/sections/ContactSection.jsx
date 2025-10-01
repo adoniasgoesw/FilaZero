@@ -4,11 +4,9 @@ import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
 import { Textarea } from '../ui/Textarea';
 import { Mail, Phone, MapPin, MessageCircle, Loader2, Bot, Smile } from 'lucide-react';
-import api, { processChatMessage } from '../../services/api';
-import BaseModal from '../modals/Base';
+import api from '../../services/api';
 import ConfirmDialog from '../elements/ConfirmDialog';
-import SendButton from '../buttons/Send';
-import CloseButton from '../buttons/Close';
+import Zerinho from '../ia/Zerinho';
 
 const ContactSection = () => {
   const [formData, setFormData] = useState({
@@ -20,10 +18,7 @@ const ContactSection = () => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  const [showChatModal, setShowChatModal] = useState(false);
-  const [chatMessage, setChatMessage] = useState('');
-  const [messages, setMessages] = useState([]);
-  const [isTyping, setIsTyping] = useState(false);
+  const [showChat, setShowChat] = useState(false);
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
@@ -32,73 +27,6 @@ const ContactSection = () => {
     }));
   };
 
-  // IA do Zerinho - Chama o backend com NLP.js
-  const getZerinhoResponse = async (userMessage) => {
-    try {
-      console.log('🤖 Zerinho AI - Enviando mensagem para backend:', userMessage);
-      const response = await processChatMessage(userMessage);
-      
-      if (response.success) {
-        console.log('🤖 Zerinho AI - Resposta recebida:', response.data.message);
-        return response.data.message;
-      } else {
-        console.error('❌ Zerinho AI - Erro na resposta:', response.message);
-        return "Ops! Algo deu errado aqui. Vou chamar alguém do suporte técnico para te ajudar! 🔧";
-      }
-    } catch (error) {
-      console.error('❌ Zerinho AI - Erro na comunicação:', error);
-      return "Ops! Algo deu errado aqui. Vou chamar alguém do suporte técnico para te ajudar! 🔧";
-    }
-  };
-
-  // Funções do chat
-  const handleSendMessage = async () => {
-    if (!chatMessage.trim()) return;
-
-    // Adicionar mensagem do usuário
-    const userMessage = {
-      id: Date.now(),
-      text: chatMessage,
-      sender: 'user',
-      timestamp: new Date()
-    };
-
-    setMessages(prev => [...prev, userMessage]);
-    const userText = chatMessage;
-    setChatMessage('');
-    setIsTyping(true);
-
-    // IA do Zerinho responde
-    try {
-      const botResponse = await getZerinhoResponse(userText);
-      const botMessage = {
-        id: Date.now() + 1,
-        text: botResponse,
-        sender: 'bot',
-        timestamp: new Date()
-      };
-
-      setMessages(prev => [...prev, botMessage]);
-    } catch (error) {
-      console.error('❌ Erro ao processar mensagem:', error);
-      const errorMessage = {
-        id: Date.now() + 1,
-        text: "Ops! Algo deu errado aqui. Vou chamar alguém do suporte técnico para te ajudar! 🔧",
-        sender: 'bot',
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, errorMessage]);
-    } finally {
-      setIsTyping(false);
-    }
-  };
-
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -279,7 +207,7 @@ const ContactSection = () => {
                    Precisa de ajuda imediata? Fale com o Zerinho, nosso assistente virtual!
                  </p>
                  <Button
-                   onClick={() => setShowChatModal(true)}
+                   onClick={() => setShowChat(true)}
                    className="text-sm w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white"
                  >
                    Falar com Zerinho
@@ -304,104 +232,8 @@ const ContactSection = () => {
         </div>
       </div>
 
-      {/* Modal de Chat */}
-      <BaseModal
-        isOpen={showChatModal}
-        onClose={() => setShowChatModal(false)}
-        title=""
-        icon={null}
-        hideDefaultButtons={true}
-        showButtons={false}
-        headerContent={<div></div>}
-        showBorder={false}
-      >
-        <div className="h-[500px] flex flex-col">
-          {/* Header do Chat */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-                <Bot className="w-4 h-4 text-white" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-800">Zerinho</h3>
-            </div>
-            <CloseButton onClick={() => setShowChatModal(false)} />
-          </div>
-
-          {/* Área de Mensagens */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {messages.length === 0 && (
-              <div className="text-center text-gray-500 mt-8">
-                <div className="w-16 h-16 bg-blue-100 rounded-full mx-auto mb-4 flex items-center justify-center">
-                  <Bot className="w-8 h-8 text-blue-600" />
-                </div>
-                <h4 className="text-lg font-semibold text-gray-800 mb-2">Olá! Eu sou o Zerinho</h4>
-                <p className="text-gray-600">Como posso te ajudar hoje?</p>
-              </div>
-            )}
-
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                <div
-                  className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                    message.sender === 'user'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-800'
-                  }`}
-                >
-                  <p className="text-sm">{message.text}</p>
-                  <p className="text-xs opacity-70 mt-1">
-                    {message.timestamp.toLocaleTimeString('pt-BR', {
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                  </p>
-                </div>
-              </div>
-            ))}
-
-            {/* Indicador de digitação */}
-            {isTyping && (
-              <div className="flex justify-start">
-                <div className="bg-blue-50 border border-blue-200 p-3 rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
-                      <Bot className="w-3 h-3 text-white" />
-                    </div>
-                    <span className="text-sm text-blue-700 font-medium">Zerinho está digitando</span>
-                    <div className="flex gap-1">
-                      <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce"></div>
-                      <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                      <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-           {/* Footer customizado com input de mensagem e botão Send - fixado no bottom exato */}
-           <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-gray-200 bg-white">
-            <div className="flex gap-2">
-              <Input
-                value={chatMessage}
-                onChange={(e) => setChatMessage(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Digite sua mensagem..."
-                className="flex-1 text-sm"
-                disabled={isTyping}
-              />
-              <SendButton
-                onClick={handleSendMessage}
-                disabled={!chatMessage.trim() || isTyping}
-                className="px-4"
-              />
-            </div>
-          </div>
-        </div>
-      </BaseModal>
+      {/* Chat Flutuante do Zerinho */}
+      {showChat && <Zerinho isOpen={showChat} onClose={() => setShowChat(false)} />}
 
       {/* Diálogo de Confirmação */}
       <ConfirmDialog
