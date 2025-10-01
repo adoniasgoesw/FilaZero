@@ -21,6 +21,7 @@ function Landing() {
 
 
   const handleCloseModal = () => {
+    console.log('handleCloseModal called, closing modal');
     setIsModalOpen(false);
   };
 
@@ -98,10 +99,11 @@ function Landing() {
         icon={null}
         hideDefaultButtons={true}
         showButtons={false}
-        headerContent={<div></div>}
+        headerContent={null}
         showBorder={false}
+        closeButtonVariant="minimal"
       >
-        {isLoginMode ? <FormLogin /> : <FormRegister />}
+        {isLoginMode ? <FormLogin onClose={handleCloseModal} /> : <FormRegister onClose={handleCloseModal} />}
       </BaseModal>
     </main>
   );

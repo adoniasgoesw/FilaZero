@@ -58,7 +58,7 @@ const PricingSection = () => {
     },
     {
       name: "Vitalício",
-      price: "R$ 399",
+      price: "R$ 599",
       period: "pagamento único",
       description: "Licença vitalícia permanente",
       features: [
@@ -80,7 +80,7 @@ const PricingSection = () => {
           <Badge variant="secondary" className="mb-4">
             Preços Transparentes
           </Badge>
-          <h2 className="text-3xl sm:text-4xl font-bold mb-4 text-center sm:text-left">
+          <h2 className="text-3xl sm:text-4xl font-bold mb-4 text-center">
             Escolha o plano ideal para seu <span className="text-gray-900">restaurante</span>
           </h2>
           <p className="text-base sm:text-lg md:text-xl text-gray-600 max-w-2xl mx-auto">

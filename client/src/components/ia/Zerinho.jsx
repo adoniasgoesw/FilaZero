@@ -7,7 +7,7 @@ const Zerinho = ({ isOpen, onClose }) => {
   const [messages, setMessages] = useState([
     {
       id: 1,
-      text: "Olá! Eu sou o Zerinho, seu assistente virtual do FilaZero! Como posso te ajudar hoje?",
+      text: "Olá! Eu sou o Zerinho, assistente da FilaZero! Como posso te ajudar hoje?",
       isBot: true,
       timestamp: new Date()
     }

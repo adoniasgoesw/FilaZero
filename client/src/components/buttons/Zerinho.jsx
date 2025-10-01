@@ -1,11 +1,15 @@
 import React from 'react';
 import { Bot } from 'lucide-react';
 
-const ZerinhoButton = ({ onClick, isOpen = false }) => {
+const ZerinhoButton = ({ onClick, isOpen = false, isLanding = false }) => {
   return (
     <button
       onClick={onClick}
-      className="fixed bottom-6 right-6 z-50 bg-gray-900 hover:bg-gray-800 text-white rounded-full p-4 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 group"
+      className={`fixed right-6 z-50 bg-gray-900 hover:bg-gray-800 text-white rounded-full p-4 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 group ${
+        isLanding 
+          ? 'bottom-6' 
+          : 'bottom-20 sm:bottom-6'
+      }`}
       aria-label="Abrir chat com Zerinho"
     >
       <div className="relative">

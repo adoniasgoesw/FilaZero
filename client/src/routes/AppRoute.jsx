@@ -59,7 +59,7 @@ function AppContent() {
             <Route path="/ponto-atendimento/:id" element={<PontoAtendimento />} />
             <Route path="*" element={<Navigate to="/ponto-atendimento/unknown" replace />} />
           </Routes>
-          <ZerinhoChat />
+          <ZerinhoChat isLanding={false} />
         </div>
       </CacheProvider>
     );
@@ -74,7 +74,7 @@ function AppContent() {
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/terms-of-use" element={<TermsOfUse />} />
         </Routes>
-        <ZerinhoChat />
+        <ZerinhoChat isLanding={true} />
       </div>
     );
   }
@@ -86,7 +86,7 @@ function AppContent() {
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/terms-of-use" element={<TermsOfUse />} />
         </Routes>
-        <ZerinhoChat />
+        <ZerinhoChat isLanding={false} />
       </div>
     );
   }
@@ -111,7 +111,7 @@ function AppContent() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
-      <ZerinhoChat />
+      <ZerinhoChat isLanding={false} />
     </div>
   );
 }

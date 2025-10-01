@@ -20,12 +20,15 @@ const BaseModal = ({
   cancelText = "Cancelar",
   isLoading = false,
   printButton = null,
-  showBorder = false
+  showBorder = false,
+  closeButtonVariant = "default"
 }) => {
   const [isAnimating, setIsAnimating] = useState(false);
   const modalRef = useRef(null);
 
   const handleClose = useCallback(() => {
+    console.log('BaseModal handleClose called');
+    
     // Disparar evento para permitir interceptação
     const cancelEvent = new CustomEvent('modalCancel', { 
       detail: { canClose: true },
@@ -37,11 +40,14 @@ const BaseModal = ({
     
     // Se o evento foi cancelado, não fechar o modal
     if (wasCancelled || cancelEvent.defaultPrevented) {
+      console.log('Modal close was cancelled by event listener');
       return;
     }
     
+    console.log('Closing modal with animation');
     setIsAnimating(false);
     setTimeout(() => {
+      console.log('Calling onClose after animation');
       onClose();
     }, 300); // Tempo da animação
   }, [onClose]);
@@ -67,15 +73,24 @@ const BaseModal = ({
       handleClose();
     };
 
+    const handleCloseModal = () => {
+      console.log('🔒 Evento closeModal recebido, fechando modal...');
+      handleClose();
+    };
+
     if (isOpen) {
       window.addEventListener('modalSaveSuccess', handleModalSaveSuccess);
+      window.addEventListener('closeModal', handleCloseModal);
     }
 
     return () => {
       window.removeEventListener('modalSaveSuccess', handleModalSaveSuccess);
+      window.removeEventListener('closeModal', handleCloseModal);
     };
   }, [isOpen, onSave, handleClose]);
 
+  console.log('BaseModal render - isOpen:', isOpen, 'isAnimating:', isAnimating);
+  
   if (!isOpen && !isAnimating) return null;
 
   return (
@@ -103,7 +118,7 @@ const BaseModal = ({
               <div className="flex-1 min-w-0 pr-3">{headerContent}</div>
               <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
                 {printButton}
-                <CloseButton onClick={handleClose} />
+                <CloseButton onClick={handleClose} variant={closeButtonVariant} />
               </div>
             </div>
           )}
@@ -127,7 +142,7 @@ const BaseModal = ({
               </div>
               <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
                 {printButton}
-                <CloseButton onClick={handleClose} />
+                <CloseButton onClick={handleClose} variant={closeButtonVariant} />
               </div>
             </div>
           )}
