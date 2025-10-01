@@ -12,7 +12,12 @@ const PORT = 3002;
 
 // Middlewares
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000'], // Frontend local
+  origin: [
+    'http://localhost:5173', 
+    'http://localhost:3000',
+    'https://filazeroapp.online',
+    'https://filazero-sistema-de-gestao.onrender.com'
+  ], // Frontend local e produção
   credentials: true
 }));
 

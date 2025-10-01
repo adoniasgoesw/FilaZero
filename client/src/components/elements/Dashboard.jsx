@@ -6,6 +6,17 @@ import { Button } from "../ui/Button"
 import { Input } from "../ui/Input"
 import { Card } from "../ui/Card"
 
+// Importar imagens corretamente
+import batataImage from "../../assets/batata.webp"
+import hamburguerImage from "../../assets/hamburguer.webp"
+import pizzaImage from "../../assets/pizza.webp"
+import sorveteImage from "../../assets/sorvete.webp"
+import calabresaImage from "../../assets/calabresa.webp"
+import chocolateImage from "../../assets/chocolate.webp"
+import portuguesaImage from "../../assets/portuguesa.webp"
+import frangoCatupiryImage from "../../assets/frango_e_catupiry.webp"
+import pepperoniImage from "../../assets/pepperoni.webp"
+
 const Dashboard = () => {
   const [searchTerm, setSearchTerm] = useState("")
   const [productCounts, setProductCounts] = useState({})
@@ -16,28 +27,28 @@ const Dashboard = () => {
   const [selectedCategory, setSelectedCategory] = useState("Pizza")
 
   const categories = [
-    { name: "Batata", image: "/src/assets/batata.webp" },
-    { name: "Hambúrguer", image: "/src/assets/hamburguer.webp" },
-    { name: "Pizza", image: "/src/assets/pizza.webp" },
-    { name: "Sobremesa", image: "/src/assets/sorvete.webp" },
+    { name: "Batata", image: batataImage },
+    { name: "Hambúrguer", image: hamburguerImage },
+    { name: "Pizza", image: pizzaImage },
+    { name: "Sobremesa", image: sorveteImage },
   ]
 
   const products = [
     // Pizzas
-    { id: 1, name: "Pizza Calabresa", price: 50.00, image: "/src/assets/calabresa.webp", category: "Pizza" },
-    { id: 2, name: "Pizza Chocolate", price: 50.00, image: "/src/assets/chocolate.webp", category: "Pizza" },
-    { id: 3, name: "Pizza Portuguesa", price: 50.00, image: "/src/assets/portuguesa.webp", category: "Pizza" },
-    { id: 4, name: "Pizza Frango e Catupiry", price: 50.00, image: "/src/assets/frango_e_catupiry.webp", category: "Pizza" },
-    { id: 5, name: "Pizza Pepperoni", price: 50.00, image: "/src/assets/pepperoni.webp", category: "Pizza" },
+    { id: 1, name: "Pizza Calabresa", price: 50.00, image: calabresaImage, category: "Pizza" },
+    { id: 2, name: "Pizza Chocolate", price: 50.00, image: chocolateImage, category: "Pizza" },
+    { id: 3, name: "Pizza Portuguesa", price: 50.00, image: portuguesaImage, category: "Pizza" },
+    { id: 4, name: "Pizza Frango e Catupiry", price: 50.00, image: frangoCatupiryImage, category: "Pizza" },
+    { id: 5, name: "Pizza Pepperoni", price: 50.00, image: pepperoniImage, category: "Pizza" },
     
     // Batatas
-    { id: 6, name: "Batata Frita", price: 10.00, image: "/src/assets/batata.webp", category: "Batata" },
+    { id: 6, name: "Batata Frita", price: 10.00, image: batataImage, category: "Batata" },
     
     // Hambúrgueres
-    { id: 7, name: "Cheeseburger", price: 22.00, image: "/src/assets/hamburguer.webp", category: "Hambúrguer" },
+    { id: 7, name: "Cheeseburger", price: 22.00, image: hamburguerImage, category: "Hambúrguer" },
     
     // Sobremesas
-    { id: 9, name: "Sundae de Chocolate", price: 8.00, image: "/src/assets/sorvete.webp", category: "Sobremesa" },
+    { id: 9, name: "Sundae de Chocolate", price: 8.00, image: sorveteImage, category: "Sobremesa" },
   ]
 
   const handleProductClick = (productId) => {
