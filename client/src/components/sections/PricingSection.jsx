@@ -17,7 +17,7 @@ const PricingSection = () => {
         "Controle de estoque",
         "Controle financeiro",
         "Relatórios",
-        "Emissões de NFE e NFC",
+        "Emissões de NFe e NFCe",
         "Suporte prioritário",
       ],
       popular: false,
