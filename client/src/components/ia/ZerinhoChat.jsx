@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import ZerinhoButton from '../buttons/Zerinho';
 import Zerinho from './Zerinho';
 
-const ZerinhoChat = () => {
+const ZerinhoChat = ({ isLanding = false }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   const handleToggle = () => {
@@ -15,7 +15,7 @@ const ZerinhoChat = () => {
 
   return (
     <>
-      <ZerinhoButton onClick={handleToggle} isOpen={isOpen} />
+      <ZerinhoButton onClick={handleToggle} isOpen={isOpen} isLanding={isLanding} />
       <Zerinho isOpen={isOpen} onClose={handleClose} />
     </>
   );

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import api from '../../services/api';
 import { User, Building, Lock, ArrowRight, ArrowLeft } from 'lucide-react';
 import CelebrationSuccess from '../elements/CelebrationSuccess';
+import CloseButton from '../buttons/Close';
 
 // Funções de validação de CPF e CNPJ
 const validateCPF = (cpf) => {
@@ -70,7 +71,7 @@ const validateCNPJ = (cnpj) => {
   return true;
 };
 
-function FormRegister() {
+function FormRegister({ onClose }) {
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
     // Etapa 1: Dados do usuário
@@ -675,7 +676,14 @@ function FormRegister() {
     <div className="h-full flex flex-col">
       {/* Header do formulário */}
       <div className="p-6 pb-4">
-        <h1 className="text-3xl font-bold text-gray-900 mb-1">Criar Conta</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold text-gray-900 mb-1">Criar Conta</h1>
+          <CloseButton onClick={() => {
+            console.log('Close button clicked in FormRegister');
+            // Disparar evento para fechar o modal com animação
+            window.dispatchEvent(new CustomEvent('closeModal'));
+          }} variant="minimal" />
+        </div>
         <p className="text-gray-400 text-sm font-light">Preencha os dados para criar sua conta</p>
       </div>
 
