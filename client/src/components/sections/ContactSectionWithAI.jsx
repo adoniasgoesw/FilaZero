@@ -271,35 +271,41 @@ const ContactSection = () => {
               </div>
             </Card>
 
-             {/* Ações Rápidas */}
-             <div className="space-y-4">
-               <Card className="p-3 sm:p-4 bg-blue-50 rounded-lg border border-blue-200">
-                 <h3 className="text-lg font-semibold text-gray-900 mb-3">Suporte Rápido</h3>
-                 <p className="text-sm text-gray-700 mb-4">
-                   Precisa de ajuda imediata? Fale com o Zerinho, nosso assistente virtual!
-                 </p>
-                 <Button
-                   onClick={() => setShowChatModal(true)}
-                   className="text-sm w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white"
-                 >
-                   Falar com Zerinho
-                 </Button>
-               </Card>
+            {/* Ações Rápidas */}
+            <div className="space-y-4">
+              <Card className="p-3 sm:p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="flex items-center gap-3 mb-3">
+                  <MessageCircle className="w-6 h-6 text-blue-600" />
+                  <h3 className="text-lg font-semibold text-gray-900">Suporte Rápido</h3>
+                </div>
+                <p className="text-sm text-gray-700 mb-4">
+                  Precisa de ajuda imediata? Fale com o Zerinho, nosso assistente virtual!
+                </p>
+                <Button
+                  onClick={() => setShowChatModal(true)}
+                  className="text-sm w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  <Bot className="w-4 h-4 mr-2" />
+                  Falar com Zerinho
+                </Button>
+              </Card>
 
-               <Card className="p-3 sm:p-4 bg-white rounded-lg border border-gray-200">
-                 <h3 className="text-lg font-semibold text-gray-900 mb-3">Teste Grátis</h3>
-                 <p className="text-sm text-gray-700 mb-4">
-                   Experimente o FilaZero por 30 dias sem compromisso!
-                 </p>
-                 <Button
-                   onClick={() => window.dispatchEvent(new CustomEvent('openRegisterModal'))}
-                   className="text-sm w-full sm:w-auto"
-                   variant="outline"
-                 >
-                   Teste Grátis
-                 </Button>
-               </Card>
-             </div>
+              <Card className="p-3 sm:p-4 bg-green-50 rounded-lg border border-green-200">
+                <div className="flex items-center gap-3 mb-3">
+                  <Smile className="w-6 h-6 text-green-600" />
+                  <h3 className="text-lg font-semibold text-gray-900">Teste Grátis</h3>
+                </div>
+                <p className="text-sm text-gray-700 mb-4">
+                  Experimente o FilaZero por 30 dias sem compromisso!
+                </p>
+                <Button
+                  onClick={() => window.dispatchEvent(new CustomEvent('openRegisterModal'))}
+                  className="text-sm w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white"
+                >
+                  Começar Teste Grátis
+                </Button>
+              </Card>
+            </div>
           </div>
         </div>
       </div>
@@ -382,8 +388,17 @@ const ContactSection = () => {
             )}
           </div>
 
-           {/* Footer customizado com input de mensagem e botão Send - fixado no bottom exato */}
-           <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-gray-200 bg-white">
+          {/* Footer customizado com input de mensagem e botão Send - fixado no bottom exato */}
+          <div 
+            className="absolute -bottom-10 left-0 right-0 p-3 border-t border-gray-200 bg-white"
+            style={{ 
+              position: 'sticky', 
+              bottom: 0, 
+              zIndex: 10,
+              margin: 0,
+              transform: 'none'
+            }}
+          >
             <div className="flex gap-2">
               <Input
                 value={chatMessage}
@@ -417,3 +432,4 @@ const ContactSection = () => {
 };
 
 export default ContactSection;
+

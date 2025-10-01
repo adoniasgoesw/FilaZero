@@ -30,9 +30,12 @@
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.2",
     "multer-storage-cloudinary": "^4.0.0",
+    "node-cache": "^5.1.2",
     "node-fetch": "^2.7.0",
+    "node-nlp": "^5.0.0-alpha.5",
     "nodemailer": "^7.0.6",
     "pg": "^8.11.3",
+    "redis": "^5.8.2",
     "socket.io": "^4.8.1",
     "sqlite3": "^5.1.7"
   },

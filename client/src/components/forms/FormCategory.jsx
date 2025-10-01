@@ -324,11 +324,6 @@ import { Image as ImageIcon, Upload, Zap, Loader2, X } from 'lucide-react';
 
       // Disparar evento para o modal fechar IMEDIATAMENTE
       window.dispatchEvent(new CustomEvent('modalSaveSuccess', { detail: formData }));
-      
-      // Disparar evento de atualização em tempo real IMEDIATAMENTE
-      window.dispatchEvent(new CustomEvent('categoriaUpdated'));
-      window.dispatchEvent(new CustomEvent('produtoUpdated'));
-      window.dispatchEvent(new CustomEvent('refreshCategorias'));
 
       // Salvar no backend em background (sem bloquear a UI)
       try {
@@ -346,6 +341,10 @@ import { Image as ImageIcon, Upload, Zap, Loader2, X } from 'lucide-react';
           
           if (response.success) {
             console.log('✅ Categoria editada com sucesso');
+            // Disparar eventos de atualização após sucesso
+            window.dispatchEvent(new CustomEvent('categoriaUpdated'));
+            window.dispatchEvent(new CustomEvent('produtoUpdated'));
+            window.dispatchEvent(new CustomEvent('refreshCategorias'));
           }
         } else {
           // Modo de criação
@@ -362,6 +361,10 @@ import { Image as ImageIcon, Upload, Zap, Loader2, X } from 'lucide-react';
           
           if (response.success) {
             console.log('✅ Categoria criada com sucesso');
+            // Disparar eventos de atualização após sucesso
+            window.dispatchEvent(new CustomEvent('categoriaUpdated'));
+            window.dispatchEvent(new CustomEvent('produtoUpdated'));
+            window.dispatchEvent(new CustomEvent('refreshCategorias'));
             // Limpar formulário apenas no modo de criação
             setFormData({ nome: '', imagem: null });
             setImagePreview(null);

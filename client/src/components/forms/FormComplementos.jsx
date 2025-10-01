@@ -97,6 +97,8 @@ const FormComplementos = ({ complemento = null, onClose, onSave }) => {
         
         if (response.success) {
           console.log('✅ Complemento criado com sucesso');
+          // Disparar evento para atualizar a lista
+          window.dispatchEvent(new CustomEvent('refreshComplementos'));
         }
       }
     } catch (error) {

@@ -113,11 +113,11 @@ const Dashboard = () => {
       <div className="w-2/5 h-full bg-white rounded-lg sm:rounded-xl p-2 sm:p-3 md:p-4 flex flex-col shadow-lg border border-gray-200">
         {/* Header */}
         <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3 md:mb-4 pb-2 sm:pb-3 border-b border-gray-200">
-          <span className="font-semibold text-gray-600 text-xs">Mesa 01</span>
+          <span className="font-semibold text-gray-600 text-xs sm:text-xs">Mesa 01</span>
           <div className="flex-1 relative">
             <Input 
               placeholder="Nome do pedido" 
-              className="text-xs border-gray-300 h-6 sm:h-8 pr-1"
+              className="text-xs sm:text-xs border-gray-300 h-6 sm:h-8 pr-1"
             />
           </div>
         </div>
@@ -125,29 +125,29 @@ const Dashboard = () => {
         {/* Listagem de Itens - Altura fixa com limite de 3 itens */}
         <div className="bg-white rounded-lg p-2 sm:p-3 shadow-md border border-gray-200 flex flex-col" style={{ height: '220px' }}>
           {/* Cabeçalho */}
-          <h3 className="text-xs font-semibold text-gray-800 mb-2 sm:mb-3">Itens do Pedido</h3>
+          <h3 className="text-xs sm:text-xs font-semibold text-gray-800 mb-2 sm:mb-3">Itens do Pedido</h3>
 
           {/* Lista de Itens com rolagem oculta - Altura fixa */}
           <div className="flex-1 overflow-y-auto scrollbar-hide" style={{ maxHeight: '160px' }}>
             <div className="space-y-3">
               {orderItems.length === 0 ? (
                 <div className="text-center py-4">
-                  <span className="text-xs text-gray-500">Nenhum item selecionado</span>
+                  <span className="text-xs sm:text-xs text-gray-500">Nenhum item selecionado</span>
                 </div>
               ) : (
                 orderItems.map((item) => (
                   <div key={item.id} className="flex items-start justify-between">
                     <div className="flex items-start gap-2">
                       <div className="bg-gray-200 rounded-md px-2 py-1">
-                        <span className="text-xs font-medium text-gray-700">{item.quantity}x</span>
+                        <span className="text-xs sm:text-xs font-medium text-gray-700">{item.quantity}x</span>
                       </div>
                       <div>
-                        <span className="text-xs text-gray-800 block">{item.name}</span>
-                        <span className="text-xs font-semibold text-gray-800">R$ {item.total.toFixed(2).replace('.', ',')}</span>
+                        <span className="text-xs sm:text-xs text-gray-800 block">{item.name}</span>
+                        <span className="text-xs sm:text-xs font-semibold text-gray-800">R$ {item.total.toFixed(2).replace('.', ',')}</span>
                       </div>
                     </div>
                     <Trash2 
-                      className="w-4 h-4 text-red-500 cursor-pointer hover:text-red-700" 
+                      className="w-3 h-3 sm:w-4 sm:h-4 text-red-500 cursor-pointer hover:text-red-700" 
                       onClick={() => handleDeleteItem(item.id)}
                     />
                   </div>
@@ -160,17 +160,17 @@ const Dashboard = () => {
         {/* Valores */}
         <div className="bg-white rounded-lg p-2 sm:p-3 shadow-md border border-gray-200 mt-2 sm:mt-3">
           {/* Cabeçalho */}
-          <h3 className="text-xs font-semibold text-gray-800 mb-2 sm:mb-3">Valores</h3>
+          <h3 className="text-xs sm:text-xs font-semibold text-gray-800 mb-2 sm:mb-3">Valores</h3>
 
           {/* Subtotal e Total */}
           <div className="space-y-2">
             <div className="flex justify-between">
-              <span className="text-xs text-gray-600">Subtotal:</span>
-              <span className="text-xs font-semibold text-gray-800">R$ {calculateSubtotal().toFixed(2).replace('.', ',')}</span>
+              <span className="text-xs sm:text-xs text-gray-600">Subtotal:</span>
+              <span className="text-xs sm:text-xs font-semibold text-gray-800">R$ {calculateSubtotal().toFixed(2).replace('.', ',')}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-xs font-semibold text-gray-800">Total:</span>
-              <span className="text-xs font-bold text-gray-800">R$ {calculateSubtotal().toFixed(2).replace('.', ',')}</span>
+              <span className="text-xs sm:text-xs font-semibold text-gray-800">Total:</span>
+              <span className="text-xs sm:text-xs font-bold text-gray-800">R$ {calculateSubtotal().toFixed(2).replace('.', ',')}</span>
             </div>
           </div>
         </div>
@@ -185,7 +185,7 @@ const Dashboard = () => {
             placeholder="Pesquisar produtos..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-6 sm:pl-8 md:pl-10 text-xs sm:text-sm h-6 sm:h-8 md:h-9"
+            className="pl-6 sm:pl-8 md:pl-10 text-xs sm:text-xs h-6 sm:h-8 md:h-9"
           />
         </div>
 
@@ -204,7 +204,7 @@ const Dashboard = () => {
                   className="w-full h-full rounded-full object-cover"
                 />
               </div>
-              <span className={`text-xs text-center font-medium mt-1 ${
+              <span className={`text-xs sm:text-xs text-center font-medium mt-1 ${
                 selectedCategory === category.name 
                   ? 'text-blue-600' 
                   : 'text-gray-700'
@@ -215,7 +215,7 @@ const Dashboard = () => {
 
         {/* Produtos */}
         <div className="flex-1 overflow-y-auto scrollbar-hide">
-          <div className="grid grid-cols-3 gap-1 sm:gap-2 md:gap-3 pb-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-1 sm:gap-2 md:gap-3 pb-4">
             {filteredProducts.map((product) => (
               <Card key={product.id} className="p-1 sm:p-2 md:p-3 cursor-pointer hover:shadow-md transition-all duration-200 border border-gray-200 hover:border-blue-300 bg-white rounded-lg relative" onClick={() => handleProductClick(product.id)}>
                 {/* Contador */}
@@ -229,8 +229,8 @@ const Dashboard = () => {
                   alt={product.name}
                   className="w-full aspect-square rounded-md object-cover mb-1 sm:mb-2"
                 />
-                <h4 className="text-xs font-medium mb-1 line-clamp-2 text-gray-800 leading-tight">{product.name}</h4>
-                <p className="text-xs font-semibold text-gray-600">R$ {product.price.toFixed(2)}</p>
+                <h4 className="text-xs sm:text-xs font-medium mb-1 line-clamp-2 text-gray-800 leading-tight">{product.name}</h4>
+                <p className="text-xs sm:text-xs font-semibold text-gray-600">R$ {product.price.toFixed(2)}</p>
               </Card>
             ))}
           </div>

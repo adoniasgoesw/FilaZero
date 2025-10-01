@@ -959,6 +959,9 @@ const FormProduct = ({ produto = null, onStateChange }) => {
           
           console.log('✅ Produto criado com sucesso');
           
+          // Disparar evento para atualizar a lista
+          window.dispatchEvent(new CustomEvent('refreshProdutos'));
+          
           // Salvar categorias temporárias se existirem (em background)
           if (categoriasTemporarias.length > 0) {
             setTimeout(async () => {

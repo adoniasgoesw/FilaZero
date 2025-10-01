@@ -239,11 +239,12 @@ const ListComplementos = ({
 
   return (
     <div className="h-full flex flex-col">
-      {/* Tabela única com cabeçalho fixo */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col h-full mt-33 md:mt-0" style={{ scrollBehavior: 'smooth' }}>
-        <div className="flex-1 overflow-y-auto scrollbar-hide">
+      {/* Tabela responsiva com cabeçalho fixo */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col h-full" style={{ scrollBehavior: 'smooth' }}>
+        {/* Cabeçalho fixo */}
+        <div className="bg-gray-100 sticky top-0 z-10 mt-32 md:mt-0">
           <table className="min-w-full">
-            <thead className="bg-gray-100 sticky top-0 z-10">
+            <thead>
               <tr>
                 <th className="px-1 py-4 text-left">
                   <div className="flex items-center h-6 ml-2">
@@ -261,6 +262,12 @@ const ListComplementos = ({
                 <th className="px-3 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider hidden lg:table-cell">Ações</th>
               </tr>
             </thead>
+          </table>
+        </div>
+        
+        {/* Área de rolagem apenas para o corpo da tabela */}
+        <div className="flex-1 overflow-y-auto scrollbar-hide">
+          <table className="min-w-full">
             <tbody className="divide-y divide-gray-100">
               {displayed.map((complemento) => (
                 <tr 
@@ -333,6 +340,7 @@ const ListComplementos = ({
           </table>
         </div>
       </div>
+
 
       {/* Modal de confirmação de exclusão */}
       <ConfirmDelete

@@ -22,10 +22,13 @@ const ListCategory = ({ estabelecimentoId, onCategoryDelete, onCategoryEdit, sea
   }, [categorias, searchQuery]);
 
   // Função para buscar categorias da API
-  const fetchCategorias = async () => {
+  const fetchCategorias = useCallback(async () => {
     if (!estabelecimentoId) return;
     
-    setIsLoading(true);
+    // Só mostrar loading se não há categorias carregadas
+    if (categorias.length === 0) {
+      setIsLoading(true);
+    }
     setError(null);
     
     try {
@@ -41,25 +44,30 @@ const ListCategory = ({ estabelecimentoId, onCategoryDelete, onCategoryEdit, sea
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [estabelecimentoId, categorias.length]);
 
   // Carregar categorias quando o componente monta ou estabelecimentoId muda
   useEffect(() => {
-    fetchCategorias();
-  }, [estabelecimentoId]);
+    if (estabelecimentoId) {
+      fetchCategorias();
+    }
+  }, [estabelecimentoId, fetchCategorias]);
 
   // Escutar eventos de atualização em tempo real
   useEffect(() => {
     const handleRefreshCategorias = () => {
       console.log('🔄 ListCategory - Evento refreshCategorias recebido, recarregando categorias...');
+      console.log('🔄 ListCategory - estabelecimentoId:', estabelecimentoId);
       if (estabelecimentoId) {
         fetchCategorias();
       }
     };
 
+    console.log('🔄 ListCategory - Adicionando listener para refreshCategorias');
     window.addEventListener('refreshCategorias', handleRefreshCategorias);
     
     return () => {
+      console.log('🔄 ListCategory - Removendo listener para refreshCategorias');
       window.removeEventListener('refreshCategorias', handleRefreshCategorias);
     };
   }, [estabelecimentoId, fetchCategorias]);
@@ -179,8 +187,8 @@ const ListCategory = ({ estabelecimentoId, onCategoryDelete, onCategoryEdit, sea
     return finalUrl;
   };
 
-  // Mostrar loading
-  if (isLoading) {
+  // Mostrar loading apenas no carregamento inicial
+  if (isLoading && categorias.length === 0) {
     return (
       <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8 min-h-[50vh] flex items-center justify-center">
         <div className="text-center">
