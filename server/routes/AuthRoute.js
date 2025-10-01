@@ -350,6 +350,107 @@ router.get('/proxy-image', async (req, res) => {
 
 // ===== ROTA FALE CONOSCO (PÚBLICA) =====
 // Rota para receber mensagens do formulário "Fale Conosco"
+router.post('/contato', async (req, res) => {
+  try {
+    const { nome, email, whatsapp, restaurante, mensagem } = req.body;
+
+    console.log('📧 Dados recebidos do formulário:', { nome, email, whatsapp, restaurante, mensagem });
+
+    // Validação básica dos campos obrigatórios
+    if (!nome || !email || !mensagem) {
+      console.log('❌ Validação falhou: campos obrigatórios ausentes');
+      return res.status(400).json({
+        success: false,
+        message: 'Nome, email e mensagem são obrigatórios'
+      });
+    }
+
+    console.log('✅ Validação passou, configurando nodemailer...');
+
+    // Importar nodemailer dinamicamente
+    const nodemailer = await import('nodemailer');
+
+    // Configurar o transporter do Gmail
+    console.log('🔧 Configurando transporter do Gmail...');
+    
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: 'adoniasgoes86@gmail.com',
+        pass: 'ioazwrmbvenxeyxp' // Senha de app do Gmail
+      }
+    });
+
+    console.log('✅ Transporter configurado, testando conexão...');
+    
+    // Testar a conexão
+    try {
+      await transporter.verify();
+      console.log('✅ Conexão com Gmail verificada com sucesso');
+    } catch (verifyError) {
+      console.error('❌ Erro ao verificar conexão com Gmail:', verifyError);
+      throw new Error('Falha na configuração do e-mail: ' + verifyError.message);
+    }
+
+    // Configurar o e-mail
+    const mailOptions = {
+      from: '"Fale Conosco - FilaZero" <adoniasgoes86@gmail.com>',
+      to: 'adoniasgoes86@gmail.com',
+      subject: `Nova mensagem do formulário de contato - ${nome}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #1f2937; border-bottom: 2px solid #3b82f6; padding-bottom: 10px;">
+            📧 Nova Mensagem do Formulário de Contato
+          </h2>
+          
+          <div style="background-color: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h3 style="color: #374151; margin-top: 0;">Informações do Contato:</h3>
+            <p><strong>Nome:</strong> ${nome}</p>
+            <p><strong>Email:</strong> ${email}</p>
+            <p><strong>WhatsApp:</strong> ${whatsapp || 'Não informado'}</p>
+            <p><strong>Restaurante:</strong> ${restaurante || 'Não informado'}</p>
+          </div>
+          
+          <div style="background-color: #ffffff; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px;">
+            <h3 style="color: #374151; margin-top: 0;">Mensagem:</h3>
+            <p style="line-height: 1.6; color: #4b5563;">${mensagem}</p>
+          </div>
+          
+          <div style="margin-top: 20px; padding: 15px; background-color: #dbeafe; border-radius: 8px;">
+            <p style="margin: 0; color: #1e40af; font-size: 14px;">
+              <strong>💡 Dica:</strong> Responda diretamente para o email: ${email}
+            </p>
+          </div>
+          
+          <div style="margin-top: 20px; text-align: center; color: #6b7280; font-size: 12px;">
+            <p>Esta mensagem foi enviada através do formulário de contato do FilaZero PDV</p>
+            <p>Data: ${new Date().toLocaleString('pt-BR')}</p>
+          </div>
+        </div>
+      `
+    };
+
+    console.log('📤 Enviando e-mail...');
+    
+    // Enviar o e-mail
+    const info = await transporter.sendMail(mailOptions);
+    console.log('✅ E-mail enviado com sucesso:', info.messageId);
+
+    res.json({
+      success: true,
+      message: 'Mensagem enviada com sucesso! Entraremos em contato em breve.'
+    });
+
+  } catch (error) {
+    console.error('❌ Erro ao enviar mensagem:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro interno do servidor. Tente novamente mais tarde.',
+      error: error.message
+    });
+  }
+});
+
 router.post('/fale-conosco', async (req, res) => {
   try {
     const { nome, email, whatsapp, restaurante, mensagem } = req.body;

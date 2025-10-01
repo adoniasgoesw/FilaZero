@@ -239,10 +239,15 @@ const ContactSection = () => {
       <ConfirmDialog
         isOpen={showConfirmDialog}
         onClose={() => setShowConfirmDialog(false)}
-        title="Mensagem Enviada!"
-        message="Obrigado pelo seu contato! Nossa equipe responderá em breve."
-        confirmText="Entendi"
-        onConfirm={() => setShowConfirmDialog(false)}
+        onPrimary={() => setShowConfirmDialog(false)}
+        onSecondary={null}
+        title="Mensagem Enviada! 🎉"
+        message="Obrigado pelo contato! Retornaremos o mais breve possível. Nossa equipe está ansiosa para ajudá-lo a revolucionar seu restaurante!"
+        primaryLabel="Beleza!"
+        secondaryLabel=""
+        variant="dark"
+        rightAlign={true}
+        customIcon={<Smile className="w-6 h-6 text-yellow-500" />}
       />
     </section>
   );
