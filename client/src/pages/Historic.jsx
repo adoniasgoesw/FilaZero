@@ -153,7 +153,7 @@ function Historic() {
       localStorage.removeItem('caixaAbertoInfo');
       setIsLoadingCaixa(false);
     }
-  }, [estabelecimentoId, caixaAbertoInfo]);
+  }, [estabelecimentoId]);
 
   useEffect(() => { 
     // Se já tem caixa aberto, não mostrar loading

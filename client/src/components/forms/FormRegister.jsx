@@ -343,6 +343,9 @@ function FormRegister() {
       const res = await api.post('/register', payload);
       if (res.success) {
         setShowCelebration(true);
+      } else {
+        // Se o registro falhou, mostrar erro
+        throw new Error(res.message || 'Erro no registro');
       }
     } catch (err) {
       console.error('Erro no cadastro:', err);
@@ -411,7 +414,7 @@ function FormRegister() {
              value={formData.name}
              onChange={handleInputChange}
              placeholder="Digite seu nome completo"
-             className="block w-full pl-10 pr-3 py-2 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent text-sm sm:text-base"
+             className="block w-full pl-10 pr-3 py-3 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
              required
            />
         </div>
@@ -460,7 +463,7 @@ function FormRegister() {
             value={formData.whatsapp}
             onChange={handleInputChange}
             placeholder="(11) 99999-9999"
-            className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+            className="block w-full pl-10 pr-3 py-3 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
             required
           />
         </div>
@@ -486,7 +489,7 @@ function FormRegister() {
             value={formData.establishmentName}
             onChange={handleInputChange}
             placeholder="Nome do seu estabelecimento"
-            className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+            className="block w-full pl-10 pr-3 py-3 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
             required
           />
         </div>
@@ -498,16 +501,21 @@ function FormRegister() {
           Setor do Estabelecimento
         </label>
         <div className="relative">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Building className="h-5 w-5 text-gray-400" />
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
+            <Building className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
           </div>
           <select
             id="establishmentSector"
             name="establishmentSector"
             value={formData.establishmentSector}
             onChange={handleInputChange}
-            className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+            className="block w-full pl-10 pr-8 py-3 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent appearance-none bg-white"
             required
+            style={{ 
+              WebkitAppearance: 'none',
+              MozAppearance: 'none',
+              appearance: 'none'
+            }}
           >
             <option value="">Selecione um setor</option>
             {sectors.map((sector) => (
@@ -516,6 +524,12 @@ function FormRegister() {
               </option>
             ))}
           </select>
+          {/* Ícone de dropdown customizado */}
+          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+            <svg className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
         </div>
       </div>
 
@@ -593,7 +607,7 @@ function FormRegister() {
             value={formData.password}
             onChange={handleInputChange}
             placeholder="Digite sua senha"
-            className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+            className="block w-full pl-10 pr-3 py-3 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
             required
           />
         </div>
@@ -673,25 +687,27 @@ function FormRegister() {
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col max-h-screen overflow-hidden">
       {/* Header do formulário */}
-        <div className="p-6 pb-4">
+        <div className="px-4 sm:px-6 py-4 pb-2 flex-shrink-0">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-lg text-[24px] sm:text-3xl md:text-3xl font-bold text-gray-900 mb-0">Criar Conta</h1>
-              <p className="text-gray-400 text-xs sm:text-sm font-light">Preencha os dados para criar sua conta</p>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-0 truncate">Criar Conta</h1>
+              <p className="text-gray-400 text-xs sm:text-sm font-light mt-1">Preencha os dados para criar sua conta</p>
             </div>
-            <CloseButton onClick={() => {
-              console.log('Close button clicked in FormRegister');
-              // Disparar evento para fechar o modal com animação
-              window.dispatchEvent(new CustomEvent('closeModal'));
-            }} variant="minimal" />
+            <div className="flex-shrink-0 ml-2">
+              <CloseButton onClick={() => {
+                console.log('Close button clicked in FormRegister');
+                // Disparar evento para fechar o modal com animação
+                window.dispatchEvent(new CustomEvent('closeModal'));
+              }} variant="minimal" />
+            </div>
           </div>
         </div>
 
       {/* Barra de Progresso Simples */}
-      <div className="px-6 pb-4">
-        <div className="mb-4">
+      <div className="px-4 sm:px-6 pb-3 flex-shrink-0">
+        <div className="mb-3">
           {/* Barra de progresso */}
           <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
             <div 
@@ -703,7 +719,7 @@ function FormRegister() {
       </div>
 
       {/* Conteúdo do formulário */}
-      <div className="flex-1 px-6 pb-6">
+      <div className="flex-1 px-4 sm:px-6 pb-4 overflow-y-auto">
     <form onSubmit={handleSubmit} className="space-y-4">
         {/* Título da etapa atual */}
         <div className="text-center mb-4">
@@ -717,47 +733,49 @@ function FormRegister() {
       {currentStep === 3 && renderStep3()}
 
       {/* Botões de navegação */}
-      <div className="flex items-center justify-between gap-4 pt-4">
+      <div className="flex items-center justify-between gap-3 pt-4 flex-shrink-0">
         <button
           type="button"
           onClick={prevStep}
           disabled={currentStep === 1}
-          className={`flex items-center gap-2 px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-medium transition-colors duration-200 ${
+          className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg font-medium transition-colors duration-200 text-sm sm:text-base ${
             currentStep === 1
               ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
               : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
           }`}
         >
-          <ArrowLeft size={18} className="sm:w-5 sm:h-5" />
-          <span className="text-sm sm:text-base">Anterior</span>
+          <ArrowLeft size={16} className="sm:w-5 sm:h-5" />
+          <span className="hidden sm:inline">Anterior</span>
+          <span className="sm:hidden">Voltar</span>
         </button>
 
         {currentStep < 3 ? (
           <button
             type="button"
             onClick={nextStep}
-              className="flex items-center gap-2 px-4 sm:px-6 py-2 sm:py-3 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 transition-colors duration-200"
+            className="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 transition-colors duration-200 text-sm sm:text-base"
           >
-            <span className="text-sm sm:text-base">Próximo</span>
-            <ArrowRight size={18} className="sm:w-5 sm:h-5" />
+            <span className="hidden sm:inline">Próximo</span>
+            <span className="sm:hidden">Próximo</span>
+            <ArrowRight size={16} className="sm:w-5 sm:h-5" />
           </button>
         ) : (
           <button
             type="submit"
-              className="flex items-center gap-2 px-4 sm:px-6 py-2 sm:py-3 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 transition-colors duration-200"
+            className="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 transition-colors duration-200 text-sm sm:text-base"
           >
-            <span className="text-sm sm:text-base">Registrar</span>
+            <span>Registrar</span>
           </button>
         )}
       </div>
 
       {/* Link para login */}
-      <div className="text-center pt-4 border-t border-gray-200">
-        <p className="text-sm text-gray-500">
+      <div className="text-center pt-3 border-t border-gray-200 flex-shrink-0">
+        <p className="text-xs sm:text-sm text-gray-500">
           Já possui uma conta?{' '}
           <button
             type="button"
-              className="text-gray-900 hover:text-gray-700 font-bold"
+            className="text-gray-900 hover:text-gray-700 font-bold underline"
             onClick={() => window.dispatchEvent(new CustomEvent('switchToLogin'))}
           >
             Login

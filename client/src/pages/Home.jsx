@@ -43,6 +43,16 @@ function Home() {
         }
         const res = await api.get(`/caixas/aberto/${estabelecimentoId}`);
         const aberto = res && res.success ? res.data : null;
+        
+        // Sincronizar localStorage com o status real do caixa
+        if (aberto) {
+          // Se a API retorna um caixa aberto, salvar no localStorage
+          localStorage.setItem('caixaAbertoInfo', JSON.stringify(aberto));
+        } else {
+          // Se a API não retorna caixa aberto, limpar o localStorage
+          localStorage.removeItem('caixaAbertoInfo');
+        }
+        
         setCaixaInfo({ loading: false, aberto });
         
         // Checar 24h apenas se o caixa estiver aberto
@@ -64,6 +74,8 @@ function Home() {
         }
       } catch {
         setCaixaInfo({ loading: false, aberto: null });
+        // Em caso de erro, também limpar o localStorage para evitar inconsistências
+        localStorage.removeItem('caixaAbertoInfo');
       }
     }
     checkCaixa();
