@@ -81,7 +81,10 @@ const registerController = {
   async register(req, res) {
     const client = await pool.connect();
     try {
+      console.log('🔍 Register - Iniciando registro...');
       const body = req.body || {};
+      console.log('🔍 Register - Body recebido:', body);
+      
       const nomeCompleto = String(body.nome_completo || body.name || '').trim();
       const email = String(body.email || '').trim().toLowerCase();
       const whatsapp = String(body.whatsapp || '').trim();
@@ -90,6 +93,16 @@ const registerController = {
       const estabelecimentoNome = String(body.estabelecimento_nome || body.establishmentName || '').trim();
       const estabelecimentoSetor = String(body.estabelecimento_setor || body.establishmentSector || '').trim();
       const cnpjRaw = body.cnpj == null ? '' : String(body.cnpj).trim();
+      
+      console.log('🔍 Register - Dados processados:', {
+        nomeCompleto,
+        email,
+        whatsapp,
+        cpf,
+        estabelecimentoNome,
+        estabelecimentoSetor,
+        cnpjRaw
+      });
 
       // Validate required fields
       if (!nomeCompleto || !email || !whatsapp || !cpf || !senha || !estabelecimentoNome || !estabelecimentoSetor) {
@@ -138,11 +151,12 @@ const registerController = {
       );
 
       await client.query('COMMIT');
-
+      console.log('✅ Register - Registro concluído com sucesso');
       return res.json({ success: true, data: { usuario: userIns.rows[0], estabelecimento: estIns.rows[0] } });
     } catch (err) {
       await client.query('ROLLBACK');
-      console.error('Erro no registro:', err);
+      console.error('❌ Register - Erro no registro:', err);
+      console.error('❌ Register - Stack trace:', err.stack);
       return res.status(500).json({ success: false, message: 'Erro no registro' });
     } finally {
       client.release();
